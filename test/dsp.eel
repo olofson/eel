@@ -1,0 +1,88 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2006 David Olofson
+/////////////////////////////////////////////
+
+import "math";
+import "dsp" as dsp;
+
+procedure print_v(v)
+{
+	for local i = 0, sizeof v - 1
+		print("      [", i, "] = ", v[i], "\n");
+}
+
+procedure verify(name, val, correct)
+{
+	print("    ", name, " = ", val," ; should be ", correct);
+	if(val == correct)
+		print(" PASS\n");
+	else
+	{
+		print(" FAIL\n");
+		throw "Incorrect result!";
+	}
+}
+
+export function main<args>
+{
+	print("DSP tests:\n");
+
+	print("  vector v[]:\n");
+	local v = vector [];
+	for local i = 1, 10
+		v.+ i;
+	print_v(v);
+
+	print("  sum():\n");
+	verify("sum(v)", dsp.sum(v), 55);
+	verify("sum(v, 5)", dsp.sum(v, 5), 40);
+	verify("sum(v, 3, 7)", dsp.sum(v, 3, 7), 30);
+	verify("sum(v, 3, 7, 2)", dsp.sum(v, 3, 7, 2), 18);
+
+	print("  average():\n");
+	verify("average(v)", dsp.average(v), 5.5);
+	verify("average(v, 5)", dsp.average(v, 5), 8);
+	verify("average(v, 3, 7)", dsp.average(v, 3, 7), 6);
+	verify("average(v, 3, 7, 2)", dsp.average(v, 3, 7, 2), 6);
+
+	print("  polynomial():\n");
+	v = dsp.polynomial(10, 0, 1);
+	print("    v = polynomial(10, 0, 1):\n");
+	print_v(v);
+	v = dsp.polynomial(10, 0, 0, 1);
+	print("    v = polynomial(10, 0, 0, 1):\n");
+	print_v(v);
+
+	print("  add_polynomial():\n");
+	print("    vector v[]:\n");
+	v = vector [];
+	for local i = 1, 10
+		v.+ 1.0;
+	print_v(v);
+	dsp.add_polynomial(v, 0, 1);
+	print("    add_polynomial(v, 0, 1):\n");
+	print_v(v);
+	dsp.add_polynomial(v, 0, 0, 1);
+	print("    add_polynomial(v, 0, 0, 1):\n");
+	print_v(v);
+
+	print("  FFT:\n");
+	print("    vector v[]:\n");
+	v = vector [];
+	for local i = 0, 15/16, 1/16
+		v.+ 1 + .7 * sin(i * 2 * PI) + .3 * cos(i * 2 * PI * 8);
+	print_v(v);
+	print("    fft_real():\n");
+	local f = dsp.fft_real(v);
+	print_v(f);
+	print("    ifft_real():\n");
+	local iv = dsp.ifft_real(f);
+	print_v(iv);
+	print("    Diff:\n");
+	iv.#- v;
+	print_v(iv);
+
+	print("DSP tests done.\n");
+	return 0;
+}

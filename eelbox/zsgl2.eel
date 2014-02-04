@@ -1,0 +1,586 @@
+/////////////////////////////////////////////////////
+// zsgl2.eel - Combining ZeeSpace and OpenGL, take 2
+// Copyright (C) 2010 David Olofson
+/////////////////////////////////////////////////////
+
+/*
+
+Another example of "live" rendering with ZeeSpace.
+
+This builds on zsgl.eel, but uses a large, pre-rendered world map instead of
+live rendering live.
+
+There is still a LAM and live uploading of textures like in zsgl.eel, but there
+is no actual rendering done when refreshing tiles; only retrieving data from the
+pre-rendered world map.
+
+	Pros of this method:
+
+		* Simple and inexpensive retrieving of graphics.
+
+		* Can handle arbitrary map complexity and advanced lighting
+		  algorithms on any target hardware, as all ZeeSpace rendering
+		  is done during initialization.
+
+		* Shadowcasting and other "full surface" operations are trivial
+		  to implement.
+
+	Cons of this method:
+
+		* Needs LOTS of memory for large world maps!
+
+		* Potentially long startup time.
+
+		* Limited world size.
+
+*/
+
+import "math";
+import "SDL" as SDL;
+import "ZeeSpace" as zs;
+import "OpenGL" as gl;
+
+
+// Create a tiled layer manager
+function TiledLayer(tw, th, tb, tbpp, world)
+{
+	local t = table [
+		// Tile texture size, border width and depth
+		.tw		tw,
+		.th		th,
+		.tb		tb,
+		.tbpp		tbpp,
+
+		// Pre-rendered world map
+		.world		world,
+
+		// Surface for unpacking and preparing tiles for upload
+		.scratch	SDL.Surface [0, tw + tb * 2, th + tb * 2, tbpp],
+
+		// View size
+		.w		0,
+		.h		0,
+
+		// Word coordinates of the bottom-left corner of the view (tiles)
+		.x		0,
+		.y		0,
+
+		// LAM (Local Area Map)
+		//	This 2D array holds the tiles of the world that are
+		//	currently visible through the view, and a margin border
+		//	around the view.
+		.lamx		0,	// Position
+		.lamy		0,
+		.lamw		0,	// Size
+		.lamh		0,
+		.lam		nil,	// (array of vectors of texture names)
+
+		// Table of <texname, vector [x, y]> for tiles to redraw
+		.dirty		table [],
+
+		// Set view to 'w' x 'h' tiles with a LAM of 'lw' x 'lh' tiles.
+		// NOTE:
+		//	For multidirectional scrolling, the LAM must be at least
+		//	4 tiles larger than the view to allow shifting of the
+		//	LAM without instantly bringing "cold" tiles inside the
+		//	view!
+		function View(self, w, h, lw, lh)
+		{
+			lw = ceil(lw);
+			lh = ceil(lh);
+			self.(w, h) = w, h;
+			self.(lamw, lamh) = lw, lh;
+			if self.lam
+				while sizeof self.lam
+				{
+					while sizeof self.lam[0]
+					{
+						gl.DeleteTexture(self.lam[0][0]);
+						delete(self.lam[0], 0);
+					}
+					delete(self.lam, 0);
+				}
+			else
+				self.lam = [];
+			local s = self.scratch;
+			SDL.FillRect(s, nil, SDL.MapColor(s, 0, 50, 100));
+			for local y = 0, self.lamh - 1
+			{
+				local v, self.lam[y] = vector_u32 [];
+				for local x = 0, self.lamw - 1
+				{
+					v.+ gl.UploadTexture(s);
+					gl.TexParameter(gl.TEXTURE_2D,
+							gl.TEXTURE_WRAP_S,
+							gl.CLAMP);
+					gl.TexParameter(gl.TEXTURE_2D,
+							gl.TEXTURE_WRAP_T,
+							gl.CLAMP);
+				}
+			}
+			for local i = 0, self.lamh - 1
+				self:DirtyRow(i);
+			return self;
+		}
+
+		// Move world view to (x, y) (tiles)
+		function Move(self, x, y)
+		{
+			self.(x, y) = x, y;
+
+			// Keep the LAM centered around the view!
+			local lam = self.lam;
+			local dx = x - (self.lamx + (self.lamw - self.w) / 2);
+			if dx > 1
+				while dx > 1
+				{
+					for local i = 0, sizeof lam - 1
+					{
+						lam[i].+ lam[i][0];
+						delete(lam[i], 0);
+					}
+					dx -= 1;
+					self.lamx += 1;
+					self:DirtyColumn(self.lamw - 1);
+				}
+			else if dx < -1
+				while dx < -1
+				{
+					local lastx = self.lamw - 1;
+					for local i = 0, sizeof lam - 1
+					{
+						insert(lam[i], 0, lam[i][lastx]);
+						delete(lam[i], lastx + 1);
+					}
+					dx += 1;
+					self.lamx -= 1;
+					self:DirtyColumn(0);
+				}
+			local dy = y - (self.lamy + (self.lamh - self.h) / 2);
+			if dy > 1
+				while dy > 1
+				{
+					lam.+ lam[0];
+					delete(lam, 0);
+					dy -= 1;
+					self.lamy += 1;
+					self:DirtyRow(sizeof lam - 1);
+				}
+			else if dy < -1
+				while dy < -1
+				{
+					insert(lam, 0, lam[sizeof lam - 1]);
+					delete(lam, sizeof lam - 1);
+					dy += 1;
+					self.lamy -= 1;
+					self:DirtyRow(0);
+				}
+			return self;
+		}
+
+		// Generate tile from world (x, y) into texture 'tex'.
+		procedure GenTile(self, tex, x, y)
+		{
+			local w = self.world;
+			local s = self.scratch;
+			x = x * self.tw - self.tb;
+			y = w.h - y * self.th - self.tb;
+			local  r = SDL.Rect [x, y, s.(w, h)];
+			// Not required; just to remove the garbage when
+			// scrolling off the world map!
+			if x < 0 or y < 0 or x > w.w - s.w or y > w.h - s.h
+				SDL.FillRect(s);
+			SDL.BlitSurface(w, r, s);
+			gl.UploadTexture(s, 0, tex);
+		}
+
+		// Mark a full LAM row as dirty
+		procedure DirtyRow(self, row)
+		{
+			local r = self.lam[row];
+			local x = self.lamx;
+			local y = self.lamy + row;
+			for local i = 0, sizeof r - 1
+				self.dirty[r[i]] = vector [x + i, y];
+		}
+
+		// Mark a full LAM column as dirty
+		procedure DirtyColumn(self, col)
+		{
+			local lam = self.lam;
+			local x = self.lamx + col;
+			local y = self.lamy;
+			for local i = 0, self.lamh - 1
+				self.dirty[lam[i][col]] = vector [x, y + i];
+		}
+
+		// Refresh tiles that have wrapped around the edge of the LAM!
+		// If specified, 'count' is the number of tiles to refresh. -1,
+		// or don't specify, for "all".
+		procedure Refresh(self)[count]
+		{
+			if specified count
+				local c = count;
+			else
+				c = -1;
+			while c and sizeof self.dirty
+			{
+				local k = key(self.dirty, 0);
+				local v = index(self.dirty, 0);
+				self:GenTile(k, v[0, 1]);
+				delete(self.dirty, k);
+				c -= 1;
+			}
+		}
+
+		// Render layer at current position!
+		procedure Render(self)
+		{
+			// NOTE: This deliberately renders off-screen tiles as
+			// well, so we can see what's going on!
+			local x0 = 0;
+			local x1 = self.lamw - 1;
+			local y0 = 0;
+			local y1 = self.lamh- 1;
+			local txx0 = self.tb / self.tw;
+			local txx1 = 1 - txx0;
+			local txy0 = self.tb / self.th;
+			local txy1 = 1 - txy0;
+			local sy = self.lamy - self.y;
+			for local y = y0, y1
+			{
+				local sx = self.lamx - self.x;
+				local r = self.lam[y];
+				for local x = x0, x1
+				{
+					gl.BindTexture(gl.TEXTURE_2D, r[x]);
+					gl.Begin(gl.QUADS);
+						gl.TexCoord(txx0, txy1);
+						gl.Vertex(sx, sy);
+						gl.TexCoord(txx1, txy1);
+						gl.Vertex(sx + 1, sy);
+						gl.TexCoord(txx1, txy0);
+						gl.Vertex(sx + 1, sy + 1);
+						gl.TexCoord(txx0, txy0);
+						gl.Vertex(sx, sy + 1);
+					gl.End();
+					sx += 1;
+				}
+				sy += 1;
+			}
+		}
+	];
+	t:View(10, 10, 13, 13);
+	t:Move(0, 0);
+	return t;
+}
+
+
+procedure resize(screen, w, h)
+{
+	gl.Viewport(0, 0, screen.w, screen.h);
+
+	gl.MatrixMode(gl.PROJECTION);
+	gl.LoadIdentity();
+	gl.Ortho(0, w, 0, h, 0, 10);
+
+	gl.MatrixMode(gl.MODELVIEW);
+	gl.LoadIdentity();
+}
+
+
+static dirtab = vector [
+			// UDLR
+	-1,		// 0000	neutral
+	0,		// 0001	right
+	PI,		// 0010	left
+	-2,		// 0011		illegal horizontal
+	1.5 * PI,	// 0100	down
+	1.75 * PI,	// 0101	down/right
+	1.25 * PI,	// 0110	down/left
+	1.5 * PI,	// 0111	down	(illegal horizontal)
+	.5 * PI,	// 1000	up
+	.25 * PI,	// 1001	up/right
+	.75 * PI,	// 1010	up/left
+	.5 * PI,	// 1011	up	(illegal horizontal)
+	-3,		// 1100		illegal vertical
+	0,		// 1101	right	(illegal vertical)
+	PI,		// 1110	left	(illegal vertical)
+	-4		// 1111		illegal both
+];
+
+
+// Render full world map into an SDL texture
+//
+//	w, h	Size of world in units of scale
+//	scale	Definition of "1 map unit" (corresponds to 1 period at oct 0 of
+//		the terrain generator)
+//	
+function render_world(w, h, scale)
+{
+	print("Rendering world...\n");
+	w *= scale;
+	h *= scale;
+//
+//TODO: Tiled rendering, to avoid using insane amounts of memory!!!
+//		* ShadowCast() needs flags to store it's per-ray state in the
+//		  last row/column of the surface, and/or to load per-ray state
+//		  from the top row/column.
+//		* We need to render 1 pixel of overlap border around each tile.
+//		* For each tile, copy the bottom/right pixel rows to the top/
+//		  left, clear the rest of the buffer and render.
+//		* If there are great numbers of objects in the map, we should
+//		  probably make a table of relevant objects for each tile.
+//
+	print("  Allocating ZeeSpace surface...\n");
+	local world = ZS_Surface[w, h];
+	print("    OK!\n");
+
+	print("  Allocating SDL surface...\n");
+	local surface = SDL.Surface[0, w, h, 24];
+	print("    OK!\n");
+
+	print("  Clearing...\n");
+	local ss = 256 / scale;	// Size of one period of octave 0.
+	zs.RawFill(zs.ALL, world, nil, ZS_Pixel [160, 128, 96, 255, 1, 0]);
+	print("    OK!\n");
+
+	print("  Generating terrain, coarse layer...\n");
+	zs.PerlinTerrainZ(world, 128,
+			0, 0,
+			1 / scale, 0,
+			[200, 100, 50, 10, 5],
+			zs.BICUBIC | zs.T_PCUBIC);
+	print("    OK!\n");
+
+	print("  Generating terrain, detail layer...\n");
+	zs.PerlinTerrainZ(world, 256,
+			0, 0,
+			1 / scale * 32, 0,
+			[20],
+			zs.BICUBIC | zs.DIV2 | zs.O_MUL);
+	print("    OK!\n");
+
+	print("  Shadowcasting...\n");
+	zs.ShadowCast(world, 25, .2, ss);
+	print("    OK!\n");
+
+	print("  Bumpmapping...\n");
+	zs.BumpMap(world, 25, .2, ss);
+	print("    OK!\n");
+
+	print("  Rendering to SDL surface...\n");
+	zs.Blit2SDL(world, surface);
+	print("    OK!\n");
+
+//	zs.Graph2SDL(world, surface, 32 * scale);
+//	zs.Z2SDL(world, surface, 1);
+	print("Done!\n");
+	return surface;
+}
+
+
+export function main<args>
+{
+	local tilesize = 60;	// Visible size of a tile (pixels)
+	local tileborder = 2;	// Width of tile border (pixels)
+	local showborder = false;
+	local showstats = 0;
+	local x = 0;
+	local y = 0;
+	local width = 1280;
+	local height = 800;
+	local bpp = 0;
+	local flags = SDL.OPENGL | SDL.RESIZABLE;
+	local scrollspeed = height / 2 / tilesize;	// Scroll speed (tiles/second)
+	gl.Load();
+	gl.Exceptions(true);
+	gl.SetAttribute(gl.DOUBLEBUFFER, true);
+	gl.SetAttribute(gl.SWAP_CONTROL, false);
+	local screen = SDL.SetVideoMode(width, height, bpp, flags);
+	SDL.SetCaption("EEL + ZeeSpace + OpenGL", args[0]);
+
+	gl.ShadeModel(gl.SMOOTH);
+	gl.ClearColor(0, 0, 0, 0);
+	gl.Disable(gl.DEPTH_TEST);
+	gl.Disable(gl.CULL_FACE);
+
+	resize(screen, width, height);
+
+	// Render a world of 5x5 times the screen height
+	local world = render_world(5, 5, height);
+
+	local bg = TiledLayer(tilesize, tilesize, tileborder, 24, world);
+	bg:View(width / tilesize, height / tilesize,
+			width / tilesize + 4, height / tilesize + 4);
+	bg:Move(x, y);
+
+	local up = 0;
+	local down = 0;
+	local left = 0;
+	local right = 0;
+
+	// Main loop
+	local start, local lt, local t0 = SDL.GetTicks();;
+	local frames = 0;
+	local ftimes = vector [];
+	ftimes[20] = 0;
+	local fdt = .1;
+	while true
+	mainloop:
+	{
+		local t = SDL.GetTicks() - start;
+		local dt = .001 * (t - lt);
+		lt = t;
+		ftimes[0 >| dt * 1000 |< sizeof ftimes - 1] += 1;
+		fdt += (dt - fdt) * .05;
+
+		// Handle events
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYDOWN
+			  {
+				switch ev.sym
+				  case SDL.KUP
+					up = 1;
+				  case SDL.KDOWN
+					down = 1;
+				  case SDL.KLEFT
+					left = 1;
+				  case SDL.KRIGHT
+					right = 1;
+				  case SDL.Ks
+					showborder = not showborder;
+			  }
+			  case SDL.KEYUP
+			  {
+				switch ev.sym
+				  case SDL.KUP
+					up = 0;
+				  case SDL.KDOWN
+					down = 0;
+				  case SDL.KLEFT
+					left = 0;
+				  case SDL.KRIGHT
+					right = 0;
+				  case SDL.KESCAPE
+					break mainloop;
+			  }
+			  case SDL.MOUSEBUTTONUP, SDL.QUIT
+				break mainloop;
+			  case SDL.VIDEORESIZE
+			  {
+				screen = SDL.SetVideoMode(10 >| ev.w,
+						10 >| ev.h, bpp, flags);
+				resize(screen, width, height);
+			  }
+		}
+
+		// Determine direction, if any
+		local keys = (up << 3) | (down << 2) | (left << 1) | right;
+		local dir = dirtab[keys];
+
+		// Update background position
+		if dir >= 0
+		{
+			x += cos(dir) * scrollspeed * dt;
+			y += sin(dir) * scrollspeed * dt;
+			bg:Move(x, y);
+		}
+
+		// Clear screen
+		if showborder
+			gl.Clear(gl.COLOR_BUFFER_BIT);
+
+		gl.MatrixMode(gl.MODELVIEW);
+		gl.PushMatrix();
+		gl.LoadIdentity();
+		gl.Scale(bg.(tw, th), 1);
+		gl.Disable(gl.BLEND);
+
+		// Scale down a bit, so we can see what happens "off-screen"
+		if showborder
+		{
+			local bx = bg.lamw - bg.w;
+			local by = bg.lamh - bg.h;
+			gl.Scale(bg.w / (bg.w + bx * 2), bg.h / (bg.h + by * 2), 1);
+			gl.Translate(bx, by, 0);
+		}
+
+		// Render background!
+		gl.Enable(gl.TEXTURE_2D);
+		gl.Color(1, 1, 1);
+		bg:Render();
+
+		// Render screen border overlay
+		if showborder
+		{
+			gl.Disable(gl.TEXTURE_2D);
+			gl.Enable(gl.BLEND);
+			gl.BlendFunc(gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
+			gl.Color(0, 0, 0, .5);
+			gl.Begin(gl.QUADS);
+				// Bottom
+				gl.Vertex(0, -100);
+				gl.Vertex(0, 0);
+				gl.Vertex(width / tilesize, 0);
+				gl.Vertex(width / tilesize, -100);
+				// Top
+				gl.Vertex(0, 100);
+				gl.Vertex(0, height / tilesize);
+				gl.Vertex(width / tilesize, height / tilesize);
+				gl.Vertex(width / tilesize, 100);
+				// Left
+				gl.Vertex(-100, 100);
+				gl.Vertex(0, 100);
+				gl.Vertex(0, -100);
+				gl.Vertex(-100, -100);
+				// Right
+				gl.Vertex(100, 100);
+				gl.Vertex(width / tilesize, 100);
+				gl.Vertex(width / tilesize, -100);
+				gl.Vertex(100, -100);
+			gl.End();
+		}
+
+		gl.PopMatrix();
+
+		gl.SwapBuffers();
+
+		// Calculate how many tiles we need to refresh each frame to
+		// keep up.
+		local rtiles = ceil(fdt * scrollspeed *
+				(width + height) / tilesize);
+		bg:Refresh(1 >| rtiles);
+
+		// Frame rate calculation
+		frames += 1;
+		if showstats and (t - t0 >= showstats)
+		{
+			// Frame rate
+			dt = (t - t0) / 1000.;
+			print(frames, " frames in ", dt, " s ==> ", frames / dt,
+					" fps\n");
+			t0 = t;
+			frames = 0;
+
+			// Frame time distribution
+			for local i = 0, sizeof ftimes - 1
+			{
+				print(i, ":\t", ftimes[i], "\n");
+			}
+			ftimes.#* 0;
+
+			// We don't want to measure the printing time...
+			lt = t;
+		}
+
+		// ...in case we don't have retrace sync
+		SDL.Delay(0);
+	}
+	return 0;
+}

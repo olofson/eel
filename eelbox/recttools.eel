@@ -1,0 +1,68 @@
+////////////////////////////////////////////////////////////////
+// recttools.eel - Rectangle handling tools for SDL
+// Copyright (C) 2010 David Olofson
+////////////////////////////////////////////////////////////////
+
+module recttools;
+
+import "SDL" as SDL;
+
+
+// Shrink 'rect' by moving all edges 'pixels' towards the center.
+// The resulting rectangle will never be smaller than 0x0.
+export function Shrink(rect, pixels)
+{
+	local r = clone rect;
+	r.(x, y) += pixels;
+	r.(w, h) -= 2 * pixels;	// Clamped by the SDL.Rect implementation!
+	return r;
+}
+
+
+// Return a Rect describing the intersection of r1 and r2. If r1 and r2 do not
+// overlap, nil is returned.
+export function Intersect(r1, r2)
+{
+	local xmin = r1.x >| r2.x;
+	local ymin = r1.y >| r2.y;
+	local xmax = r1.x + r1.w |< r2.x + r2.w;
+	local ymax = r1.y + r1.h |< r2.y + r2.h;
+	if xmax <= xmin or ymax <= ymin
+		return nil;
+	else
+		return SDL.Rect [xmin, ymin, xmax - xmin, ymax - ymin];
+}
+
+
+// Subtract r2 from r1, adding the resulting rect(s) to 'output', which should
+// be an EEL array or similar object. The output can be at most four rects;
+// above, below, to the left of and/or to the right of r2.
+export procedure Subtract(r1, r2, output)
+{
+//FIXME: Quick hack: We calculate the four possible rects as the intersections
+//FIXME: of r1 and very large constructed rects around r2. There must be more
+//FIXME: efficient ways of doing this... And, it should probably be implemented
+//FIXME: in C and put in EELBox! And maybe the window/complex region stuff
+//FIXME: should be built right into the drawing API? Some nice optimizations to
+//FIXME: be done there, plus the API Just Works(TM) with or without windows. :-)
+	local x1 = r2.x;
+	local y1 = r2.y;
+	local x2 = x1 + r2.w;
+	local y2 = y1 + r2.h;
+	// Top
+	local r = Intersect(r1, SDL.Rect [0, 0, 10000, r2.y]);
+	if r
+		output.+ r;
+	// Bottom
+	r = Intersect(r1, SDL.Rect [0, r2.y + r2.h, 10000, 10000]);
+	if r
+		output.+ r;
+	// Left
+	r = Intersect(r1, SDL.Rect [0, r2.y, r2.x, r2.h]);
+	if r
+		output.+ r;
+	// Right
+	r = Intersect(r1, SDL.Rect [r2.x + r2.w, r2.y, 10000, r2.h]);
+	if r
+		output.+ r;
+}

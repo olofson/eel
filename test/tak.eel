@@ -1,0 +1,26 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Original Lua version by: Isaac Gouy
+// http://shootout.alioth.debian.org/
+// EEL version by David Olofson, 2005
+/////////////////////////////////////////////
+
+function Tak(x, y, z)
+{
+	if y >= x
+		return z;
+	else
+		return Tak(Tak(x - 1.0, y, z),
+				Tak(y - 1.0, z, x),
+				Tak(z - 1.0, x, y));
+}
+
+export function main<args>
+{
+	if specified args[1]
+		local n = (integer)args[1];
+	else
+		n = 1;
+	print(Tak(n * 3.0, n * 2.0, n * 1.0), "\n");
+	return 0;
+}

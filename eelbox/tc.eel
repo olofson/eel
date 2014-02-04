@@ -1,0 +1,28 @@
+/////////////////////////////////////////////
+// tc.eel - TCP Client
+// (Port of tc.cpp from NET2)
+/////////////////////////////////////////////
+
+import "NET2";
+
+export function main<args>
+{
+	local limit = 1000;	// # of messages to send
+	local count = 0;	// # of bytes sent
+
+	// Here we attempt to create a new socket, connected to
+	// port 6666 on the local machine, where we expect to find
+	// or server. If this fails, an exception is thrown. In
+	// this case, we don't catch it, so the program will exit
+	// if connection fails.
+	local s = Socket ["localhost", 6666];
+
+	// Just send some data to the server... Note the use of a
+	// cast to string for 'i'. We don't want to send the value
+	// as 8 bytes of raw network endian IEEE double. :-)
+	for local i = 0, limit - 1
+		count += TCPSend(s, "TCP message #", (string)i, "\n");
+
+	print("count = ", count, "\n");	// tell how many were sent
+	return 0;
+}

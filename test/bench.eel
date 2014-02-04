@@ -1,0 +1,135 @@
+///////////////////////////////////////////////////////
+// Temporary EEL Benchmark
+// Copyright (C) 2004, 2005, 2009, 2011 David Olofson
+///////////////////////////////////////////////////////
+
+import "loops" as lp;
+import "random" as rnd;
+import "ackermann" as ack;
+import "divtest" as div;
+import "tak" as tak;
+import "heapsort" as hs;
+import "wordcount" as wc;
+import "wordcount2" as wc2;
+import "randomoop" as rndo;
+
+
+function benchmarker
+{
+	return table [
+		.start		getms(),
+		.sic		get_instruction_count(),
+		.results	table [],
+		.icounts	table [],
+		procedure Reset(self)
+		{
+			self.start = getms();
+			self.sic = get_instruction_count();
+		}
+		procedure Enter(self, name)
+		{
+			local time = getms() - self.start;
+			local ic = get_instruction_count() - self.sic;
+			try
+				if self.results[name] <= time
+					return;
+			self.results[name] = time;
+			self.icounts[name] = ic;
+		}
+		procedure Run(self, name, work, count)
+		{
+			print("============================================\n");
+			print("Benchmark '", name, "':\n");
+			for local i = 1, count
+			{
+				self:Reset();
+				work();
+				self:Enter(name);
+			}
+			print("Benchmark '", name, "' done.\n");
+		}
+		procedure Present(self)
+		{
+			print("============================================\n");
+			print("Benchmark results:\n");
+			local ttime = 0;
+			local ticount = 0;
+			for local r = 0, sizeof self.results - 1
+			{
+				print("\"", key(self.results, r), "\":");
+				for local s = sizeof key(self.results, r), 12
+					print(" ");
+				ttime += index(self.results, r);
+				print(index(self.results, r), " ms");
+				if index(self.icounts, r)
+				{
+					ticount += index(self.icounts, r);
+					print("\t", index(self.icounts, r),
+							" instructions\n");
+				}
+				else
+					print("\n");
+			}
+			print("    Total:      ", ttime, " ms");
+			if ticount
+				print("\t", ticount, " instructions\n");
+			else
+				print("\n");
+			print("============================================\n");
+		}
+	];
+}
+
+
+export function main<args>
+{
+	local bmr = benchmarker();
+
+	if specified args[1]
+		local innercount = (integer)args[1];
+	else
+		innercount = 1;
+
+	if specified args[2]
+		local outercount = (integer)args[2];
+	else
+		outercount = 1;
+
+	print("(Preparing...)\n");
+	ack.test(8);
+	print("(Done.)\n");
+
+	local tests = [
+		[ "loops",	procedure { lp.bench(15000000); } ],
+		[ "divtest",	procedure { div.main("", 1000000); } ],
+		[ "random",	procedure { rnd.test(3000000); } ],
+		[ "randomoop",	procedure { rndo.test(1000000); } ],
+		[ "ackermann",	procedure { ack.test(8); } ],
+		[ "tak",	procedure { tak.main("", 8); } ],
+		[ "heapsort",	procedure { hs.main("", 100000); } ],
+		[ "wordcount",	procedure { wc.main("", 200); } ],
+		[ "wordcount2",	procedure { wc2.main("", 200); } ]
+	];
+
+	// If a specific test is specified, grab that, discarding the others!
+	if specified args[3]
+		while true
+		found:
+		{
+			for local i = 0, sizeof tests - 1
+				if tests[i][0] == args[3]
+				{
+					tests = [tests[i]];
+					break found;
+				}
+			throw "No benchmark by name '" + args[3] + "'.\n";
+		}
+
+
+	for local j = 1, outercount
+		for local i = 0, sizeof tests - 1
+			bmr:Run(tests[i][0, 1], innercount);
+
+	bmr:Present();
+	return 0;
+}

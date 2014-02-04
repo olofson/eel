@@ -1,0 +1,87 @@
+////////////////////////////////////////////////////////////////
+// drawtools.eel - SDL drawing tools for EBGUI and themes
+// Copyright (C) 2005, 2010-2011 David Olofson
+////////////////////////////////////////////////////////////////
+
+module drawtools;
+
+import "SDL" as SDL;
+
+
+export procedure box(target, rect, color)
+{
+	local r = clone rect;
+	// Top and bottom
+	r.h = 1;
+	SDL.FillRect(target, clone r, color);
+	r.y += rect.h - 1;
+	SDL.FillRect(target, clone r, color);
+
+	// Left and right
+	r.(y, w, h) = rect.y + 1, 1, rect.h - 2;
+	SDL.FillRect(target, clone r, color);
+	r.x += rect.w - 1;
+	SDL.FillRect(target, r, color);
+}
+
+
+export procedure box3d(target, rect, tlc, cc, brc)
+{
+	local r = clone rect;
+	// Top and bottom
+	r.h = 1;
+	r.w -= 1;
+	SDL.FillRect(target, clone r, tlc);
+	r.x += 1;
+	r.y += rect.h - 1;
+	SDL.FillRect(target, clone r, brc);
+
+	// Left and right
+	r.(x, y, w, h) = rect.(x, y), 1, rect.h - 1;
+	SDL.FillRect(target, clone r, tlc);
+	r.x += rect.w - 1;
+	r.y += 1;
+	SDL.FillRect(target, clone r, brc);
+
+	// Highlight/shadow crossover corners
+	r.(x, y) = rect.x + rect.w - 1, rect.y;
+	r.(w, h) = 1;
+	SDL.FillRect(target, clone r, cc);
+	r.(x, y) = rect.x, rect.y + rect.h - 1;
+	SDL.FillRect(target, r, cc);
+}
+
+
+export procedure rbox3d(target, rect, tlc, cc, brc, hlc, shc)
+{
+	local r = clone rect;
+	// Top and bottom
+	r.h = 1;
+	r.w -= 1;
+	SDL.FillRect(target, clone r, tlc);
+	r.x += 1;
+	r.y += rect.h - 1;
+	SDL.FillRect(target, clone r, brc);
+
+	// Left and right
+	r.(x, y, w, h) = rect.(x, y), 1, rect.h - 1;
+	SDL.FillRect(target, clone r, tlc);
+	r.x += rect.w - 1;
+	r.y += 1;
+	SDL.FillRect(target, clone r, brc);
+
+	// Highlight/shadow crossover corners
+	r.(x, y) = rect.x + rect.w - 1, rect.y;
+	r.(w, h) = 1;
+	SDL.FillRect(target, clone r, cc);
+	r.(x, y) = rect.x, rect.y + rect.h - 1;
+	SDL.FillRect(target, clone r, cc);
+
+	// Highlight corner
+	r.(x, y) = rect.x, rect.y;
+	SDL.FillRect(target, clone r, hlc);
+
+	// Shadow corner
+	r.(x, y) = rect.x + rect.w - 1, rect.y + rect.h - 1;
+	SDL.FillRect(target, r, shc);
+}

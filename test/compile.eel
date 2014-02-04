@@ -1,0 +1,19 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	local src =	"export function main<args>
+		{
+			print(\"Hello, world!\\n\");
+			return 0;
+		}";
+	print("Compiling...\n");
+	local m = compile(src);
+	print("Calling...\n");
+	m.main();
+	print("Done!\n");
+	return 0;
+}

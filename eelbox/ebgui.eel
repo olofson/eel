@@ -1,0 +1,3977 @@
+////////////////////////////////////////////////////
+// ebgui.eel - EELBox GUI Toolkit
+// Copyright (C) 2005-2006, 2009-2011 David Olofson
+////////////////////////////////////////////////////
+
+module ebgui;
+
+import "math";
+import "SDL" as SDL;
+import "recttools" as RT;
+import "line" as line;
+export import "ebguidefs";
+
+
+static system_unicode = SDL.EnableUNICODE(true);
+
+function round(v)
+{
+	return floor(v + .5);
+}
+
+function round2(v, m)
+{
+	return floor(v / m + m / 2) * m;
+}
+
+
+export procedure Invalidate[rect, zlevel, refroot];
+
+// Rendering target (SDL.Surface)
+static target = nil;
+
+export function GetTarget
+{
+	return target;
+}
+
+export procedure SetTarget(tg)
+{
+	if tg == target
+		return;
+	target = tg;
+	Invalidate();
+}
+
+
+// Root widgets/windows
+static roots = [];
+
+// Table of dirty widgets, all roots. (table is used only to filter out
+// multiple invalidations between refreshes. Values are ignored.)
+static dirtywidgets = table [];
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Theme management
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// Default theme constructor
+//static default_theme_cons;
+//static default_theme_cons = load("default_theme").Create;
+
+// User theme for new root widgets with no theme specified, as passed to Open().
+static user_theme;
+
+// Create a default theme instance
+export function DefaultTheme
+{
+//	return default_theme_cons();
+	return load("default_theme").Create();
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Message passing
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// Table of <type, subscribers>, where 'subscribers' is an array
+// of arrays where [0] = 'func' and [1] = 'data', as passed to
+// Subscribe().
+static subscribers = table [];
+
+
+// Send a message to every subscriber of 'type'. 'args' can be of
+// any type, and will be passed to the subscribers as their second
+// argument. Not specifying 'args' is equivalent to passing nil.
+export procedure Send(type)[args]
+{
+	// Any subscribers to this message type?
+	local ss = nil;
+	try
+		ss = subscribers[type];
+	except
+		return;
+	if specified args
+		local a = args;
+	else
+		a = nil;
+	for local i = 0, sizeof ss - 1
+		ss[i][0](ss[i][1], a);
+}
+
+
+// Subscribe to messages of 'type'. Messages will be passed as
+// calls to 'func' with 'data' as the first argument, and nil or
+// arguments as passed via 'args' of Send() as the second argument.
+export procedure Subscribe(type, func, data)
+{
+	try
+		local dummy = subscribers[type];
+	except
+		subscribers[type] = [];
+	subscribers[type].+ [func, data];
+}
+
+
+// Unsubscribe 'func' from any message types it may be subscribed to,
+// effectively detaching 'func' from the message passing system.
+// Not specifying 'func' will close the message passing system,
+// unsubscribing all subscribers to all message types.
+export procedure Unsubscribe[func]
+{
+	if not specified func
+	{
+		delete(subscribers);
+		return;
+	}
+	for local t = 0, sizeof subscribers - 1
+	{
+		local st = index(subscribers, t);
+		for local i = sizeof st - 1, 0, -1
+			if st[i][0] == func
+				delete(st[i]);
+	}
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Capture, focus and modal handling
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+static captured;	// Widget holding capture, or nil
+static focused;		// Widget holding focus, or nil
+static modal;		// Modal root widget, or nil
+
+
+export procedure SetModal(widget)
+{
+	if widget
+	{
+		widget.capture_save = captured;
+		widget.focused_save = focused;
+	}
+	else if modal
+	{
+		captured = modal.capture_save;
+		focused = modal.focused_save;
+		delete(modal, "capture_save");
+		delete(modal, "focused_save");
+	}
+	modal = widget;
+}
+
+
+static grabs = 0;
+
+procedure grab_input(onoff, hide)
+{
+	static appgrabinput;	// Application state of GrabInput
+	static appshowcursor;	// ...and ShowCursor
+	if onoff
+		grabs += 1;
+	else
+		grabs -= 1;
+	if grabs == 1
+	{
+		appgrabinput = SDL.GrabInput(SDL.QUERY);
+		SDL.GrabInput(SDL.ENABLE);
+		if hide
+		{
+			appshowcursor = SDL.ShowCursor(SDL.QUERY);
+			SDL.ShowCursor(SDL.DISABLE);
+		}
+		else
+			appshowcursor = nil;
+	}
+	else if grabs == 0
+	{
+		SDL.GrabInput(appgrabinput);
+		if appshowcursor != nil
+			SDL.ShowCursor(appshowcursor);
+	}
+}
+
+
+export procedure SetCapture(widget)[hide]
+{
+	local _hide = false;
+	if specified hide
+		_hide = hide;
+	if widget and not captured
+		grab_input(true, _hide);
+	else if captured and not widget
+		grab_input(false, false);
+	captured (=) widget;
+}
+
+
+export procedure SetFocus(widget)
+{
+	if focused
+	{
+		focused:OnFocus(false);
+		focused:Invalidate();
+	}
+	focused (=) widget;
+	if focused
+	{
+		focused:OnFocus(true);
+		focused:Invalidate();
+	}
+}
+
+
+export function GetModal	{ return modal; }
+export function GetCapture	{ return captured; }
+export function GetFocus	{ return focused; }
+
+
+function dig_down(w)
+{
+	local leaf = w;
+	while sizeof leaf.widgets
+		leaf = leaf.widgets[0];
+	return leaf;
+}
+
+function find_next_focusable(w)
+{
+	local parent = w.parent;
+	local i = 0;
+	for i = 0, sizeof parent.widgets - 1
+		if parent.widgets[i] == w
+			break;
+	i += 1;
+	while i < sizeof parent.widgets
+	{
+/* FIXME: We need a 'canfocus' flag here. */
+		if parent.widgets[i].enabled
+			break;
+		i += 1;
+	}
+	if i < sizeof parent.widgets
+		return dig_down(parent.widgets[i]);
+	else
+	{
+/* FIXME: Again, we need a 'canfocus' flag. Can't reliably dig back down otherwise. */
+		if parent.parent
+			return dig_down(find_next_focusable(parent));
+		else
+			return dig_down(parent.widgets[0]);
+	}
+}
+
+
+// Handles TAB navigation and the like.
+// If you have a custom OnKeyDown handler, call this
+// function to implement standard keyboard navigation,
+// if desired!
+/*
+export procedure NavigationKeyDown(self, ev)
+{
+	switch ev.sym
+	  case SDL.KTAB
+		SetFocus(find_next_focusable(self));
+}
+*/
+
+function handle_event(cb, ev)
+{
+	// Non-positional event. Can only be dispatched to a
+	// focused widget, or a widget holding the capture.
+	// If neither is present, the event is dropped.
+	//
+	// (Note that the modal logic is ignored here, as
+	// capture and focus is automatically restricted to
+	// any modal widget.)
+/*	local hit = nil;
+	if captured
+	{
+		hit = captured;
+		captured[cb](captured, ev);
+	}
+	else if focused
+		if not focused.enabled
+			SetFocus(nil);
+		else
+		{
+			hit = focused;
+			focused[cb](focused, ev);
+		}
+	return hit;
+*/
+	local hit = nil;
+	if captured
+	{
+		if captured[cb](captured, ev)
+			hit = captured;
+	}
+	else if focused
+	{
+		if focused[cb](focused, ev)
+			hit = focused;
+	}
+	if not hit
+		if cb == "OnKeyDown"
+			if ev.sym == SDL.KTAB
+			{
+				if focused
+//					focused:FocusNext();
+					SetFocus(find_next_focusable(focused));
+				else if modal
+					SetFocus(modal);
+				else
+					SetFocus(roots[0]);
+			}
+	return hit;
+}
+
+
+function handle_pos_event(cb, ev)
+{
+	// Positional event! These can be dispatched (based on
+	// position)) even if there is no capture, and they
+	// disregard focus. If there is a modal widget, events
+	// are dispatched to that widget only.
+	local hit = nil;
+	if captured
+	{
+		hit = captured;
+		captured[cb](captured, ev);
+	}
+	else if modal
+		hit = modal:Dispatch(cb, ev, ev.(x, y));
+	else if sizeof roots
+	{
+		local x, local y = ev.(x, y);
+		for local i = sizeof roots - 1, 0, -1
+		{
+			hit = roots[i]:Dispatch(cb, ev, x, y);
+			if hit
+				break;
+		}
+	}
+	return hit;
+}
+
+
+// Dispatch an SDL event to EBGUI, and return the widget that received the
+// event, if any.
+//	Note that EBGUI assumes that event coordinates (such as absolute
+//	mouse coordinates) match the coordinate system of the target
+//	surface(s). Thus, if EBGUI is rendering into off-screen surfaces
+//	that are scaled and/or offset before they end up on the screen,
+//	event coordinates will have to be adjusted accordingly before
+//	passed to this call.
+export function Dispatch(ev)
+{
+	// Determine what general kind of event we're dealing
+	// with, and decide which callback to use.
+	switch ev.type
+	  case SDL.KEYDOWN
+		return handle_event("OnKeyDown", ev);
+	  case SDL.KEYUP
+		return handle_event("OnKeyUp", ev);
+	  case SDL.MOUSEBUTTONDOWN
+		return handle_pos_event("OnDown", ev);
+	  case SDL.MOUSEBUTTONUP
+		return handle_pos_event("OnUp", ev);
+	  case SDL.MOUSEMOTION
+		return handle_pos_event("OnMove", ev);
+	return nil;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Windowing, regions and refresh handling
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// To deal efficiently with overlapping "windows" (root widgets, as we call
+// them), we use regions constructed from arrays of rects. Each root widget has
+// a region describing the currently visible/drawable screen area of that
+// widget, allowing it to refresh without overdrawing overlapping root widgets.
+//    To avoid relying on complex region clipping support in the underlying
+// rendering API, we simply refresh one rect of a region at a time. This means
+// that in some situations, a widget may be called upon several times in one
+// refresh, to redraw different parts of it's visible area. (It may be a good
+// idea for a widget with heavy rendering to look at the cliprect...)
+
+procedure recursive_redraw(w, undirty)[cr]
+{
+	// If desired, remove ourselves from the dirty table
+	if undirty
+		try delete(dirtywidgets, w);
+
+	// Are we at all visible...?
+	if not w.visible
+		return;
+
+	// Apply specified clip rect, if any
+	if specified cr
+		local clip = RT.Intersect(cr, w.rect);
+	else
+		clip = w.rect;
+	if not clip
+		return;		// Everything clipped - nothing to draw!
+
+	// Redraw, clipping to the root's region
+	local rr = w.root.region;
+	for local j = 0, sizeof rr - 1
+	{
+		local rclip = RT.Intersect(rr[j], clip);
+		if rclip
+		{
+			SDL.SetClipRect(target, rclip);
+			w:Redraw();
+		}
+	}
+
+	// Recursively redraw children!
+// FIXME: This no longer works due to the complex regions!
+//	if w.border
+//		clip = RT.Shrink(clip, w.border);
+	local wa = w.widgets;
+	if sizeof wa
+		for local i = 0, sizeof wa - 1
+			recursive_redraw(wa[i], undirty, clip);
+}
+
+
+// Invalidate the specified area of any affected root widgets at or below the
+// specified Z level.
+//    If 'zlevel' is not specified, all root widgets are considered. If
+// 'refroot' is specified, 'zlevel' is interpreted as an offset from the Z level
+// of root widget 'refroot'.
+//    If 'rect' is nil or not specified, the whole screen area is considered.
+export procedure Invalidate[rect, zlevel, refroot]
+{
+	if not sizeof roots
+		return;
+	if specified rect
+		local r = rect;
+	else
+		r = nil;
+	if specified zlevel
+		local zl = zlevel;
+	else
+		zl = sizeof roots - 1;
+	if specified refroot
+	{
+		local zl0 = nil;
+		for local i = 0, sizeof roots[i] - 1
+			if roots[i] == refroot
+			{
+				zl0 = i;
+				break;
+			}
+		if zl0 == nil
+			throw "The 'refroot' passed to Invalidate() was not "
+					"found in the root widget array!";
+		zl += zl0;
+	}
+	if zl < 0
+		return;
+	zl |<= sizeof roots - 1;
+	if r
+		for local i = 0, zl
+			roots[i].dirtyrects.+ r;
+	else
+		for local i = 0, zl
+			roots[i]:Invalidate();
+}
+
+
+// Realign any widgets that need it
+procedure realign_invalidated
+{
+	for local i = 0, sizeof dirtywidgets - 1
+	{
+		local w = key(dirtywidgets, i);
+		if w.needs_realign
+			w:DoRealign();
+	}
+}
+
+
+// Initialize any new widgets with a first-time Init() method
+// Return true if any initializer was called
+function initialize_new
+{
+	local res = false;
+	for local i = 0, sizeof dirtywidgets - 1
+		try
+		{
+			local w = key(dirtywidgets, i);
+			w:Init();
+			delete(w, "Init");
+			res = true;
+		}
+	return res;
+}
+
+/* TODO:
+	* Save old regions and calculate the diff for minimal updates!
+		* Do we need Close() to grab the region of the closed root
+		  widget...? No! It should be sufficient to conclude that some
+		  areas that were occluded before aren't after the rethink.
+*/
+procedure rethink_regions
+{
+	if not sizeof roots
+		return;
+
+	realign_invalidated();
+
+	// Start out with one rect for each root widget
+	for local i = 0, sizeof roots - 1
+	{
+		local rt = roots[i];
+		if not rt.visible
+			continue;
+		local rg = rt.region;
+		delete(rg);
+		rg.+ rt.rect;
+	}
+
+	if sizeof roots < 2
+		return;		// No overlapping to deal with here...
+
+	// Now cut the rect of each region away from all regions under it!
+	for local i = 1, sizeof roots - 1
+		if roots[i].visible
+			for local j = 0, i - 1
+			{
+				if not roots[j].visible
+					continue;
+				local top = roots[i].region;
+				local bot = roots[j].region;
+				local newbot = [];
+				for local r = 0, sizeof bot - 1
+					RT.Subtract(bot[r], top[0], newbot);
+				roots[j].region = newbot;
+			}
+}
+
+
+// Refresh all dirty areas and invalidated widgets, storing rects describing
+// the touched areas in 'dirtyrects'. Also handles realignments of widgets that
+// are new, or have been moved or resized.
+//
+export procedure Refresh(dirtyrects)
+{
+	realign_invalidated();
+	if initialize_new()
+		realign_invalidated();
+
+//local t0 = SDL.GetTicks();
+	// Refresh any dirty areas resulting from moved or closed root widgets.
+	// (These rects are normally the old/new diff from rethink_regions().)
+	// NOTE:
+	//	We tell recursive_redraw() to leave dirtywidgets alone here, as
+	//	we're generally not redrawing entire widgets!
+	for local i = 0, sizeof roots - 1
+		if sizeof roots[i].dirtyrects
+		{
+			local dr = roots[i].dirtyrects;
+			for local j = 0, sizeof dr - 1
+			{
+//print("Refreshing ", dr[j].x, ", ", dr[j].y, ", ", dr[j].w, "x", dr[j].h,
+//		" of root widget ", i, "\n");
+				recursive_redraw(roots[i], false, dr[j]);
+				dirtyrects.+ dr[j];
+			}
+			delete(roots[i].dirtyrects);
+		}
+
+//FIXME: If widgets and their (grand)parents on some level are invalidated in
+//FIXME: the same pass, they may be redrawn multiple times. (An invalidated
+//FIXME: widget redraws all children recursively, as we have no low level
+//FIXME: complex regions to handle anything else properly.)
+
+	// Refresh any dirty widgets.
+	// (These usually come from normal GUI operation.)
+	while sizeof dirtywidgets
+	{
+		local w = key(dirtywidgets, 0);
+//print("Refreshing widget ", w, "\n");
+		recursive_redraw(w, true);
+		dirtyrects.+ w.rect;
+	}
+//local t1 = SDL.GetTicks() - t0;
+//if t1
+//	print("Refresh(): ", t1, " ms, ", sizeof dirtyrects, " dirtyrects\n");
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Alignment engine
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
+// Leave child widgets alone! Logic coordinates are copied as is,
+// meaning that (0, 0) is the top-left of the target surface
+// regardless of the position of the parent widget.
+// Parameters:
+//	<none>
+procedure align_none(self)
+{
+	local w = self.widgets;
+	for local i = 0, sizeof self.widgets - 1
+		w[i].rect.(x, y, w, h) = w[i].logicrect.(x, y, w, h);
+}
+
+// Make child position relative to self.rect.(x, y)
+// Parameters:
+//	xscroll (integer) [0]	Horizontal scroll offset
+//	yscroll (integer) [0]	Vertical scroll offset
+procedure align_relative(self)
+{
+	local w = self.widgets;
+	local xo, local yo = self.(xscroll, yscroll)/* + self.rect.(x, y)*/;
+	local xmin, local ymin = 1000000;
+	local xmax, local ymax = -1000000;
+	for local i = 0, sizeof self.widgets - 1
+	{
+		local lr = w[i].logicrect;
+		w[i].rect.(x, y) = lr.(x, y) + (xo, yo);
+		w[i].rect.(w, h) = lr.(w, h);
+		xmin |<= lr.x;
+		xmax >|= lr.x + lr.w;
+		ymin |<= lr.y;
+		ymax >|= lr.y + lr.h;
+	}
+	self.extents.(x, y, w, h) = xmin, ymin, xmax - xmin, ymax - ymin;
+}
+
+// Place widgets, full width, fixed height, in a vertical list. If the
+// Parameters:
+//	itemheight (integer) [16]	Height of each list item (pixels)
+//	yscroll (integer) [0]		Vertical scroll offset
+procedure align_list(self)
+{
+	local w = self.widgets;
+	local yo = self.yscroll;
+	local ymax = -1000000;
+	local r = RT.Shrink(self.rect, self.border);
+	local y = r.y;
+	for local i = 0, sizeof self.widgets - 1
+	{
+		w[i].rect.(x, y) = r.x, y + yo;
+		w[i].rect.(w, h) = r.w, self.itemheight;
+		y += self.itemheight;
+		ymax >|= y + yo;
+	}
+	self.ymax = ymax;
+}
+
+// Scale children according to the relation between the specified
+// width and height and the size of self.rect.
+// Parameters:
+//	logicw (integer) [100]	Logic width of child widget space
+//	logich (integer) [100]	Logic height of child widget space
+procedure align_scale(self)
+{
+	local w = self.widgets;
+	local sr = self.rect;
+	local sx, local sy = self.(logicw, logich) / self.rect.(w, h);
+	for local i = 0, sizeof self.widgets - 1
+	{
+		w[i].rect.(x, y) = w[i].logicrect.(x, y) * (sx, sy) + sr.(x, y);
+		w[i].rect.(w, h) = w[i].logicrect.(w, h) * (sx, sy);
+	}
+}
+
+// Place widgets in a grid
+// Parameters:
+//	cols (real) [2]			number of columns
+//	rows (real) [2]			number of rows
+//	colratio (vector_d) [<empty>]	col/col/... ratio
+//	rowratio (vector_d) [<empty>]	row/row/... ratio
+//	childsize (boolean) [false]	Calculate ratios from child rects
+// TODO: Implement childsize for "2D" containers!
+procedure align_grid(self)
+{
+	local clw, local clh = self.rect.(w, h) - 2 * self.border;
+
+	// Calculate row and column distributions
+	local rrs, local crs = vector [], vector [];
+	local rrsum, local crsum = 0;
+
+	for local i = 0, self.rows - 1
+	{
+		if sizeof self.rowratio > i
+			rrs.+ self.rowratio[i];
+		else
+			rrs.+ 1;
+		rrsum += rrs[i];
+	}
+	for local i = 0, self.rows - 1
+		rrs[i] /= rrsum;
+	if sizeof rrs > 1
+		for local i = 1, sizeof rrs - 1
+			rrs[i] += rrs[i - 1];
+
+	for local i = 0, self.cols - 1
+	{
+		if sizeof self.colratio > i
+			crs.+ self.colratio[i];
+		else
+			crs.+ 1;
+		crsum += crs[i];
+	}
+	for local i = 0, self.cols - 1
+		crs[i] /= crsum;
+	if sizeof crs > 1
+		for local i = 1, sizeof crs - 1
+			crs[i] += crs[i - 1];
+
+	if self.childsize and self.rows > 1 and self.cols > 1
+		print("EBGUI WARNING: Aligner \"grid\" does not yet implement "
+				"'childsize' for 2D grids! "
+				"Expect weird results!\n");
+
+	// Realign children
+	local clx, local cly = self.rect.(x, y) + self.border;
+	local i = 0;
+	local lasty = cly;
+	for local row = 0, self.rows - 1
+	rowloop:
+	{
+		if self.childsize and i < sizeof self.widgets
+		{
+			row += self.widgets[i].logicrect.h - 1 >| 0;
+			row |<= sizeof rrs - 1;
+		}
+		local y = round(cly + clh * rrs[row]);
+		local h = round(y) - round(lasty);
+		local lastx = clx;
+		for local col = 0, self.cols - 1
+		{
+			if i >= sizeof self.widgets
+				break rowloop;
+			local wi = self.widgets[i];
+			i += 1;
+			if not wi.visible
+				repeat;
+			if self.childsize
+			{
+				col += wi.logicrect.w - 1 >| 0;
+				col |<= sizeof crs - 1;
+			}
+			local x = round(clx + clw * crs[col]);
+			local w = round(x) - round(lastx);
+			wi.rect.(x, y) = lastx, lasty;
+			wi.rect.(w, h) = w, h;
+			lastx = x;
+		}
+		lasty = y;
+	}
+}
+
+// Place widgets in a grid, based on their logic sizes, and stretch the parent
+// to fit all widgets.
+// Parameters:
+//	cols (real) [1]			number of columns
+procedure align_stretch(self)
+{
+//print(self, ": ", self.logicrect.w, "x", self.logicrect.h, "\n");
+	local clx, local cly = self.rect.(x, y) + self.border;
+	local clw, local clh = 0;
+	local widgets = self.widgets;
+	local w = 0;
+	local maxh = 0;
+	local h0 = 0;
+	local y0 = 0;
+	local col = 0;
+	for local i = 0, sizeof widgets - 1
+	{
+		local wg = widgets[i];
+//print(self, ":    widget[", i, "]: ", wg.logicrect.w, "x", wg.logicrect.h, "\n");
+		wg.rect.(x, y) = (w, y0) + (clx, cly);
+		wg.rect.(w, h) = wg.logicrect.(w, h);
+		w += wg.logicrect.w;
+		maxh >|= wg.logicrect.h;
+		col += 1;
+		if col >= self.cols or i == sizeof widgets - 1
+		{
+//print("row!\n");
+			clw >|= w;
+			clh += maxh;
+			maxh = 0;
+			y0 = clh;
+			w = 0;
+			col = 0;
+		}
+	}
+	self:SetSize((clw, clh) + 2 * self.border);
+	self.logicrect.(w, h) = (clw, clh) + 2 * self.border;
+	self.rect = clone self.logicrect;
+//print(self, ": final: ", self.logicrect.w, "x", self.logicrect.h, "\n");
+}
+
+// Place widgets in a dynamic grid, where the number of rows
+// and columns is based on parameters as well as number of
+// widgets.
+//   'colrowratio' specifies the desired columns/rows ratio,
+// determining how the children are to be arranged.
+//   The 'colratio' and 'rowratio' vectors determine the
+//  relative and/or absolute widths of columns and heights of
+// rows, respectively. Negative values in one of these vectors
+// are negated and used as absolute sizes in pixels. Positive
+// values are interpreted as fractions of the total sum of
+// positive values, specifying the width in relation to the
+// remaining physical space in the container widget after any
+// absolute size columns/rows have been placed.
+//
+// Parameters:
+//	colrowratio (real) [1]		columns/rows ratio
+//	colratio (vector_d) [<empty>]	col/col/... ratio
+//	rowratio (vector_d) [<empty>]	row/row/... ratio
+//	childsize (boolean) [false]	Calculate ratios from child rects
+//
+// NOTE:
+//	When using childsize = true, widgets are considered even if invisible!
+//	Invisible widgets will leave spaces in the grid.
+//
+procedure align_ratio(self)
+{
+	local widgets = self.widgets;
+
+	// How many widgets are we dealing with?
+	local wc = 0;
+	if self.childsize
+		// All of them!
+		wc = sizeof widgets;
+	else
+		// Count visible widgets
+		for local i = 0, sizeof widgets - 1
+			wc += widgets[i].visible;
+	if not wc
+		return;		// No widgets to align!
+
+	// Client area size
+	local clw, local clh = self.rect.(w, h) - 2 * self.border;
+
+	// Calculate row/column ratio
+	local crr = self.colrowratio;
+	if crr < 0
+		crr = -crr * clw / (clh >| 1);
+	local cols = floor(sqrt(wc * crr));
+	cols = 1 >| cols |< wc;
+	local rows = ceil(wc / cols);
+
+	// Calculate or grab rowratio and colratio.
+	local rr, local cr = self.(rowratio, colratio);
+	if self.childsize
+	{
+		rr = vector [];
+		cr = vector [];
+		// Top row and left column widgets govern ratios.
+		for local i = 0, cols - 1
+		{
+			if i >= sizeof widgets
+			{
+				// Fill with 1's if we run out of widgets...
+				while sizeof cr < cols
+					cr.+ 1;
+				break;
+			}
+			cr.+ widgets[i].logicrect.w;
+		}
+		for local i = 0, rows - 1
+		{
+			local iv = i * cols;
+			if iv >= sizeof widgets
+			{
+				while sizeof rr < cols
+					rr.+ 1;
+				break;
+			}
+			rr.+ widgets[iv].logicrect.h;
+		}
+	}
+
+	// Calculate row distribution
+	local rrs = vector [];
+	local rrsum = 0;
+	local arsum = 0;
+	for local i = 0, rows - 1
+	{
+		if sizeof self.rowratio > i
+			rrs.+ self.rowratio[i];
+		else
+			rrs.+ 1;
+		if rrs[i] >= 0
+			rrsum += rrs[i];
+		else
+			arsum -= rrs[i];
+	}
+	clh -= arsum;
+	clh >|= 1;
+	for local i = 0, rows - 1
+		if rrs[i] >= 0
+			rrs[i] /= rrsum;
+		else
+			rrs[i] = -rrs[i] / clh;
+	if rows > 1
+		for local i = 1, rows - 1
+			rrs[i] += rrs[i - 1];
+
+	// Calculate column distribution
+	local crs = vector [];
+	local crsum = 0;
+	local acsum = 0;
+	for local i = 0, cols - 1
+	{
+		if sizeof self.colratio > i
+			crs.+ self.colratio[i];
+		else
+			crs.+ 1;
+		if crs[i] >= 0
+			crsum += crs[i];
+		else
+			acsum -= crs[i];
+	}
+	clw -= acsum;
+	clw >|= 1;
+	for local i = 0, cols - 1
+		if crs[i] >= 0
+			crs[i] /= crsum;
+		else
+			crs[i] = -crs[i] / clw;
+	if cols > 1
+		for local i = 1, cols - 1
+			crs[i] += crs[i - 1];
+
+	// Realign children
+	local clx, local cly = self.rect.(x, y) + self.border;
+	local i = 0;
+	local lasty = cly;
+	for local row = 0, rows - 1
+	rowloop:
+	{
+		local y = round(cly + clh * rrs[row]);
+		local h = y - lasty;
+		local lastx = clx;
+		for local col = 0, cols - 1
+		{
+			if i >= sizeof widgets
+				break rowloop;
+			local wi = widgets[i];
+			i += 1;
+			if not self.childsize and not wi.visible
+				repeat;
+			local x = round(clx + clw * crs[col]);
+			local w = x - lastx;
+			wi.rect.(x, y) = lastx, lasty;
+			wi.rect.(w, h) = (w, h) >| 0;
+			lastx = x;
+		}
+		lasty = y;
+	}
+}
+
+
+function set_align(self, a)<params>
+{
+	self.reversealign = false;
+	if typeof a == (function)
+	{
+		self.Align = a;
+		return self;
+	}
+	switch a
+	  case "none"
+	  {
+		if tuples
+			throw "Aligner " + a + " does not accept"
+					" any parameters!";
+		self.Align = align_none;
+	  }
+	  case "relative"
+	  {
+		if tuples > 2
+			throw "Aligner " + a + " has only 2 parameters!";
+		self.Align = align_relative;
+		self.xscroll = 0;
+		if specified params[0]
+			if params[0] != nil
+				self.xscroll = params[0];
+		self.yscroll = 0;
+		if specified params[1]
+			if params[1] != nil
+				self.yscroll = params[1];
+		self.extents = SDL.Rect [];
+		self.SetScroll = procedure(ss, x, y)
+		{
+			local ra = false;
+			if x != nil and x != ss.xscroll
+				ss.xscroll, ra = x, true;
+			if y != nil and y != ss.yscroll
+				ss.yscroll, ra = y, true;
+			if ra
+				ss:Realign();
+		};
+		self.SetScrollPos = procedure(ss, x, y)
+		{
+			local xt = ss.extents;
+			local xs, local ys = nil;
+			if x != nil and xt.w > ss.rect.w
+				xs = -(xt.x + x * (xt.w - ss.rect.w));
+			if y != nil and xt.h > ss.rect.h
+				ys = -(xt.y + (1 - y) * (xt.h - ss.rect.h));
+			ss:SetScroll(xs, ys);
+		};
+	  }
+	  case "list"
+	  {
+		if tuples > 2
+			throw "Aligner " + a + " has only 2 parameters!";
+		self.Align = align_list;
+		self.itemheight = 16;
+		if specified params[0]
+			if params[0] != nil
+				self.itemheight = params[0];
+		self.yscroll = 0;
+		if specified params[1]
+			if params[1] != nil
+				self.yscroll = params[1];
+		self.ymax = 0;
+		self.SetScroll = procedure(ss, y)
+		{
+			local ra = false;
+			if y != nil and y != ss.yscroll
+				ss.yscroll, ra = y, true;
+			if ra
+				ss:Realign();
+		};
+		self.SetScrollPos = procedure(ss, y)
+		{
+			local ys = nil;
+			if y != nil and ss.ymax > ss.rect.h
+				ys = -((1 - y) * (ss.ymax - ss.rect.h));
+			ss:SetScroll(ys);
+		};
+	  }
+	  case "scale"
+	  {
+		if tuples > 2
+			throw "Aligner " + a + " has only 2 parameters!";
+		self.Align = align_scale;
+		self.logicw = 100;
+		if specified params[0]
+			if params[0] != nil
+				self.logicw = params[0];
+		self.logich = 100;
+		if specified params[1]
+			if params[1] != nil
+				self.logich = params[1];
+	  }
+	  case "grid"
+	  {
+		if tuples > 5
+			throw "Aligner " + a + " has only 5 parameters!";
+		self.Align = align_grid;
+		self.cols = 100;
+		if specified params[0]
+			if params[0] != nil
+				self.cols = params[0];
+		self.rows = 100;
+		if specified params[1]
+			if params[1] != nil
+				self.rows = params[1];
+		self.colratio = vector [];
+		self.rowratio = vector [];
+		if specified params[2]
+			if params[2] != nil
+				self.colratio = params[2];
+		if specified params[3]
+			if params[3] != nil
+				self.rowratio = params[3];
+		self.childsize = false;
+		if specified params[4]
+			if params[4] != nil
+				self.childsize = params[4];
+	  }
+	  case "stretch"
+	  {
+		if tuples > 1
+			throw "Aligner " + a + " has only 1 parameter!";
+		if self.parent
+			print("EBGUI WARNING: Aligner \"stretch\" will "
+					"not work properly with "
+					"non-root widgets!\n");
+		self.Align = align_stretch;
+		self.cols = 1;
+		if specified params[0]
+			if params[0] != nil
+				self.cols = params[0];
+	  }
+	  case "ratio", nil, 0
+	  {
+		if tuples > 4
+			throw "Aligner " + a + " has only 4 parameters!";
+		self.Align = align_ratio;
+		self.colrowratio = 1;
+		if specified params[0]
+			if params[0] != nil
+				self.colrowratio = params[0];
+		self.colratio = vector [];
+		if specified params[1]
+			if params[1] != nil
+				self.colratio = params[1];
+		self.rowratio = vector [];
+		if specified params[2]
+			if params[2] != nil
+				self.rowratio = params[2];
+		self.childsize = false;
+		if specified params[3]
+			if params[3] != nil
+				self.childsize = params[3];
+	  }
+	  default
+		throw "Unknown alignment method!";
+	self:Realign();
+	return self;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Widget base constructor
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+export function Widget(parent)[rect]
+{
+	local no = table [
+		// Various flags
+		.enabled		true,	// Accepts user interaction
+		.visible		true,
+		.needs_realign		true,
+
+		// Border around the client area
+		.border			0,
+
+		// Child widgets
+		.widgets		array [],
+
+		// Hooks
+		//procedure DeleteHook(self)	{},
+		.DeleteHook		nil,
+
+		// Recursively destroy widget and children.
+		procedure Delete(self)
+		{
+			if self.DeleteHook
+				self:DeleteHook();
+			if modal == self
+				SetModal(nil);
+			if captured == self
+				SetCapture(nil);
+			if focused == self
+				SetFocus(nil);
+			if self.parent
+			{
+				local wa = self.parent.widgets;
+				if sizeof wa
+					for local i = 0, sizeof wa - 1
+						if wa[i] == self
+						{
+							delete(wa, i);
+							break;
+						}
+//				self.parent:Invalidate();
+//				self.parent:Realign();
+//????????????????????????????
+				self:Realign();
+//????????????????????????????
+			}
+			else
+			{
+				local next_lower = -1;
+				for local i = 0, sizeof roots - 1
+					if roots[i] == self
+					{
+						delete(roots, i);
+						next_lower = i - 1;
+						break;
+					}
+				rethink_regions();
+				if next_lower >= 0
+					Invalidate(self.rect, next_lower);
+			}
+			local wa = self.widgets;
+			while sizeof wa
+				wa[0]:Delete();
+			delete(wa);
+			try delete(dirtywidgets, self);
+			delete(self);
+		}
+
+		// Recursively destroy all children.
+		procedure DeleteWidgets(self)
+		{
+			local wa = self.widgets;
+			while sizeof wa
+				wa[0]:Delete();
+			delete(wa);
+			self:Invalidate();
+		}
+
+		function Enable(self)
+		{
+			self.enabled = true;
+			self:Invalidate();
+			return self;
+		}
+
+		function Disable(self)
+		{
+			self.enabled = false;
+			if captured == self
+				SetCapture(nil);
+			if focused == self
+				SetFocus(nil);
+			self:Invalidate();
+			return self;
+		}
+
+		function Hide(self)
+		{
+			self.visible = false;
+			if captured == self
+				SetCapture(nil);
+			if focused == self
+				SetFocus(nil);
+			if self.parent
+				self.parent:Realign();
+			else
+			{
+				rethink_regions();
+				Invalidate(self.rect);
+			}
+			return self;
+		}
+
+		function Show(self)[onoff]
+		{
+			if specified onoff
+				if not onoff
+					return self:Hide();
+			self.visible = true;
+			if self.parent
+				self.parent:Realign();
+			else
+			{
+				rethink_regions();
+				self:Invalidate();
+			}
+			return self;
+		}
+		
+		procedure BringToFront(self)
+		{
+			// Widgets or roots?
+			if self.parent
+				local w = self.parent.widgets;
+			else
+				w = roots;
+			// Move to last in drawing order!
+			for local i = 0, sizeof w - 1
+				if w[i] == self
+				{
+					delete(w, i);
+					break;
+				}
+			w.+ self;
+			// Trigger realignment or redrawing as needed
+			if self.parent
+				self.parent:Realign();
+			else
+			{
+				rethink_regions();
+				self:Invalidate();
+			}
+		}
+
+		procedure SendToBack(self)
+		{
+			// Widgets or roots?
+			if self.parent
+				local w = self.parent.widgets;
+			else
+				w = roots;
+			// Move to first in drawing order!
+			for local i = 0, sizeof w - 1
+				if w[i] == self
+				{
+					delete(w, i);
+					break;
+				}
+			insert(w, 0, self);
+			// Trigger realignment or redrawing as needed
+			if self.parent
+				self.parent:Realign();
+			else
+			{
+				rethink_regions();
+				self:Invalidate();
+			}
+		}
+
+		// Redraw this widget
+		procedure Redraw(self)
+		{
+			self.theme:PassiveBar(self.rect);
+		}
+
+		procedure OnDown(self, ev)	{}
+		procedure OnUp(self, ev)	{}
+		procedure OnMove(self, ev)	{}
+		function OnKeyDown(self, ev)	{ return false; }
+		function OnKeyUp(self, ev)	{ return false; }
+		procedure OnFocus(self, state)	{}
+
+		function GetClientRect(self)
+		{
+			if self.border
+				return RT.Shrink(self.rect, self.border);
+			else
+				return clone self.rect;
+		}
+
+		// Mark this widget "needs redraw"
+		procedure Invalidate(self)[realign]
+		{
+			dirtywidgets[self] = true;
+			if specified realign
+				self.needs_realign = realign;
+		}
+
+		// Set alignment method to 'a'.
+		//    Parameters can be passed as extra arguments. Left
+		// out or nil parameters are given default values.
+		//    If 'a' is a function, this function will be called
+		// upon to align child widgets.
+		//    If 'a' is nil or 0, the default alignment method,
+		// "ratio", is selected.
+		//    If 'a' is a string, it is expected to hold the name
+		// of a built-in aligment method. If the named method is
+		// unknown to EBGUI, an exception is thrown.
+		.SetAlign	set_align,
+
+		function SetRect(self, rect)
+		{
+			local sr = self.logicrect;
+			if rect.x == sr.x and rect.y == sr.y and
+					rect.w == sr.w and rect.h == sr.h
+				return self;
+			self.logicrect = clone rect;
+			if self.parent
+				self.parent:Realign();
+			else
+			{
+				// Root widget!
+				Invalidate(sr, -1, self);
+				self.rect = clone rect;
+				self:Realign();
+				rethink_regions();
+			}
+			return self;
+		}
+
+		function SetPosition(self, x, y)
+		{
+			return self:SetRect(SDL.Rect
+					[x, y, self.logicrect.(w, h)]);
+		}
+
+		function SetSize(self, w, h)
+		{
+			return self:SetRect(SDL.Rect
+					[self.logicrect.(x, y), w, h]);
+		}
+
+		procedure Realign(self)
+		{
+			// See if we need to climb up a bit first
+			try if self.parent.childsize
+			{
+				self.parent:Realign();
+				return;
+			}
+			self:Invalidate(true);
+		}
+
+		// Recursively realign all child widgets
+		procedure DoRealign(self)
+		{
+			self.needs_realign = false;
+			if not self.visible
+				return;
+			if not sizeof self.widgets
+				return;
+			local w = self.widgets;
+			if self.reversealign
+			{
+				self:Align();
+				for local i = 0, sizeof w - 1
+				{
+					w[i]:DoRealign();
+					w[i].rect = clone w[i].logicrect;
+				}
+				self:Align();
+			}
+			else
+			{
+				self:Align();
+				for local i = 0, sizeof w - 1
+					w[i]:DoRealign();
+			}
+		}
+
+		// Find widget at (x, y)
+		function Find(self, x, y)
+		{
+			if not self.enabled or not self.visible
+				return nil;
+			local r = self.rect;
+			if x < r.x or y < r.y or
+					x > r.x + r.w or
+					y > r.y + r.h
+				return nil;
+			if sizeof self.widgets
+				for local i = sizeof self.widgets - 1, 0, -1
+				{
+					local w = self.widgets[i]:Find(x, y);
+					if w
+						return w;
+				}
+			return self;
+		}
+
+		// Dispatch an event to the appropriate widget
+		function Dispatch(self, cb, ev, x, y)
+		{
+			local w = self:Find(x, y);
+			if w
+				w[cb](w, ev);
+			return w;
+		}
+
+		// Apply theme to this widget, and all it's children
+		procedure ApplyTheme(self, theme)
+		{
+			self.theme = theme;
+			if sizeof self.widgets
+				for local i = 0, sizeof self.widgets - 1
+					self.widgets[i]:ApplyTheme(theme);
+			self:Invalidate();
+		}
+
+	];
+
+	// 'logicrect' holds the logic position and size of the
+	// widget. Note that some aligners will ignore some or
+	// all of this data. Also note that 'logicrect' is NOT
+	// to be used for rendering or mouse event processing.
+	if specified rect
+		no.logicrect = rect;
+	else
+		no.logicrect = SDL.Rect [0, 0, 1, 1];
+
+	// 'rect' holds the current physical position and size
+	// of the widget, as placed by the parent's aligner.
+	// All rendering and mouse event processing is relative
+	// to this rect!
+	no.rect = clone no.logicrect;
+
+	no:SetAlign(nil);
+
+	if parent
+	{
+		no.parent (=) parent;
+		parent.widgets.+ no;
+		no.root (=) parent.root;
+		no.theme = parent.theme;
+		no.font = parent.theme.font;
+		parent:Realign();
+	}
+	else
+	{
+		// This is a root widget!
+		no.parent = nil;
+		no.root (=) no;
+
+		// Rects describing the visible/drawable area
+		no.region = [];
+
+		// Areas that need redrawing
+		no.dirtyrects = [];
+
+		// Normally, a widget inherits the theme from it's parent.
+		// You can replace themes on a per-widget basis as needed,
+		// but note that you have to use ApplyTheme() if you want
+		// a theme to be applied recursivery to child widgets.
+		no.theme = user_theme;
+	}
+	return no;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Toolkit open/close
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// Close EBGUI, destroying all widgets and releasing the reference to the
+// target surface.
+export procedure Close
+{
+	while sizeof roots
+		roots[0]:Delete();
+	dirtywidgets = table [];
+	target = nil;
+//	default_theme_cons = nil;
+	user_theme = nil;
+	SDL.EnableUNICODE(system_unicode);
+}
+
+
+// Open EBGUI for rendering onto target surface 'tg'. If 'theme' (a theme
+// constructor function) is specified, it will be used as the default
+// theme constructor for new widgets.
+export procedure Open(tg)[theme]
+{
+	if target
+		Close;
+	target = tg;
+	if specified theme
+		user_theme = theme;
+	else
+		user_theme = DefaultTheme();
+	SDL.EnableUNICODE(true);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Root widget ("window") management
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// Open a root widget. If 'rect' is not specified, the Root widget will cover
+// the entire area of the target surface.
+export function Root[rect]
+{
+	if specified rect
+		local r = rect;
+	else
+		r = SDL.Rect [0, 0, target.w, target.h];
+	local w = Widget(nil, r);
+	roots.+ w;
+	rethink_regions();
+	return w;
+}
+
+
+// Open a window root widget
+export function Window[rect]
+{
+	if specified rect
+		local w = Root(rect);
+	else
+		w = Root();
+	w.border = 5;
+	w.Redraw = procedure(self)
+	{
+		local r = clone self.rect;
+		self.theme:Box(r, CWOL);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		self.theme:PassiveFatBlock3D(r);
+	};
+	return w;
+}
+
+
+// Open a popup window, for menues and the like. Note the different alignment
+// defaults, "ratio" with colrowratio = 0 and childsize = true!
+export function Popup(parent)[rect]
+{
+	if specified rect
+		local w = Root(rect);
+	else
+		w = Root();
+	w:ApplyTheme(parent.theme);
+	w.border = 1;
+	w.Redraw = procedure(self)
+	{
+		self.theme:Box(clone self.rect, CWOL);
+	};
+/*
+	w.AutoSize = procedure(self, iwidth, iheight)
+	{
+//FIXME: Temporary hack...
+		local totalh = 0;
+		for local i = 0, sizeof self.widgets - 1
+			totalh += self.widgets[i].logicrect.h;
+		self:SetSize(iwidth, totalh * iheight);
+	};
+*/
+	w:SetAlign("ratio", 0, nil, nil, true);
+	return w;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Widgets
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+
+// Panel; container widget with multiple styles
+// Can be configured as a non-rendering container by chosing style "none",
+// which will have the Panel forward Invalidate() calls to it's parent.
+export function Panel(parent)[style]
+{
+	local w = Widget(parent);
+	w.border = 2;
+	w.NormalInvalidate = w.Invalidate;
+	w.SetStyle = procedure(self, style)
+	{
+		self.style = style;
+		self.Invalidate = self.NormalInvalidate;
+		switch style
+		  case "none"
+		  {
+			self.border = 0;
+			self.Redraw = procedure(s) {};
+			self.Invalidate = procedure(s)[realign]
+				{
+					if specified realign
+						s.parent:Invalidate(realign);
+					else
+						s.parent:Invalidate();
+				};
+		  }
+		  case "normal"
+			self.Redraw = procedure(s)
+			{
+				s.theme:PassiveFatBlock3D(s.rect);
+			};
+		  case "thin"
+		  {
+			self.border = 1;
+			self.Redraw = procedure(s)
+			{
+				s.theme:PassiveBlock3D(s.rect);
+			};
+		  }
+		  case "flat"
+		  {
+			self.border = 0;
+			self.Redraw = procedure(s)
+			{
+				s.theme:PassiveBar(s.rect);
+			};
+		  }
+		  case "dent"
+		  {
+			self.border = 1;
+			self.Redraw = procedure(s)
+			{
+				s.theme:PassiveDent3D(s.rect);
+			};
+		  }
+		  case "depression"
+			self.Redraw = procedure(s)
+			{
+				s.theme:PassiveDepression3D(s.rect);
+			};
+		self:Invalidate();
+	};
+	if specified style
+		w:SetStyle(style);
+	else
+		w:SetStyle("normal");
+	return w;
+}
+
+
+// Graph
+
+function graph_calc_scale(self, graph)
+{
+	// Note: This flips the y axis, as we want increasing Y upwards!
+	local xs, local ys = self.(xscale, yscale) * graph.rect.(w, h);
+	ys = -ys;
+	local xo, local yo = self.(xoffs, yoffs);
+	xo, yo *= graph.rect.(w, h);
+	xo, yo += graph.rect.(x, y);
+	return vector [xs, ys, xo, yo];
+}
+
+procedure graph_render_none(self, graph)
+{
+}
+
+procedure graph_render_lines(self, graph)
+{
+	if sizeof self.x < 2
+		return;
+	local color = self.linecolor;
+	local xs, local ys, local xo, local yo =
+			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	local last_xx, local last_yy = self.(x, y)[0];
+	last_xx, last_yy *= xs, ys;
+	last_xx, last_yy += xo, yo;
+	for local i = 1, sizeof self.x - 1
+	{
+		local xx, local yy = self.(x, y)[i];
+		xx, yy *= xs, ys;
+		xx, yy += xo, yo;
+		line.line(target, color, last_xx, last_yy, xx, yy);
+		last_xx, last_yy = xx, yy;
+	}
+}
+
+procedure graph_render_dot(self, graph)
+{
+	if not sizeof self.x
+		return;
+	local color = self.color;
+	local xs, local ys, local xo, local yo =
+			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	for local i = 0, sizeof self.x - 1
+	{
+		local xx, local yy = self.(x, y)[i];
+		xx, yy *= xs, ys;
+		xx, yy += xo, yo;
+		SDL.Plot(target, color, xx, yy);
+	}
+}
+
+procedure graph_render_square(self, graph)
+{
+	if not sizeof self.x
+		return;
+	local color = self.color;
+	local xs, local ys, local xo, local yo =
+			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	xo, yo -= 2, 2;
+	local r = SDL.Rect [0, 0, 5, 5];
+	for local i = 0, sizeof self.x - 1
+	{
+		local xx, local yy = self.(x, y)[i];
+		xx, yy *= xs, ys;
+		xx, yy += xo, yo;
+		r.(x, y) = -30000 >| (xx, yy) |< 30000;
+		r.(w, h) = 5, 5;
+		SDL.FillRect(target, clone r, color);
+	}
+}
+
+procedure graph_render_box(self, graph)
+{
+	if not sizeof self.x
+		return;
+	local color = self.color;
+	local xs, local ys, local xo, local yo =
+			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	for local i = 0, sizeof self.x - 1
+	{
+		local xx, local yy = self.(x, y)[i];
+		xx, yy *= xs, ys;
+		xx, yy += xo, yo;
+		SDL.Plot(target, color,
+				xx - 2, yy - 2,
+				xx - 1, yy - 2,
+				xx, yy - 2,
+				xx + 1, yy - 2,
+				xx + 2, yy - 2,
+
+				xx - 2, yy - 1,
+				xx - 2, yy,
+				xx - 2, yy + 1,
+
+				xx + 2, yy - 1,
+				xx + 2, yy,
+				xx + 2, yy + 1,
+
+				xx - 2, yy + 2,
+				xx - 1, yy + 2,
+				xx, yy + 2,
+				xx + 1, yy + 2,
+				xx + 2, yy + 2);
+	}
+}
+
+procedure graph_render_ring(self, graph)
+{
+	if not sizeof self.x
+		return;
+	local color = self.color;
+	local xs, local ys, local xo, local yo =
+			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	for local i = 0, sizeof self.x - 1
+	{
+		local xx, local yy = self.(x, y)[i];
+		xx, yy *= xs, ys;
+		xx, yy += xo, yo;
+		SDL.Plot(target, color,
+				xx - 1, yy - 2,
+				xx, yy - 2,
+				xx + 1, yy - 2,
+
+				xx - 2, yy - 1,
+				xx - 2, yy,
+				xx - 2, yy + 1,
+
+				xx + 2, yy - 1,
+				xx + 2, yy,
+				xx + 2, yy + 1,
+
+				xx - 1, yy + 2,
+				xx, yy + 2,
+				xx + 1, yy + 2);
+	}
+}
+
+function graph_new_curve(graph, name, glyph, r, g, b)[lines]
+{
+	local nc = table
+	[
+		.name		name,
+		.color		SDL.MapColor(target, r, g, b),
+		.linecolor	SDL.MapColor(target,
+				r * .3 + graph.paper_r * .7,
+				g * .3 + graph.paper_g * .7,
+				b * .3 + graph.paper_b * .7),
+		.lines		true,
+		.visible	true,
+		.xscale		1.,
+		.yscale 	1.,
+		.xoffs		0.,
+		.yoffs		0.,
+		.x		vector [],
+		.y		vector [],
+		procedure Add(s, x, y)
+		{
+			s.(x, y).+ x, y;
+		}
+		procedure Scale(s, xs, ys)
+		{
+			s.(xscale, yscale) = xs, ys;
+		}
+		procedure Offset(s, xo, yo)
+		{
+			s.(xoffs, yoffs) = xo, yo;
+		}
+		procedure AutoScale(s, dox, doy)
+		{
+			if not sizeof s.x
+			{
+				s.(xmin, xmax, ymin, ymax) = 0;
+				return;
+			}
+			if dox
+			{
+				local min, local max = s.x[0];
+				for local i = 0, sizeof s.x - 1
+				{
+					local v = s.x[i];
+					min, max = min |< v, max >| v;
+				}
+				if max != min
+					s.xscale = 1. / (max - min);
+				s.xoffs = -min * s.xscale;
+				s.(xmin, xmax) = min, max;
+			}
+			if doy
+			{
+				local min, local max = s.y[0];
+				for local i = 0, sizeof s.y - 1
+				{
+					local v = s.y[i];
+					min, max = min |< v, max >| v;
+				}
+				if max != min
+					s.yscale = 1. / (max - min);
+				s.yoffs = max * s.yscale;
+				s.(ymin, ymax) = min, max;
+			}
+		}
+		.RenderLines	graph_render_lines
+	];
+	if specified lines
+		nc.lines = lines;
+	switch glyph
+	  case "dot"
+		nc.Render = graph_render_dot;
+	  case "square"
+		nc.Render = graph_render_square;
+	  case "box"
+		nc.Render = graph_render_box;
+	  case "ring"
+		nc.Render = graph_render_ring;
+	  case "none"
+		nc.Render = graph_render_none;
+	  default
+		nc.Render = graph_render_none;
+	graph.curves[name] = nc;
+	return nc;
+}
+
+export function Graph(parent)
+{
+	local w = Widget(parent);
+	w.paper_r = 32;
+	w.paper_g = 48;
+	w.paper_b = 64;
+	w.paper = SDL.MapColor(target, w.paper_r, w.paper_g, w.paper_b);
+	w.curves = table [];
+	w.Curve = graph_new_curve;
+	w.RenderBackground = procedure(self)
+	{
+		SDL.FillRect(target, clone self.rect, self.paper);
+	};
+	w.Redraw = procedure(self)
+	{
+		self:RenderBackground();
+		if not sizeof self.curves
+			return;
+		for local i = 0, sizeof self.curves - 1
+		{
+			local curve = index(self.curves, i);
+			if not curve.visible
+				continue;
+			if curve.lines
+				curve:RenderLines(self);
+			curve:Render(self);
+		}
+	};
+	return w;
+}
+
+
+// Scale Widget
+function new_scale(parent, onchange, horiz, color)
+{
+	local w = Widget(parent);
+	w.border = 1;
+	w.scale = 1.;
+	w.offset = 0.;
+	w.ticks = vector [];
+	w.mx = nil;
+	if horiz
+		w.(hx, hw) = "x", "w";
+	else
+		w.(hx, hw) = "y", "h";
+	w.OnChange = onchange;
+	w.horizontal = horiz;
+	w.color = color;
+	w.SetScaleLimits = procedure(self, min, max)
+	{
+		self.(minscale, maxscale) = min, max;
+		self.scale = self.minscale >| self.scale |< self.maxscale;
+		self:Invalidate();
+	};
+	w.SetOffsetLimits = procedure(self, min, max)
+	{
+		self.(minoffset, maxoffset) = min, max;
+		self.offset = self.minoffset >| self.offset |< self.maxoffset;
+		self:Invalidate();
+	};
+	w.SilentSet = procedure(self, scale, offset)
+	{
+		self.scale = self.minscale >| scale |< self.maxscale;
+		self.offset = self.minoffset >| offset |< self.maxoffset;
+		self:Invalidate();
+	};
+	w.Set = procedure(self, scale, offset)
+	{
+		self:SilentSet(scale, offset);
+		self:OnChange(self.(scale, offset));
+	};
+	w.Redraw = procedure(self)
+	{
+		self.ticks = vector [];
+		local th = self.theme;
+		if focused == self
+			th:FocusBox(self.rect);
+		else if self.enabled
+			th:ActiveBox(self.rect);
+		else
+			th:PassiveBox(self.rect);
+		local r = RT.Shrink(self.rect, 1);
+		if self.enabled
+			th:ActiveDepression3D_OL(r);
+		else
+			th:PassiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		SDL.FillRect(target, clone r, self.color);
+		if not self.scale
+			return;
+		if self.horizontal
+		{
+			local minx = self.offset / -self.scale;
+			local maxx = (1. - self.offset) / self.scale;
+			local magn = 10. ** floor(log(maxx - minx) / log(10.));
+			local step = magn / 100.;
+			while true
+			{
+				local _minx = floor(minx / step) * step;
+				local _maxx = ceil(maxx / step) * step;
+				local _x = _minx + step;
+				local tw = self.font:Width((string)(
+						floor(_x / step + .5) * step));
+				_x += step;
+				tw >|= self.font:Width((string)(
+						floor(_x / step + .5) * step));
+				local maxticks = self.rect.w / tw / 1.5;
+				if (maxx - minx) / step <= maxticks
+					break;
+				step *= 10.;
+			}
+			minx = floor(minx / step) * step;
+			maxx = ceil(maxx / step) * step;
+			local xs = self.scale * self.rect.w;
+			local xo = self.offset * self.rect.w + self.rect.x;
+			local c = self.theme.colors[CPSHL];
+			for local x = minx, maxx, step
+			{
+				r = clone self.rect;
+				local ty = r.y;
+				r.x, local tx = x * xs + xo;
+				self.ticks.+ tx;
+				r.w = 1;
+				SDL.FillRect(target, r, c);
+				local tt = (string)(floor(x / step + .5) * step);
+				ty += (self.rect.h - self.font.height) / 2;
+				tx -= self.font:Width(tt) / 2 - .5;
+				self.font:PutString(tt, tx, ty, target);
+			}
+		}
+		else
+		{
+			local miny = (1. - self.offset) / -self.scale;
+			local maxy = self.offset / self.scale;
+			local magn = 10. ** floor(log(maxy - miny) / log(10.));
+			local step = magn / 100.;
+			local maxticks = self.rect.h / self.font.height / 1.5;
+			while (maxy - miny) / step > maxticks
+				step *= 10.;
+			miny = floor(miny / step) * step;
+			maxy = ceil(maxy / step) * step;
+			local ys = -self.scale * self.rect.h;
+			local yo = self.offset * self.rect.h + self.rect.y;
+			local c = self.theme.colors[CPSHL];
+			for local y = miny, maxy, step
+			{
+				r = clone self.rect;
+				local tx = r.x;
+				r.y, local ty = y * ys + yo;
+				self.ticks.+ ty;
+				r.h = 1;
+				SDL.FillRect(target, r, c);
+				local tt = (string)(floor(y / step + .5) * step);
+				tx += (self.rect.w - self.font:Width(tt)) / 2;
+				ty -= self.font.height / 2 - .5;
+				self.font:PutString(tt, tx, ty, target);
+			}
+		}
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		local step = .1;
+		if ev.mod & (SDL.KMOD_RSHIFT | SDL.KMOD_LSHIFT)
+			step *= 10;
+		else if ev.mod & (SDL.KMOD_RCTRL | SDL.KMOD_LCTRL)
+			step *= .1;
+		if self.horizontal
+			switch ev.sym
+			  case SDL.KUP
+			  {
+				self.offset -= .5;
+				if self.scale
+					self.offset /= self.scale;
+				if self.scale < step / 10
+					self.scale = step / 10;
+				else
+					self.scale *= 1. + step;
+				self.offset *= self.scale;
+				self.offset += .5;
+			  }
+			  case SDL.KDOWN
+			  {
+				self.offset -= .5;
+				if self.scale
+					self.offset /= self.scale;
+				self.scale *= 1. - step;
+				self.offset *= self.scale;
+				self.offset += .5;
+			  }
+			  case SDL.KRIGHT
+				self.offset += step;
+			  case SDL.KLEFT
+				self.offset -= step;
+			  default
+				return false;
+		else
+			switch ev.sym
+			  case SDL.KRIGHT
+			  {
+				self.offset -= .5;
+				if self.scale
+					self.offset /= self.scale;
+				if self.scale < step / 10
+					self.scale = step / 10;
+				else
+					self.scale *= 1. + step;
+				self.offset *= self.scale;
+				self.offset += .5;
+			  }
+			  case SDL.KLEFT
+			  {
+				self.offset -= .5;
+				if self.scale
+					self.offset /= self.scale;
+				self.scale *= 1. - step;
+				self.offset *= self.scale;
+				self.offset += .5;
+			  }
+			  case SDL.KUP
+				self.offset -= step;
+			  case SDL.KDOWN
+				self.offset += step;
+			  default
+				return false;
+		self:OnChange(self.(scale, offset));
+		self:Invalidate();
+		return true;
+	};
+	w.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		self.(mx, my) = 0;
+		self.(grabx, graby) = ev.(x, y);
+		self.grab_offset = self.offset;
+		self.grab_scale = self.scale;
+		if not self.grab_scale
+			self.grab_scale = .000000001;
+		self.grab_offset -= .5;
+		self.grab_offset /= self.scale;
+		SetCapture(self, true);
+		SetFocus(self);
+	};
+	w.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		SDL.WarpMouse(self.(grabx, graby));
+		SetCapture(nil);
+		self.mx = nil;
+	};
+	w.OnMove = procedure(self, ev)
+	{
+		local cx, local cy = (integer)(target.(w, h) / 2);
+		if self.mx == nil or ev.x == cx and ev.y == cy
+			return;
+		SDL.WarpMouse(cx, cy);
+		self.(mx, my) += ev.(xrel, yrel);
+		local r = RT.Shrink(self.rect, self.border);
+		local size = sqrt(r.w * r.w + r.h * r.h);
+		local xdist = self.mx / size;
+		local ydist = self.my / size;
+		if self.horizontal
+			local sf, local of = -ydist, xdist;
+		else
+			sf, of = xdist, ydist;
+		self.scale = self.grab_scale * 1.5 ** sf;
+		self.offset = self.grab_offset * self.scale + of + .5;
+		self:OnChange(self.(scale, offset));
+		self:Invalidate();
+	};
+	w:SetScaleLimits(1e-12, 1e12);
+	w:SetOffsetLimits(-1e12, 1e12);
+	w.Init = procedure(self)
+	{
+		self:OnChange(self.value);
+	};
+	return w;
+}
+
+export function HScale(parent)[onchange, color]
+{
+	if specified onchange
+		local och = onchange;
+	else
+		och = procedure(self, scale, offset) {};
+	if specified color
+		local cl = color;
+	else
+		cl = parent.theme.colors[CPSH];
+	local w = new_scale(parent, och, true, cl);
+	return w;
+}
+
+export function VScale(parent)[onchange, color]
+{
+	if specified onchange
+		local och = onchange;
+	else
+		och = procedure(self, scale, offset) {};
+	if specified color
+		local cl = color;
+	else
+		cl = parent.theme.colors[CPSH];
+	local w = new_scale(parent, och, false, cl);
+	return w;
+}
+
+
+// Common button redraw procedure
+procedure Button_Redraw(self)
+{
+	local th = self.theme;
+	if self.style == "normal"
+		local pressedoffset = 1;
+	else
+		pressedoffset = 0;
+
+	// 3D edge
+	local r = RT.Shrink(self.rect, 1);
+	if self.enabled
+	{
+		switch self.style
+		  case "normal"
+			if self.state
+			{
+				r.(w, h) += 1;
+				th:PassiveDepression3D_OL(r);
+				r.(w, h) -= 1;
+				r.(x, y) += 1;
+				th:ActiveFatBlock3D(r);
+				r.(w, h) -= 1;
+				th:ActiveBlock3D_OL(r);
+			}
+			else
+				th:ActiveFatBlock3D(r);
+		  case "thin"
+			if self.state
+				th:ActiveDent3D(self.rect);
+			else
+				th:ActiveBlock3D(self.rect);
+		  case "flat"
+			if self.state
+				th:ActiveDent3D(self.rect);
+			else
+				th:ActiveBar(self.rect);
+	}
+	else
+		switch self.style
+		  case "normal"
+			if self.state
+			{
+				r.(w, h) += 1;
+				th:PassiveDepression3D_OL(r);
+				r.(w, h) -= 1;
+				r.(x, y) += 1;
+				th:PassiveFatBlock3D(r);
+				r.(w, h) -= 1;
+				th:PassiveBlock3D_OL(r);
+			}
+			else
+				th:PassiveFatBlock3D(r);
+		  case "thin"
+			if self.state
+				th:PassiveDent3D(self.rect);
+			else
+				th:PassiveBlock3D(self.rect);
+		  case "flat"
+			if self.state
+				th:PassiveDent3D(self.rect);
+			else
+				th:PassiveBar(self.rect);
+
+	// Focus rect
+	if focused == self
+		th:FocusBox(self.rect);
+	else if self.style == "normal"
+		self.parent.theme:PassiveDent3D_OL(self.rect);
+
+	// LED
+	if self.drawled
+	{
+		r = clone self.rect;
+		if r.h < 14
+		{
+			// Hack for very small buttons
+			r.(x, y) -= 1;
+			r.(w, h) += 2;
+		}
+		r.(x, y) += 5;
+		if self.state
+			r.(x, y) += pressedoffset;
+		r.h -= 10;
+		if self.caption
+			r.w = 6;
+		else
+			r.w -= 10;	// Caption-less ==> big LED
+		if self.enabled
+			th:ActiveDepression3D_OL(r);
+		else
+			th:PassiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		if self.state
+			SDL.FillRect(target, r, th.colors[CMK]);
+		else
+			SDL.FillRect(target, r, th.colors[CPSH]);
+	}
+
+	// Caption
+	if self.caption
+	{
+		local tx, local ty = self.rect.(x, y);
+		tx += (self.rect.w - self.font:Width(self.caption)) / 2;
+		ty += (self.rect.h - self.font.height) / 2;
+		if self.state
+			tx, ty += pressedoffset;
+		self.font:PutString(self.caption, tx, ty, target,
+				self.rect.x + self.rect.w);
+	}
+}
+
+
+// Basic button widget
+export function Button(parent, caption)[onclick, style]
+{
+	local w = Widget(parent);
+	w.caption = caption;
+	w.state = false;
+	w.button = 0;
+	w.drawled = false;
+	w.Redraw = Button_Redraw;
+	if specified onclick
+		w.OnClick = onclick;
+	else
+		w.OnClick = procedure(self) {};
+	if specified style
+		w.style = style;
+	else
+		w.style = "normal";
+	w.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		self.state = true;
+		self.button = ev.button;
+		SetCapture(self);
+		SetFocus(self);
+	};
+	w.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		SetCapture(nil);
+		self.state = false;
+		self:Invalidate();
+		if self:Find(ev.(x, y)) == self
+			self:OnClick();
+		self.button = 0;
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		self.button = 0;
+		switch ev.sym
+		  case SDL.KRETURN, SDL.KKP_ENTER, SDL.KSPACE
+		  {
+			self:OnClick();
+			return true;
+		  }
+		return false;
+	};
+	w.SetCaption = procedure(self, c)
+	{
+		self.caption = (string)c;
+		self:Invalidate();
+	};
+	return w;
+}
+
+
+// Toggle button widget
+export function Toggle(parent, caption)[onclick, style]
+{
+	local w = Widget(parent);
+	w.caption = caption;
+	w.state = true;
+	w.drawled = true;
+	w.Redraw = Button_Redraw;
+	if specified onclick
+		w.OnClick = onclick;
+	else
+		w.OnClick = procedure(self) {};
+	if specified style
+		w.style = style;
+	else
+		w.style = "normal";
+	w.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		SetCapture(self);
+		SetFocus(self);
+	};
+	w.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		SetCapture(nil);
+		self:Invalidate();
+		if self:Find(ev.(x, y)) == self
+		{
+			self.state = not self.state;
+			self:OnClick();
+		}
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		switch ev.sym
+		  case SDL.KRETURN, SDL.KKP_ENTER, SDL.KSPACE
+		  {
+			self.state = not self.state;
+			self:OnClick();
+			return true;
+		  }
+		return false;
+	};
+	w.SetCaption = procedure(self, c)
+	{
+		self.caption = (string)c;
+		self:Invalidate();
+	};
+	w.Set = procedure(self, state)
+	{
+		self.state = state;
+		self:Invalidate();
+		self:OnClick();
+	};
+	return w;
+}
+
+
+// LED Indicator Widget
+export function LED(parent)
+{
+	local w = Widget(parent);
+	w.state = true;
+	w.Set = function(self, state)
+	{
+		self.state = state;
+		self:Invalidate();
+		return self;
+	};
+	w.Redraw = procedure (self)
+	{
+		local th = self.theme;
+		local pth = self.parent.theme;
+		pth:PassiveBox(self.rect);
+		local r = RT.Shrink(self.rect, 1);
+		pth:PassiveBlock3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		pth:PassiveBox(self.rect);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		pth:PassiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		if self.state
+			SDL.FillRect(target, r, th.colors[CMK]);
+		else
+			SDL.FillRect(target, r, th.colors[CPSH]);
+	};
+	return w;
+}
+
+
+// Progress Bar Widget
+export function ProgressBar(parent)
+{
+	local w = Widget(parent);
+	w.value = 0.;
+	w.Set = procedure(self, v)
+	{
+		self.value = 0. >| v |< 1.;
+		self:Invalidate();
+	};
+	w.Redraw = procedure (self)
+	{
+		local th = self.theme;
+		local pth = self.parent.theme;
+		pth:PassiveBox(self.rect);
+		local r = RT.Shrink(self.rect, 1);
+		pth:PassiveBlock3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		pth:PassiveBox(self.rect);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		pth:PassiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		local w1 = round(r.w * self.value);
+		local w2 = r.w - w1;
+		r.w = w1;
+		if self.enabled
+			SDL.FillRect(target, clone r, th.colors[CMK]);
+		else
+			SDL.FillRect(target, clone r, th.colors[CPSHL]);
+		r.(x, w) = r.x + w1, w2;
+		SDL.FillRect(target, r, th.colors[CPSH]);
+		r = RT.Shrink(self.rect, 5);
+		local tx, local ty = r.(x, y);
+		local txt = (string)(integer)round(self.value * 100.) + "%";
+		tx += (r.w - self.font:Width(txt)) / 2;
+		ty += (r.h - self.font.height) / 2;
+		self.font:PutString(txt, tx, ty, target, r.x + r.w);
+	};
+	return w;
+}
+
+
+// Label widget
+export function Label(parent, caption)
+{
+	local w = Widget(parent);
+	w.caption = caption;
+	w.textalign = "center";
+	w.SetCaption = procedure(self, c)
+	{
+		self.caption = (string)c;
+		self:Invalidate();
+	};
+	w.SetTextAlign = function(self, a)
+	{
+		self.textalign = a;
+		self:Invalidate();
+		return self;
+	};
+	w.Redraw = procedure(self)
+	{
+		self.parent.theme:PassiveBar(self.rect);
+		local tx, local ty = self.rect.(x, y);
+		switch self.textalign
+//		  case "left"
+//			;
+		  case "right"
+			tx += self.rect.w - self.font:Width(self.caption);
+		  case "center"
+			tx += (self.rect.w - self.font:Width(self.caption)) / 2;
+		ty += (self.rect.h - self.font.height) / 2;
+		self.font:PutString(self.caption, tx, ty, target,
+				self.rect.x + self.rect.w);
+	};
+	return w;
+}
+
+
+// ListBox widget
+export function ListBox(parent)[itemheight]
+{
+	local w = Panel(parent, "depression");
+	w:SetAlign("list");
+	w.border = 4;
+	w.autoscroll = true;
+	w.vscroll = 0;
+	w.vpage = 1;
+	if specified itemheight
+		w.itemheight = itemheight;
+	else
+		w.itemheight = 16;
+	w.Redraw = procedure(self)
+	{
+		local th = self.theme;
+		local pth = self.parent.theme;
+		local f = self.font;
+		local r = clone self.rect;
+		if focused == self
+			th:FocusBox(r);
+		else
+			th:PassiveFatBlock3D_OL(r);
+		r.(x, y) += 2;
+		r.(w, h) -= 4;
+		th:PassiveDepression3D(r);
+	};
+	w.GoToLine = procedure(self, y)
+	{
+		self.vscroll = y;
+//		self:SetScrollPos(y);
+		self:Invalidate();
+	};
+	w.GoToTop = procedure(self)
+	{
+		self:GoToLine(0);
+	};
+	w.GoToBottom = procedure(self)
+	{
+		self:GoToLine(sizeof self.widgets);
+	};
+	w.OnDown = procedure(self, ev)
+	{
+		SetFocus(self);
+		switch ev.button
+		  case SDL.BUTTON_WHEELUP
+			self:GoToLine(self.vscroll - 3);
+		  case SDL.BUTTON_WHEELDOWN
+			self:GoToLine(self.vscroll + 3);
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		switch ev.sym
+		  case SDL.KUP
+			self:GoToLine(self.vscroll - 1);
+		  case SDL.KDOWN
+			self:GoToLine(self.vscroll + 1);
+		  case SDL.KHOME
+			self:GoToTop();
+		  case SDL.KEND
+			self:GoToBottom();
+		  case SDL.KPAGEUP
+			self:GoToLine(self.vscroll - self.vpage);
+		  case SDL.KPAGEDOWN
+			self:GoToLine(self.vscroll + self.vpage);
+		  default
+			return false;
+		return true;
+	};
+	return w;
+}
+
+
+// TextBox widget
+export function TextBox(parent)[txt]
+{
+	local w = Widget(parent);
+	w.lines = array [];
+	w.autoscroll = true;
+	w.vscroll = 0;
+	w.vpage = 1;
+	if specified txt
+		w.lines[0] = (string)txt;
+	w.Add = procedure(self, t)
+	{
+		self.lines.+ t;
+		if self.autoscroll
+			self:GoToBottom();
+		else
+			self:Invalidate();
+	};
+	w.GoToLine = procedure(self, y)
+	{
+		self.vscroll = y;
+		self:Invalidate();
+	};
+	w.GoToTop = procedure(self)
+	{
+		self:GoToLine(0);
+	};
+	w.GoToBottom = procedure(self)
+	{
+		self:GoToLine(sizeof self.lines);
+	};
+	w.Redraw = procedure(self)
+	{
+		local th = self.theme;
+		local pth = self.parent.theme;
+		local f = self.font;
+		if focused == self
+			th:FocusBox(self.rect);
+		else
+			pth:PassiveDent3D_OL(self.rect);
+		local r = RT.Shrink(self.rect, 1);
+		th:PassiveFatBlock3D_OL(r);
+		r.(x, y) += 2;
+		r.(w, h) -= 4;
+		th:PassiveDepression3D(r);
+		if not sizeof self.lines
+			return;
+		local x = r.x + 1;
+		local y = r.y + 1;
+		local maxy = r.y + r.h - f.height - 1;
+		local maxx = r.x + r.w - 2;
+		self.vpage = (r.h - 2) / f.height;
+		local maxvs = sizeof self.lines - self.vpage + 1 >| 0;
+		local i, self.vscroll = 0 >| self.vscroll |< maxvs;
+		while y < maxy
+		{
+			if i >= 0 and i < sizeof self.lines
+				f:PutString(self.lines[i], x, y,
+						target, maxx);
+			i += 1;
+			y += f.height;
+		}
+	};
+	w.OnDown = procedure(self, ev)
+	{
+		SetFocus(self);
+		switch ev.button
+		  case SDL.BUTTON_WHEELUP
+			self:GoToLine(self.vscroll - 3);
+		  case SDL.BUTTON_WHEELDOWN
+			self:GoToLine(self.vscroll + 3);
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		switch ev.sym
+		  case SDL.KUP
+			self:GoToLine(self.vscroll - 1);
+		  case SDL.KDOWN
+			self:GoToLine(self.vscroll + 1);
+		  case SDL.KHOME
+			self:GoToTop();
+		  case SDL.KEND
+			self:GoToBottom();
+		  case SDL.KPAGEUP
+			self:GoToLine(self.vscroll - self.vpage);
+		  case SDL.KPAGEDOWN
+			self:GoToLine(self.vscroll + self.vpage);
+		  default
+			return false;
+		return true;
+	};
+	return w;
+}
+
+
+// LineEditor widget
+export function LineEditor(parent)[txt, onchange]
+{
+	local w = Widget(parent);
+	if specified txt
+		w.text = (dstring)txt;
+	else
+		w.text = (dstring)"";
+	if specified onchange
+		w.OnChange = onchange;
+	else
+		w.OnChange = procedure(self, t) {};
+	w.editing = false;
+	w.position = 0;
+	w.BeginEditing = procedure(self)
+	{
+		self.editing = true;
+		self.text_save = clone self.text;
+		self.position |<= sizeof self.text;
+		self:Invalidate();
+	};
+	w.EndEditing = procedure(self, apply)
+	{
+		self.editing = false;
+		if not apply
+			self.text = self.text_save;
+		self.text_save = nil;
+		self:OnChange(self.text);
+		self:Invalidate();
+	};
+	w.SilentSetText = procedure(self, t)
+	{
+		self.text = (dstring)t;
+		self.position |<= sizeof self.text;
+		self:Invalidate();
+	};
+	w.SetText = procedure(self, t)
+	{
+		self:SilentSetText(t);
+		self:OnChange(self.text);
+	};
+	w.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		SetCapture(self);
+		SetFocus(self);
+	};
+	w.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		if self:Find(ev.(x, y)) == self
+			self:BeginEditing();
+		SetCapture(nil);
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		if self.editing
+		{
+			switch ev.sym
+			  case SDL.KRETURN, SDL.KKP_ENTER,
+			  		SDL.KTAB, SDL.KUP, SDL.KDOWN
+				self:EndEditing(true);
+			  case SDL.KESCAPE
+				self:EndEditing(false);
+			  case SDL.KLEFT
+			  {
+				self.position = self.position - 1 >| 0;
+				self:Invalidate();
+			  }
+			  case SDL.KRIGHT
+			  {
+				self.position = self.position + 1 |<
+						sizeof self.text;
+				self:Invalidate();
+			  }
+			  case SDL.KBACKSPACE
+				if self.position > 0 and sizeof self.text >= 1
+				{
+					self.position -= 1;
+					delete(self.text, self.position);
+					self:Invalidate();
+				}
+			  case SDL.KHOME
+			  {
+				self.position = 0;
+				self:Invalidate();
+			  }
+			  case SDL.KEND
+			  {
+				self.position = sizeof self.text;
+				self:Invalidate();
+			  }
+			  case SDL.KDELETE
+				if sizeof self.text > self.position
+				{
+					delete(self.text, self.position);
+					self:Invalidate();
+				}
+			  default
+				if ev.unicode < 127 and ev.unicode > 31
+				{
+					insert(self.text, self.position,
+							ev.unicode);
+					self.position += 1;
+					self:Invalidate();
+				}
+				else
+					return false;
+		}
+		else
+			switch ev.sym
+			  case SDL.KRETURN, SDL.KKP_ENTER
+				self:BeginEditing();
+			  default
+				return false;
+		return true;
+	};
+	w.Redraw = procedure(self)
+	{
+		local th = self.theme;
+		local pth = self.parent.theme;
+		local f = self.font;
+		if focused == self
+			th:FocusBox(self.rect);
+		else
+		{
+			pth:PassiveDent3D_OL(self.rect);
+			if self.editing
+				self:EndEditing(true);
+		}
+		local r = RT.Shrink(self.rect, 1);
+		th:ActiveFatBlock3D_OL(r);
+		r.(x, y) += 2;
+		r.(w, h) -= 4;
+		th:ActiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		th:PassiveBar(r);
+		local tx, local ty = r.(x, y);
+		tx += 1;
+		ty += (r.h - f.height) / 2;
+		if self.editing
+		{
+			r = SDL.Rect [tx, ty, 2, f.height];
+			r.x += f:Width(self.text, self.position);
+			th:Bar(r, CMK);
+		}
+		f:PutString(self.text, tx, ty, target,
+				self.rect.x + self.rect.w - 2);
+	};
+	return w;
+}
+
+
+// Slider base class
+function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
+{
+	local w = Widget(parent);
+	w.border = 2;
+	w.(hx, hy, hw, hh) = hx, hy, hw, hh;
+	w.horizontal = (w.hx == "x");
+	if specified v2p
+		w.(Pos2Value, Value2Pos) = p2v, v2p;
+	else
+	{
+		w.Value2Pos = function(self, v)	{ return v; };
+		w.Pos2Value = function(self, v)	{ return v; };
+	}
+	w.position = 0;
+	w.value = w:Pos2Value(0);
+	w.SetStepPos = procedure(self, coarse, wheel, fine)
+	{
+		self.coarsestep = coarse;
+		self.wheelstep = wheel;
+		self.finestep = fine;
+	};
+	w.SetStep = procedure(self, coarse, wheel, fine)
+	{
+		local range = self:Pos2Value(1) - self:Pos2Value(0);
+		self.coarsestep = coarse / range;
+		self.wheelstep = wheel / range;
+		self.finestep = fine / range;
+	};
+	w:SetStepPos(.1, .01, .001);
+	w.OnUp = procedure(self, ev)
+	{
+		// TODO: Repeat
+	};
+
+	// Move knob, but don't call any Change() callbacks
+	// Returns true if the value was actually changed
+	w.SilentMovePos = function(self, _pos)
+	{
+		local pos = 0 >| _pos |< 1;
+		self.position = pos;
+		local nv = self:Pos2Value(pos);;
+		if nv == self.value
+			return false;
+		self.value = nv;
+		self:Align();
+		self:Invalidate();
+		return true;
+	};
+
+	// Move knob, simulating user input
+	w.MovePos = procedure(self, pos)
+	{
+		if self:SilentMovePos(pos)
+			self:OnChange(self.value);
+	};
+
+	// Value based versions
+	w.SilentMove = procedure(self, value)
+	{
+		self:SilentMovePos(self:Value2Pos(value));
+	};
+	w.Move = procedure(self, value)
+	{
+		self:MovePos(self:Value2Pos(value));
+	};
+
+	// Handy tools
+	w.SetRange = function(self, min, max)
+	{
+		self.(min, max) = min, max;
+		self.Pos2Value = function(s2, v)
+			{
+				return v * (s2.max - s2.min) + s2.min;
+			};
+		self.Value2Pos = function(s2, v)
+			{
+				return (v - s2.min) / (s2.max - s2.min);
+			};
+		self:Align();
+		self:Invalidate();
+		return self;
+	};
+
+	w.OnDown = procedure(self, ev)
+	{
+		local shx, local shw = self.(hx, hw);
+		local knob = self.knob;
+		local pos = self:Value2Pos(self.value);
+		local step = 0;
+		switch ev.button
+		  case SDL.BUTTON_LEFT
+			step = self.coarsestep;
+		  case SDL.BUTTON_RIGHT
+			step = self.finestep;
+		  case SDL.BUTTON_WHEELUP
+			pos += self.wheelstep;
+		  case SDL.BUTTON_WHEELDOWN
+			pos -= self.wheelstep;
+		  default
+			return;
+		if not self.horizontal
+			step = -step;
+		switch ev.button
+		  case SDL.BUTTON_LEFT, SDL.BUTTON_RIGHT
+			if ev[shx] < knob.rect[shx]
+				pos -= step;
+			else if ev[shx] > knob.rect[shx] + knob.rect[shw]
+				pos += step;
+			else
+				return;
+		SetFocus(knob);
+		self:MovePos(pos);
+	};
+
+	w.Redraw = procedure(self)
+	{
+		local th = self.theme;
+		local pth = self.parent.theme;
+		pth:PassiveBox(self.rect);
+		pth:PassiveDepression3D_OL(RT.Shrink(self.rect, 1));
+		if self.horizontal
+			th:PassiveHRidge(RT.Shrink(self.rect, 2));
+		else
+			th:PassiveVRidge(RT.Shrink(self.rect, 2));
+		self.knob.enabled = self.enabled;
+	};
+
+	local k, w.knob = Button(w, "");
+	k.slider = w;
+	k.graboffs = nil;
+	k.OnKeyDown = function(self, ev)
+	{
+		local s = self.slider;
+		if ev.mod & (SDL.KMOD_RSHIFT | SDL.KMOD_LSHIFT)
+			local step = s.finestep;
+		else
+			step = s.wheelstep;
+		switch ev.sym
+		  case SDL.KUP, SDL.KRIGHT
+			s:MovePos(s.position + step);
+		  case SDL.KDOWN, SDL.KLEFT
+			s:MovePos(s.position - step);
+		  case SDL.KHOME
+			s:MovePos(1);
+		  case SDL.KEND
+			s:MovePos(0);
+		  case SDL.KPAGEUP
+			s:MovePos(s.position + s.coarsestep);
+		  case SDL.KPAGEDOWN
+			s:MovePos(s.position - s.coarsestep);
+		  default
+			return false;
+		return true;
+	};
+	k.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		local shx = self.slider.hx;
+		switch ev.button
+		  case SDL.BUTTON_WHEELUP, SDL.BUTTON_WHEELDOWN
+		  {
+		  	self.slider:OnDown(ev);
+			return;
+		  }
+		self.graboffs = ev[shx] - self.rect[shx];
+		self.state = true;
+		SetCapture(self);
+		SetFocus(self);
+	};
+	k.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		SetCapture(nil);
+		self.state = false;
+		self.graboffs = nil;
+		self:Invalidate();
+	};	
+	k.OnMove = procedure(self, ev)
+	{
+		local shx = self.slider.hx;
+		local shw = self.slider.hw;
+		local s = self.slider;
+		local sr = s.rect;
+		if self.graboffs == nil
+			return;
+		local nx = ev[shx] - self.graboffs;
+		nx = sr[shx] + s.border >| nx |<
+				sr[shx] + sr[shw] - self.rect[shw] - s.border;
+		self.rect[shx] = nx;
+		s.position = (self.rect[shx] - sr[shx] - s.border) /
+				(sr[shw] - self.rect[shw] - 2 * s.border);
+		if not self.slider.horizontal
+			s.position = 1 - s.position;
+		s:MovePos(s.position);
+	};
+	k.Redraw = procedure (self)
+	{
+		local th = self.theme;
+		local r = RT.Shrink(self.rect, 1);
+		if not self.enabled
+		{
+			th:PassiveFatBlock3D_OL(r);
+			if self.parent.horizontal
+				th:PassiveVGrip(RT.Shrink(self.rect, 3));
+			else
+				th:PassiveHGrip(RT.Shrink(self.rect, 3));
+		}
+		else
+		{
+			if self.state
+			{
+				r.(w, h) += 1;
+				th:PassiveDepression3D_OL(r);
+				r.(w, h) -= 1;
+				r.(x, y) += 1;
+				if self.parent.horizontal
+					th:ActiveVGrip(RT.Shrink(r, 2));
+				else
+					th:ActiveHGrip(RT.Shrink(r, 2));
+				th:ActiveFatBlock3D_OL(r);
+				r.(w, h) -= 1;
+				th:ActiveBlock3D_OL(r);
+			}
+			else
+			{
+				th:ActiveFatBlock3D_OL(r);
+				if self.parent.horizontal
+					th:ActiveVGrip(RT.Shrink(r, 2));
+				else
+					th:ActiveHGrip(RT.Shrink(r, 2));
+			}
+		}
+		if focused == self
+			th:FocusBox(self.rect);
+		else
+			th:PassiveBox(self.rect);
+	};
+
+	w.Align = procedure(self)
+	{
+		local shx, local shy, local shw, local shh = self.(hx, hy, hw, hh);
+		local knob = self.knob;
+		local b = self.border;
+		knob.rect[shy] = self.rect[shy] + b;
+		knob.rect[shh] = self.rect[shh] - 2 * b;
+		knob.rect[shw] = (self.rect[shw] - 2 * b) * .1;
+		if self.rect[shh] < self.rect[shw]
+			knob.rect[shw] >|= knob.rect[shh];
+		local pos = self:Value2Pos(self.value);
+		if not self.horizontal
+			pos = 1 - pos;
+		knob.rect[shx] = self.rect[shx] + b +
+				pos * (self.rect[shw] - 2 * b - knob.rect[shw]);
+	};
+	w.Init = procedure(self)
+	{
+		self:OnChange(self.value);
+	};
+	return w;
+}
+
+
+// Horizontal slider
+export function HSlider(parent)[onchange, p2v, v2p]
+{
+	if specified p2v and not specified v2p
+		throw "A Pos2Value() callback must have a "
+				"matching Value2Pos() callback!";
+	if specified p2v and specified v2p
+		local w = _slider(parent, "x", "y", "w", "h", p2v, v2p);
+	else
+		w = _slider(parent, "x", "y", "w", "h");
+	if specified onchange
+	{
+		if onchange
+			w.OnChange = onchange;
+		else
+			w.OnChange = procedure(self, v) {};
+	}
+	else
+		w.OnChange = procedure(self, v) {};
+	return w;
+}
+
+
+// Vertical slider
+export function VSlider(parent)[onchange, p2v, v2p]
+{
+	if specified p2v and not specified v2p
+		throw "A Pos2Value() callback must have a "
+				"matching Value2Pos() callback!";
+	if specified p2v and specified v2p
+		local w = _slider(parent, "y", "x", "h", "w", p2v, v2p);
+	else
+		w = _slider(parent, "y", "x", "h", "w");
+	if specified onchange
+	{
+		if onchange
+			w.OnChange = onchange;
+		else
+			w.OnChange = procedure(self, v) {};
+	}
+	else
+		w.OnChange = procedure(self, v) {};
+	return w;
+}
+
+
+// Plotter widget
+export function Plotter(parent, min, max)[caption]
+{
+	local w = Widget(parent);
+	w.paper = SDL.MapColor(target, 48, 48, 48);
+	w.data = vector [];
+	w.min = min;
+	w.max = max;
+	if specified caption
+		w.caption = caption;
+	else
+		w.caption = nil;
+	w.Input = procedure(self, value)
+	{
+		self.data.+ value;
+		self:Invalidate();
+	};
+	w.Redraw = procedure(self)
+	{
+		local tg = target;
+		local r = clone self.rect;
+		self.theme:PassiveBox(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		self.theme:PassiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		SDL.FillRect(tg, clone r, self.paper);
+
+		local minx = r.x;
+		local miny = r.y;
+		local rw = r.w;
+		local rh = r.h;
+		local maxx = minx + rw;
+		local x0 = -self.min / (self.max - self.min);
+		x0 = minx >| round(x0 * rw + minx) |< maxx;
+
+		// Graph
+		if sizeof self.data
+		{
+			if sizeof self.data > rh
+				delete(self.data, 0, sizeof self.data - rh);
+			if sizeof self.data < rh
+				r.y += rh - sizeof self.data;
+			r.h = 1;
+			for local i = 0, sizeof self.data - 1
+			{
+				local x1 = (self.data[i] - self.min) /
+						(self.max - self.min);
+				x1 = minx >| round(x1 * rw + minx) |< maxx;
+				if x0 <= x1
+					r.(x, w) = x0, x1 - x0;
+				else
+					r.(x, w) = x1, x0 - x1;
+				SDL.FillRect(tg, clone r, self.theme.colors[CMK]);
+				r.y += 1;
+			}
+		}
+
+		// Zero level
+		if x0 > minx and x0 < maxx
+		{
+			r.x = x0;
+			r.y = miny;
+			r.w = 1;
+			r.h = rh;
+			SDL.FillRect(tg, r, self.theme.colors[CAHL]);
+		}
+
+		// Caption and values
+		local f = self.font;
+		local ty = miny + 2;
+		if self.caption
+			f:PutString(self.caption,
+					minx + (rw - f:Width(self.caption)) / 2,
+					ty, tg);
+		f:PutString((string)self.min, minx + 3, ty, tg);
+		local ms = (string)self.max;
+		f:PutString(ms, maxx - f:Width(ms) - 2, ty, tg);
+	};
+	return w;
+}
+
+
+// Lissajous display
+export function Lissajous(parent, history)
+{
+	local w = Widget(parent);
+	w.paper = SDL.MapColor(target, 48, 48, 48);
+	w.xdata = vector [];
+	w.ydata = vector [];
+	w.xscale = 1;
+	w.yscale = 1;
+	w.history = history;
+	w.Input = procedure(self, xv, yv)
+	{
+		self.xdata.+ xv;
+		self.ydata.+ yv;
+		self:Invalidate();
+	};
+	w.Redraw = procedure(self)
+	{
+		local tg = target;
+		local r = clone self.rect;
+		self.theme:PassiveBox(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		self.theme:PassiveDepression3D_OL(r);
+		r.(x, y) += 1;
+		r.(w, h) -= 2;
+		SDL.FillRect(tg, clone r, self.paper);
+		if sizeof self.xdata
+		{
+			local xd, local yd = self.(xdata, ydata);
+			if sizeof xd > self.history
+			{
+				local cnt = sizeof xd - self.history;
+				delete(xd, 0, cnt);
+				delete(yd, 0, cnt);
+			}
+			local xs, local ys = 1;
+			if not self.xscale or not self.yscale
+			{
+				local xa, local ya = 0;
+				for local i = 0, sizeof xd - 1
+				{
+					xa >|= abs(xd[i]);
+					ya >|= abs(yd[i]);
+				}
+				if xa and ya
+					xs, ys = (r.w / xa, r.h / ya) / 2;
+				else
+					xs, ys = 1;
+			}
+			if self.xscale
+				xs = self.xscale * r.w / 2;
+			if self.yscale
+				ys = self.yscale * r.h / 2;
+			local xc, local yc = r.(x, y) + r.(w, h) / 2;
+			local lock = SDL.LockSurface(target);
+			local c = self.theme.colors[CMK];
+			for local i = 0, sizeof xd - 1
+			{
+				local x = xd[i] * xs + xc;
+				local y = yd[i] * ys + yc;
+				SDL.Plot(lock, c, x, y);
+			}
+		}
+	};
+	return w;
+}
+
+
+// Selector
+//	Presents a group of buttons or similar that allow various kinds of
+//	selection. Also supports "special" items, such as ordinary widgets
+//	(which will only be presented - not managed by the selection logic) and
+//	submenu buttons.
+//
+//	type
+//		"command"
+//			Menu with plain text items. No indication of any
+//			currently selected item. Selecting an item is expected
+//			to result in an instant action.
+//		"radio"
+//			Menu with text items and selection indicators. Exactly
+//			one item can be selected at any one time.
+//		"toggle"
+//			Menu with text items and status indicators that can be
+//			toggled on and off.
+//
+//	onchange
+//		Callback for selection notification. The callback's value
+//		argument will hold the value field from the selected item.
+//		   In the case of toggle selectors, this callback has an
+//		additional 'state' argument for passing the new state of the
+//		toggled item.
+//
+//	style	Drawing style for menu items added by AddItems(). Identical to
+//		'style' of Button(), except that the default for this one is
+//		defined by SelectorItemStyle of the theme.
+//
+// Notes on alignment:
+//	A Selector uses "ratio" alignment with colrowratio = 0 by default,
+//	meaning items will be stacked vertically regardless of number. Of
+//	course, alignment can be configured like for any other widget if the
+//	default is unsuitable.
+//	   A Selector sets it's logicrect.h to the current number of children
+//	(including both items and other widgets!), which means that by setting
+//	the container's alignment style to "ratio" and "childsize" to true,
+//	items will be the same size when stacking multiple Selectors with
+//	different numbers of items.
+//
+export function Selector(parent, type)[onchange, style]
+{
+	local w = Panel(parent, "thin");
+	w.type = type;
+	w.value = nil;
+	w.silent = false;
+	w.colrowratio = 0;
+	w.Redraw = procedure(s)
+	{
+		if s.enabled
+			s.theme:ActiveBlock3D(s.rect);
+		else
+			s.theme:PassiveBlock3D(s.rect);
+	};
+	if specified onchange
+		w.OnChange = onchange;
+	else
+		w.OnChange = procedure(self, value)[state] {};
+	if specified style
+		w.itemstyle = style;
+	else
+		w.itemstyle = w.theme.SelectorItemStyle;
+	switch type
+	  case "command", "radio", "toggle"
+		;
+	  default
+		throw "Unknown Selector type " + type + "!\n";
+	w.SilentSelect = procedure(self, widget)[state]
+	{
+		if self.type == "command"
+			return;
+		if specified state
+			local st = state;
+		else
+			st = true;
+		self.value = widget.value;
+		self.silent = true;
+		// This is so we can "pop" a radio-button without also popping
+		// all the others. Needed for AddItemsState() to work properly.
+		if self.type == "radio" and st
+			for local i = 0, sizeof self.widgets - 1
+				self.widgets[i]:Set(false);
+		widget:Set(st);
+		self.silent = false;
+	};
+	w.Select = procedure(self, widget)[state]
+	{
+		if specified state
+			self:SilentSelect(widget, state);
+		else
+			self:SilentSelect(widget, true);
+		switch self.type
+		  case "command", "radio"
+			self:OnChange(widget.value);
+		  case "toggle"
+			self:OnChange(widget.value, widget.state);
+	};
+	w.SelectByValue = procedure(self, value)[state]
+	{
+		local widget = nil;
+		local wg = self.widgets;
+		for local i = 0, sizeof wg - 1
+			if wg[i].value == value
+			{
+				widget = wg[i];
+				break;
+			}
+		if not widget
+			return;
+		if specified state
+			self:SilentSelect(widget, state);
+		else
+			self:SilentSelect(widget, true);
+		switch self.type
+		  case "command", "radio"
+			self:OnChange(widget.value);
+		  case "toggle"
+			self:OnChange(widget.value, widget.state);
+	};
+	// Add menu items, where the caption fields are used for labeling the
+	// items in the visual representation, and the value field is what is
+	// copied into .value of the widget when an item is selected.
+	//    Items are added in unselected/false state, or in the case of
+	// AddItemsState(), SilentSelect()ed to the state indicated by 'state'.
+	w.AddItemsState = procedure(self)<caption, value, state>
+	{
+		local ic = Button;
+		switch self.type
+		  case "radio", "toggle"
+			ic = Toggle;
+		for local i = 0, tuples - 1
+		{
+			if self.type == "toggle"
+				local onclick = procedure(s)
+				{
+					if not s.parent.silent
+						s.parent:Select(s, s.state);
+				};
+			else
+				onclick = procedure(s)
+				{
+					if not s.parent.silent
+						s.parent:Select(s);
+				};
+			local it = ic(self, caption[i], onclick,
+					self.itemstyle);
+			it.value = value[i];
+			self:SilentSelect(it, state[i]);
+		}
+		self.logicrect.h = sizeof self.widgets;
+		self:Realign();
+	};
+	w.AddItems = procedure(self)<caption, value>
+	{
+		for local i = 0, tuples - 1
+			self:AddItemsState(caption[i], value[i], false);
+	};
+/* TODO:
+	w.AddSubMenu = function(self, caption, selector)
+	{
+	};
+*/
+	return w;
+}
+
+
+// DragHandle
+//	Presents a grip that the user can drag around to control two parameters
+//	at once. Modifiers can be used to restrict movement in various ways.
+//
+// NOTE:
+//	The hot-spot is always in the center of the handle!
+//
+export function DragHandle(parent, x, y, size)[ondrag, onclick, style]
+{
+	local w = Widget(parent);
+	w.size = size;
+	w.state = false;
+	w.button = 0;
+	w.(x0, y0) = nil;
+	if specified ondrag
+		w.OnDrag = ondrag;
+	else
+		w.OnDrag = nil;
+	if specified onclick
+		w.OnClick = onclick;
+	else
+		w.OnClick = nil;
+	if specified style
+		w.style = style;
+	else
+		w.style = "normal";
+	w.Move = procedure(self, x, y)[report]
+	{
+		local s = self.size;
+		local r = SDL.Rect [x - s / 2, y - s / 2, s, s];
+		self:SetRect(r);
+		if specified report and self.OnDrag
+			self:OnDrag(r.x + r.w / 2, r.y + r.h / 2);
+	};
+	w.MoveRel = procedure(self, dx, dy)[report]
+	{
+		local r = clone self.logicrect;
+		r.(x, y) += dx, dy;
+		self:SetRect(r);
+		if specified report and self.OnDrag
+			self:OnDrag(r.x + r.w / 2, r.y + r.h / 2);
+	};
+	w.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		self.state = true;
+		self.button = ev.button;
+		SetCapture(self);
+		SetFocus(self);
+		self.(x0, y0) = ev.(x, y) - self.logicrect.(x, y);
+		self:BringToFront();
+	};
+	w.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		SetCapture(nil);
+		self.state = false;
+		self:Invalidate();
+		if self:Find(ev.(x, y)) == self and self.OnClick
+			self:OnClick();
+		self.button = 0;
+		self.(x0, y0) = nil;
+	};
+	w.OnMove = procedure(self, ev)
+	{
+		if self.x0 == nil
+			return;
+		local r = clone self.logicrect;
+		r.x = ev.x - self.x0;
+		r.y = ev.y - self.y0;
+		self:SetRect(r);
+		if self.OnDrag
+			self:OnDrag(r.x + r.w / 2, r.y + r.h / 2);
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		self.button = 0;
+		if ev.mod & (SDL.KMOD_RSHIFT | SDL.KMOD_LSHIFT)
+			local step = 100;
+		else if ev.mod & (SDL.KMOD_RCTRL | SDL.KMOD_LCTRL)
+			step = 1;
+		else
+			step = 10;
+		switch ev.sym
+		  case SDL.KRETURN, SDL.KKP_ENTER, SDL.KSPACE
+			self:OnClick();
+		  case SDL.KUP
+			self:MoveRel(0, -step, true);
+		  case SDL.KDOWN
+			self:MoveRel(0, step, true);
+		  case SDL.KRIGHT
+			self:MoveRel(step, 0, true);
+		  case SDL.KLEFT
+			self:MoveRel(-step, 0, true);
+		  default
+			return false;
+		return true;
+	};
+	w.Redraw = procedure(self)
+	{
+		local th = self.theme;
+		local r = self.rect;
+		if self == focused
+			th:FocusBar(r);
+		else
+			th:FocusBox(r);
+	};
+	w:Move(x, y);
+	return w;
+}
+
+
+// DragBar
+//	Presents a "grip area" that allows the user to drag the DragBar's root
+//	widget around on the screen.
+//
+//TODO: Dragging threshold! (OnClick() doesn't make much sense without it...)
+//
+export function DragBar(parent)[caption, ondrag, onclick, style]
+{
+	local w = Widget(parent);
+	w.state = false;
+	w.button = 0;
+	w.(x0, y0) = nil;
+	if specified caption
+		w.caption = caption;
+	else
+		w.caption = nil;
+	if specified ondrag
+		w.OnDrag = ondrag;
+	else
+		w.OnDrag = nil;
+	if specified onclick
+		w.OnClick = onclick;
+	else
+		w.OnClick = nil;
+	if specified style
+		w.style = style;
+	else
+		w.style = "normal";
+	w.OnDown = procedure(self, ev)
+	{
+		if(captured == self)
+			return;
+		self.state = true;
+		self.button = ev.button;
+		SetCapture(self);
+		SetFocus(self);
+		self.(x0, y0) = ev.(x, y);
+		self.r0 = clone self.root.rect;
+		self.root:BringToFront();
+	};
+	w.OnUp = procedure(self, ev)
+	{
+		if(captured != self)
+			return;
+		SetCapture(nil);
+		self.state = false;
+		self:Invalidate();
+//		if self:Find(ev.(x, y)) == self and self.OnClick
+		if self.x0 == ev.x and self.y0 == ev.y and self.OnClick
+			self:OnClick();
+		self.button = 0;
+		self.(x0, y0) = nil;
+	};
+	w.OnMove = procedure(self, ev)
+	{
+		if self.x0 == nil
+			return;
+		local r = clone self.r0;
+		r.x += ev.x - self.x0;
+		r.y += ev.y - self.y0;
+		self.root:SetRect(r);
+		if self.OnDrag
+			self:OnDrag();
+	};
+	w.OnKeyDown = function(self, ev)
+	{
+		self.button = 0;
+		switch ev.sym
+		  case SDL.KRETURN, SDL.KKP_ENTER, SDL.KSPACE
+		  {
+			self:OnClick();
+			return true;
+		  }
+		return false;
+	};
+	w.SetCaption = procedure(self, c)
+	{
+		self.caption = (string)c;
+		self:Invalidate();
+	};
+	w.Redraw = procedure(self)
+	{
+		local th = self.theme;
+		local r = self.rect;
+
+		// Focus or edges
+		if focused == self
+			th:FocusBox(r);
+		else if self.state
+			// Might happen with 'canfocus'...
+			th:ActiveDepression3D_OL(r);
+		else
+			th:ActiveBlock3D_OL(r);
+
+		switch self.style
+		  case "flat"
+		  {
+			// Flat face
+			r = RT.Shrink(r, 1);
+			if self.enabled
+				th:ActiveBar(r);
+			else
+				th:PassiveBar(r);
+		  }
+		  case "normal"
+		  {
+			// Face with grip ridges
+			r = RT.Shrink(r, 1);
+			if self.enabled
+			{
+				th:ActiveBox(r);
+				r = RT.Shrink(r, 1);
+				th:ActiveHGrip(r);
+			}
+			else
+			{
+				th:PassiveBox(r);
+				r = RT.Shrink(r, 1);
+				th:PassiveHGrip(r);
+			}
+		  }
+
+		// Caption, if any
+		if self.caption
+		{
+			local tx, local ty = self.rect.(x, y);
+			tx += (self.rect.w - self.font:Width(self.caption)) / 2;
+			ty += (self.rect.h - self.font.height) / 2;
+			self.font:PutString(self.caption, tx, ty, target,
+					self.rect.x + self.rect.w);
+		}
+	};
+	return w;
+}
+
+
+// Labeled numeric editor/display
+export function NumEditor(parent, caption, init, onchange)
+{
+	local w = Widget(parent);
+	w.colrowratio = -.3;
+	w.OnChange = onchange;
+	if caption
+		Label(w, caption);
+	w.value = init;
+	w.ed = LineEditor(w, (string)w.value, procedure(self, text)
+			{
+				local p = self.parent;
+				p.value = (real)text;
+				p:OnChange(p.value);
+			});
+	w.SilentSetValue = procedure(self, v)
+	{
+		self.value = v;
+		self.ed:SilentSetText((string)v);
+	};
+	w.SetValue = procedure(self, v)
+	{
+		self.value = v;
+		self.ed:SetText((string)v);
+	};
+	return w;
+}
+
+
+// Control with label, value text and slider
+export function Control(parent, caption, min, max, gran, init, onchange)[style]
+{
+	local w = Widget(parent):SetAlign("grid", 3, 1, [1, 3, 1]);
+	if specified style
+		local st = style;
+	else
+		st = "wide";
+	switch st
+	  case "tall"
+		w.colrowratio = 0;
+	  case "wide"
+		w.colrowratio = 1000;
+	w.OnChange = onchange;
+	Label(w, caption);
+	procedure numedit_onchange(ed, val)
+	{
+		ed.parent:Move(val);
+	}
+	if st == "tall"
+		w.vl = NumEditor(w, nil, init, numedit_onchange);
+	w.s = HSlider(w, procedure(self, v) { self.parent:OnChange(v); });
+	w.SetRound = procedure(self, r)
+	{
+		self.s.round = r;
+	};
+	w:SetRound(gran);
+	if st == "wide"
+		w.vl = NumEditor(w, nil, init, numedit_onchange);
+
+	// Hook into SilentMovePos to update the display label
+	w.s.SilentMovePos2 = w.s.SilentMovePos;
+	w.s.SilentMovePos = procedure(self, _v)
+			{
+				local v = self:Pos2Value(_v);
+				v = round2(v, self.round);
+				v = self:Value2Pos(v);
+				self:SilentMovePos2(v);
+				self.parent.vl:SilentSetValue(self.value);
+			};
+
+	// Forward the Slider API
+	w.SilentMovePos = procedure(self, pos)
+			{ self.s:SilentMovePos(pos); };
+	w.MovePos = procedure(self, pos)
+			{ self.s:MovePos(pos); };
+	w.SilentMove = procedure(self, value)
+			{ self.s:SilentMove(value); };
+	w.Move = procedure(self, value)
+			{ self.s:Move(value); };
+	w.SetStep = procedure(self, coarse, wheel, fine)
+			{ self.s:SetStep(coarse, wheel, fine); };
+	w.SetStepPos = procedure(self, coarse, wheel, fine)
+			{ self.s:SetStepPos(coarse, wheel, fine); };
+
+	// Set range and initial value
+	w.s:SetRange(min, max);
+	w.s:SilentMove(init);
+
+	return w;
+}
+
+
+// Alert box dialog
+export function AlertBox(theme, title, message)<caption, callback>
+{
+	local r = SDL.Rect [0, 0, 200, 100];
+	r.(x, y) = (target.(w, h) - r.(w,h)) / 2;
+	local win = Window(r);
+	if theme
+		win:ApplyTheme(theme);
+	win:SetAlign("grid", 1, 3, nil, vector [2, 7, 3]);
+	DragBar(win, title);
+	Label(win, message);
+	local p = Panel(win, "none");
+	p:SetAlign("grid", 1 >| tuples, 1);
+	local buttoncb = procedure(self)
+			{
+				if self.actioncb
+					self:actioncb();
+				self.dialog:Delete();
+			};
+	local b = nil;
+	for local i = 0, tuples - 1
+	{
+		b = Button(p, caption[i], buttoncb);
+		b.actioncb = callback[i];
+		b.dialog = win;
+	}
+	if not b
+	{
+		b = Button(p, "Ok", buttoncb);
+		b.actioncb = nil;
+		b.dialog = win;
+	}
+	SetModal(win);
+	SetFocus(b);
+	return win;
+}
+
+
+// File requester dialog
+export function FileRequest(theme, title, filename, extension)<caption, callback>
+{
+	local r = SDL.Rect [0, 0, 200, 100];
+	r.(x, y) = (target.(w, h) - r.(w,h)) / 2;
+	local win = Window(r);
+	if theme
+		win:ApplyTheme(theme);
+	win:SetAlign("grid", 1, 5, nil, vector [2, 2, 3, 2, 3]);
+	DragBar(win, title);
+	Label(win, "File name");
+	win.filename = filename;
+	win.nameeditor = LineEditor(win, filename);
+	Panel(win, "flat");
+	local p = Panel(win, "none");
+	p:SetAlign("grid", 1 >| tuples, 1);
+	local buttoncb = procedure(self)
+			{
+				self.dialog.filename = self.dialog.nameeditor.text;
+				if self.actioncb
+					self:actioncb();
+				self.dialog:Delete();
+			};
+	local b = nil;
+	for local i = 0, tuples - 1
+	{
+		b = Button(p, caption[i], buttoncb);
+		b.actioncb = callback[i];
+		b.dialog = win;
+	}
+	if not b
+	{
+		b = Button(p, "Ok", buttoncb);
+		b.actioncb = nil;
+		b.dialog = win;
+	}
+	SetModal(win);
+	SetFocus(b);
+	return win;
+}
+
+

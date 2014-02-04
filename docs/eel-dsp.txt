@@ -1,0 +1,191 @@
+
+---------------------------------------------------------------------
+           EEL DSP - A DSP Oriented Add-On Library For EEL
+---------------------------------------------------------------------
+         Copyright (C) 2006 David Olofson <david@olofson.net>
+
+
+Introduction
+------------
+The EEL DSP module adds fast native code implementations of common
+digital signal processing operations such as interpolation, filtering,
+resampling, sums, averages, polynomial evaluation, FFTs and tools for
+operating on FFT data.
+
+
+Statistics
+---------------------------------------------------------------------
+function sum(v)[first, last, stride];
+function average(v)[first, last, stride];
+	Calculate the sum or average of the specified values in 'v',
+	where 'first' and 'last' specifies the range, and 'stride'
+	defines the number of indices to step to get to the next
+	value.
+	   'first', 'last' and 'stride' default to 0, (sizeof v - 1)
+	and 1, respectively.
+
+---------------------------------------------------------------------
+
+
+Function renderers
+---------------------------------------------------------------------
+function polynomial(size)<coeffs>;
+procedure add_polynomial(v)<coeffs>;
+	Calculates a polynomial using the specified coefficients,
+	using the formula
+		v[i] = coeffs[0] + coeffs[1] * x +
+				coeffs[2] * x ** 2 +
+				coeffs[3] * x ** 3 + ...
+	where 'i' is the result index and 'x' is an iterator that
+	tracks 'i' so that [0, sizeof v] in 'i' corresponds to [0, 1]
+	in 'x'. (That is, x never reaches 1 because 'i' stops at
+	(sizeof v - 1).)
+
+---------------------------------------------------------------------
+
+
+FFT
+---------------------------------------------------------------------
+function fft(tdata);
+	Complex forward (time to frequency) Fast Fourier Transform.
+	NOT YET IMPLEMENTED!
+
+---------------------------------------------------------------------
+function ifft(fdata);
+	Complex inverse (frequency to time) Fast Fourier Transform.
+	NOT YET IMPLEMENTED!
+
+---------------------------------------------------------------------
+function fft_real(tdata);
+	Real forward (time to frequency) Fast Fourier Transform. Takes
+	an even number of real valued time domain samples (vector
+	'tdata') and returns the FFT in the form of a vector of
+	complex values, ranging from DC (index 0 and 1) through
+	Nyqvist (last two indices).
+	   The returned vector is two elements longer than the input
+	vector, and the contents is alternating real (even indices)
+	and imaginary (odd indices) components. Scaling is performed,
+	to maintain unity magnitude in all bins.
+	   This function is the inverse of ifft_real(). Note that as
+	it is not possible to detect phase at DC and Nyqvist, the
+	imaginary parts of the corresponding bins will always be zero.
+
+---------------------------------------------------------------------
+function ifft_real(fdata);
+	Real inverse (frequency to time) Fast Fourier Transform. Takes
+	an odd number of complex values (that is, an even size vector
+	with an odd number of pairs of values), ranging from DC (index
+	0 and 1) through Nyqvist (last two indices), and returns a
+	vector of real valued time domain samples.
+	   The returned vector is two values shorter than the input
+	vector. Scaling is performed to maintain unity magnitude for
+	all bins.
+	   This function is the inverse of fft_real(), except of
+	course, that any phase information in the DC and Nyqvist bins
+	is lost.
+
+---------------------------------------------------------------------
+function fft_cleanup;
+	Release any internal FFT support data that has been calculated
+	and cached by previous calls to fft(), ifft(), fft_real() or
+	ifft_real().
+
+---------------------------------------------------------------------
+function c_abs(v, b);
+TODO: function c_abs(v);
+	Calculates the absolute (magnitude) of FFT bin 'b' in the
+	frequency domain data 'v'. The actual calculation performed is
+		sqrt(re ** 2 + im ** 2)
+	where 're' is v[b*2] and 'im' is v[b*2 + 1].
+	   This function will throw appropriate exceptions when trying
+	to index bins outside of 'v'.
+TODO:	   The c_abs(v) version returns a vector containing the
+	absolutes of all complex pairs in 'v'.
+
+---------------------------------------------------------------------
+function c_arg(v, b);
+TODO: function c_arg(v);
+	Calculates the argument (phase angle in radians) of FFT bin
+	'b' in the frequency domain data 'v'. The actual calculation
+	performed is
+		atan2(im, re)
+	where 're' is v[b*2], 'im' is v[b*2 + 1], and atan2() is the
+	standard C two argument arctangent function that considers
+	both arguments in order to determine the quadrant.
+	   This function will throw appropriate exceptions when trying
+	to index bins outside of 'v'.
+TODO:	   The c_arg(v) version returns a vector containing the
+	arguments of all complex pairs in 'v'.
+
+---------------------------------------------------------------------
+TODO: function c2p(cv);
+	Returns a vector containing the polar conversion of all
+	complex numbers in 'cv'.
+
+---------------------------------------------------------------------
+TODO: function p2c(pv);
+	Returns a vector containing the complex conversion of all
+	polar numbers in 'pv'.
+
+---------------------------------------------------------------------
+procedure c_set(v, b, re, im);
+procedure c_add(v, b, re, im);
+	c_set() sets bin 'b' in FFT frequency domain data 'v' to
+	(re + i*im). c_add() instead adds 're' and 'im' to the
+	existing values.
+	   Negative bin indices ('b') are clamped to 0, whereas high
+	indices are ignored, making no change to 'v'.
+
+---------------------------------------------------------------------
+procedure c_set_polar(v, b, mag, ph);
+procedure c_add_polar(v, b, mag, ph);
+	c_set_polar() sets bin 'b' in FFT frequency domain data 'v' to
+	the specified magnitude and phase, by calculating re and im
+	like so:
+		re:	v[b * 2] = cos(ph) * mag;
+		im:	v[b * 2 + 1] = sin(ph) * mag;
+	c_add_polar() instead adds the calculated 're' and 'im' to the
+	existing values.
+	   Negative bin indices ('b') are clamped to 0, whereas high
+	indices are ignored, making no change to 'v'.
+
+---------------------------------------------------------------------
+procedure c_add_i(v, b, re, im);
+procedure c_add_polar_i(v, b, mag, ph);
+	Similar to c_add_polar() and c_add() respectively, but these
+	procedures implement "phase correct" linear interpolation
+	across the two bins closest to the real valued index 'b'.
+	They are equivalent to the following EEL procedures:
+		procedure add_i(v, b, re, im)
+		{
+			local i = (integer)b;
+			local frac = b - i;
+			if i & 1
+				re, im = -re, -im;
+			dsp.c_add(v, i, re * (1 - frac), im * (1 - frac));
+			dsp.c_add(v, i + 1, -re * frac, -im * frac);
+		}
+		procedure add_polar_i(v, b, mag, ph)
+		{
+			local i = (integer)b;
+			local frac = b - i;
+			if i & 1
+				mag = -mag;
+			c_add_polar(v, i, mag * (1 - frac), ph);
+			c_add_polar(v, i + 1, -mag * frac, ph);
+		}
+	These procedures are primarily intended for "rendering"
+	oscillators in the frequency domain in FFT-1 synthesis. The
+	interpolation and the inversion of odd bins eliminates the
+	"thuds" that occur in frequency sweeps when using only the
+	nearest FFT bin.
+	   The c_add_polar_i() variant is suitable when the partials
+	to render are expressed as phase accumulators, but has the
+	disadvantage that it needs to calculate the sine and cosine of
+	the phase. The slightly faster c_add_i() instead takes a
+	complex value (re and im) defining the partial phase and
+	magnitude. Instead of using trig functions, these values can
+	be generated by "complex rotation" oscillators, which can be
+	a lot faster where incremental algorithms are appropriate.
+
+---------------------------------------------------------------------

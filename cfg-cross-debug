@@ -1,0 +1,2 @@
+#!/bin/sh
+CFLAGS="-O2 -g" cross-configure --disable-static --enable-debug --enable-epm

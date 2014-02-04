@@ -1,0 +1,50 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("String tests:\n");
+
+	print("\nString concatenation:\n");
+	local s1 = "two";
+	local s2 = "words";
+	local s3 = s1 + " " + s2;
+	print("   s1 = \"", s1, "\"\n");
+	print("   s2 = \"", s2, "\"\n");
+	print("   s3 = \"", s3, "\"\n");
+	if s3 != "two words"
+		throw "'s3' should equal \"two words\"!";
+
+	print("\nCasting to string:\n");
+	s1 = "one(" + (string)1 + ")";
+	print("   s1 = \"", s1, "\"\n");
+	if s1 != "one(1)"
+		throw "'s1' should equal \"one(1)\"!";
+
+	print("\nUsing the generic constructor:\n");
+	s1 = string [65, 66, 67, 68];
+	print("   s1 = \"", s1, "\"\n");
+	if s1 != "ABCD"
+		throw "'s1' should equal \"ABCD\"!";
+
+	print("\nUsing vector_u8 as a dynamic string:\n");
+	local v = vector_u8 [];
+	for local c = 'a', 'z'
+		v[sizeof v] = c;
+	print("   (string)v = \"", (string)v, "\"\n");
+	v = v #+ ('A' - 'a');
+	print("   (string)v = \"", (string)v, "\"\n");
+
+	print("\nCopying parts of a string:\n");
+	s1 = "We only want >this part< of the string.";
+	print("   s1 = \"", s1, "\"\n");
+	s2 = copy(s1, 13, 11);
+	print("   s2 = \"", s2, "\"\n");
+	if s2 != ">this part<"
+		throw "'s2' should equal \">this part<\"!";
+
+	print("\nString tests done.\n");
+	return 0;
+}

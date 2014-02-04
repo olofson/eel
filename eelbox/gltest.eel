@@ -1,0 +1,190 @@
+///////////////////////////////////////////////
+// gltest.eel - EELBox OpenGL Test
+// Copyright (C) 2010 David Olofson
+//
+// Based on NeHe tutorial code by Jeff Molofee
+///////////////////////////////////////////////
+
+import "SDL" as SDL;
+import "OpenGL";
+
+
+procedure resize(w, h)
+{
+	Viewport(0, 0, w, h);
+
+	MatrixMode(PROJECTION);
+	LoadIdentity();
+	Perspective(45, w / (1 >| h) , .1, 100);
+
+	MatrixMode(MODELVIEW);
+	LoadIdentity();
+}
+
+
+static rtri = 0;
+static rquad = 0;
+
+procedure draw
+{
+	// Clear The Screen And The Depth Buffer
+	Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+
+	// Move Left 1.5 Units And Into The Screen 6.0
+	LoadIdentity();
+	Translate(-1.5, 0, -6);
+
+	// Rotate The Triangle On The Y axis ( NEW )
+	Rotate(rtri, 0, 1, 0);
+
+	Begin(TRIANGLES);	// Drawing Using Triangles
+		Color(  1,  0,  0);	// Red
+		Vertex( 0,  1,  0);	// Top Of Triangle (Front)
+		Color(  0,  1,  0);	// Green
+		Vertex(-1, -1,  1);	// Left Of Triangle (Front)
+		Color(  0,  0,  1);	// Blue
+		Vertex( 1, -1,  1);	// Right Of Triangle (Front)
+
+		Color(  1,  0,  0);	// Red
+		Vertex( 0,  1,  0);	// Top Of Triangle (Right)
+		Color(  0,  0,  1);	// Blue
+		Vertex( 1, -1,  1);	// Left Of Triangle (Right)
+		Color(  0,  1,  0);	// Green
+		Vertex( 1, -1, -1);	// Right Of Triangle (Right)
+
+		Color(  1,  0,  0);	// Red
+		Vertex( 0,  1,  0);	// Top Of Triangle (Back)
+		Color(  0,  1,  0);	// Green
+		Vertex( 1, -1, -1);	// Left Of Triangle (Back)
+		Color(  0,  0,  1);	// Blue
+		Vertex(-1, -1, -1);	// Right Of Triangle (Back)
+
+		Color(  1,  0,  0);	// Red
+		Vertex( 0,  1,  0);	// Top Of Triangle (Left)
+		Color(  0,  0,  1);	// Blue
+		Vertex(-1, -1, -1);	// Left Of Triangle (Left)
+		Color(  0,  1,  0);	// Green
+		Vertex(-1, -1,  1);	// Right Of Triangle (Left)
+	End();			// Finished Drawing The Triangle
+
+	// Move Right 3 Units
+	LoadIdentity();
+	Translate(1.5, 0, -6);
+
+	// Rotate The Quad On The X axis ( NEW )
+	Rotate(rquad, 1, 0, 0);
+
+	// Set The Color To Blue One Time Only
+	Color(.5, .5, 1);
+
+	Begin(QUADS);		// Draw A Quad
+		Color(  0,  1,  0);	// Set The Color To Green
+		Vertex( 1,  1, -1);	// Top Right Of The Quad (Top)
+		Vertex(-1,  1, -1);	// Top Left Of The Quad (Top)
+		Vertex(-1,  1,  1);	// Bottom Left Of The Quad (Top)
+		Vertex( 1,  1,  1);	// Bottom Right Of The Quad (Top)
+
+		Color(  1, .5,  0);	// Set The Color To Orange
+		Vertex( 1, -1,  1);	// Top Right Of The Quad (Botm)
+		Vertex(-1, -1,  1);	// Top Left Of The Quad (Botm)
+		Vertex(-1, -1, -1);	// Bottom Left Of The Quad (Botm)
+		Vertex( 1, -1, -1);	// Bottom Right Of The Quad (Botm)
+
+		Color(  1,  0,  0);	// Set The Color To Red
+		Vertex( 1,  1,  1);	// Top Right Of The Quad (Front)
+		Vertex(-1,  1,  1);	// Top Left Of The Quad (Front)
+		Vertex(-1, -1,  1);	// Bottom Left Of The Quad (Front)
+		Vertex( 1, -1,  1);	// Bottom Right Of The Quad (Front)
+
+		Color(  1,  1,  0);	// Set The Color To Yellow
+		Vertex( 1, -1, -1);	// Bottom Left Of The Quad (Back)
+		Vertex(-1, -1, -1);	// Bottom Right Of The Quad (Back)
+		Vertex(-1,  1, -1);	// Top Right Of The Quad (Back)
+		Vertex( 1,  1, -1);	// Top Left Of The Quad (Back)
+
+		Color(  0,  0,  1);	// Set The Color To Blue
+		Vertex(-1,  1,  1);	// Top Right Of The Quad (Left)
+		Vertex(-1,  1, -1);	// Top Left Of The Quad (Left)
+		Vertex(-1, -1, -1);	// Bottom Left Of The Quad (Left)
+		Vertex(-1, -1,  1);	// Bottom Right Of The Quad (Left)
+
+		Color(  1,  0,  1);	// Set The Color To Violet
+		Vertex( 1,  1, -1);	// Top Right Of The Quad (Right)
+		Vertex( 1,  1,  1);	// Top Left Of The Quad (Right)
+		Vertex( 1, -1,  1);	// Bottom Left Of The Quad (Right)
+		Vertex( 1, -1, -1);	// Bottom Right Of The Quad (Right)
+	End();			// Done Drawing The Quad
+}
+
+
+export function main<args>
+{
+	local bpp = 0;
+	local flags = SDL.OPENGL | SDL.RESIZABLE;
+	Load();
+	SetAttribute(DOUBLEBUFFER, true);
+	SetAttribute(SWAP_CONTROL, false);
+	local screen = SDL.SetVideoMode(640, 480, bpp, flags);
+	SDL.SetCaption("EELBox OpenGL Test", args[0]);
+
+	ShadeModel(SMOOTH);
+	ClearColor(0, 0, 0, 0);
+	ClearDepth(1);
+	Enable(DEPTH_TEST);
+	DepthFunc(LEQUAL);
+	Hint(PERSPECTIVE_CORRECTION_HINT, NICEST);
+
+	resize(screen.(w, h));
+
+	local lt, local t0 = SDL.GetTicks();
+	local frames = 0;
+	while true
+	mainloop:
+	{
+		// Handle events
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYUP
+				if ev.sym == SDL.KESCAPE
+					break mainloop;
+			  case SDL.QUIT
+				break mainloop;
+			  case SDL.VIDEORESIZE
+			  {
+				screen = SDL.SetVideoMode(ev.w, ev.h, bpp,
+						flags);
+				resize(screen.(w, h));
+			  }
+		}
+
+		draw();
+
+		// Make changes visible
+		SwapBuffers();
+
+		// Frame rate calculation
+		frames += 1;
+		local t = SDL.GetTicks();
+		local dt = .001 * (t - lt);
+		lt = t;
+		if(t - t0 >= 5000)
+		{
+			local s = (t - t0) / 1000.;
+			print(frames, " frames in ", s, " s ==> ", frames / s,
+					" fps\n");
+			t0 = t;
+			frames = 0;
+		}
+		rtri += 20 * dt;
+		rquad -= 150 * dt;
+
+		// ...in case we don't have retrace sync
+		SDL.Delay(0);
+	}
+
+	return 0;
+}

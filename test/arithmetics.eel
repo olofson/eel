@@ -1,0 +1,99 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2002-2005 David Olofson
+/////////////////////////////////////////////
+
+procedure verify(name, val, correct)
+{
+	print("  ", name, " = ", val," ; should be ", correct);
+	if(val == correct)
+		print(" PASS\n");
+	else
+	{
+		print(" FAIL\n");
+		throw "Incorrect result!";
+	}
+}
+
+/////////////////////////////////////////////////////////
+// NOTE:
+//	Some of the expressions below have deliberately
+//	had whitespace stripped from them, to verify
+//	that the lexer manages to extract the operators.
+/////////////////////////////////////////////////////////
+export function main<args>
+{
+	print("Arithmetic tests.\n");
+
+	print("\nNumeric literal parsing:\n");
+	local a = 1e2;
+	local b = -1e-4;
+	local c = -.1234;
+	local d = 5.3e-1;
+	local e = -999.;
+	local f = .5;
+	verify("a", a, 100);
+	verify("b", b, -0.0001);
+	verify("c", c, -0.1234);
+	verify("d", d, 0.53);
+	verify("e", e, -999);
+	verify("f", f, 0.5);
+
+	print("\nNon-base-10 number parsing:\n");
+	a = 0b11101010;
+	b = 0xa@-1;
+	c = 0q1230;
+	d = 0n(3)12012;
+	e = 0n(36)Weird;
+	f = 0o777;
+	verify("a", a, 234);
+	verify("b", b, 10/16);
+	verify("c", c, 108);
+	verify("d", d, 140);
+	verify("e", e, 54425209);
+	verify("f", f, 511);
+
+	print("\nSome expressions:\n");
+	a = 100+100/10-1*0.1;
+	b = (1000+100)/10-1*0.1;
+	c = 100+100/(10-2)*0.1;
+	d = (integer)(440*2**-(1/12)*100);
+	e = (integer)(440*2**(1/12)*100);
+	verify("a", a, 109.9);
+	verify("b", b, 109.9);
+	verify("c", c, 101.25);
+	verify("d", d, 41530);
+	verify("e", e, 46616);
+
+	print("\nClamp to [-5, 5] using '>|' and '|<':\n");
+
+	for local x = -10, 10
+	{
+		local y = -5 >| x |< 5;
+		print("  ", y);
+		local z = x;
+		if(x < -5)
+			z = -5;
+		else if(x > 5)
+			z = 5;
+		if(y != z)
+			throw "'|<' and/or '>|' operator broken!";
+	}
+	print("\n");
+
+	print("\nBitwise operations:\n");
+	a = 0x12345678&true;
+	a = 0x12345678&0x00ff00ff;
+	a = a<<8;
+	b = a&false;
+	c = false&a|0x5555aaaa^0xf0f0f0f0;
+	c = c ror 4;
+	d = 0b110101000110101101101111><24;
+	verify("a", a, 0x34007800);
+	verify("b", b, 0);
+	verify("c", c, 0xaa5a55a5);
+	verify("d", d, 0b111101101101011000101011);
+
+	print("\nArithmetic tests done.\n");
+	return 0;
+}

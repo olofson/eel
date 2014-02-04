@@ -1,0 +1,260 @@
+
+---------------------------------------------------------------------
+	EEL grammar (Bison/yacc-like syntax)
+---------------------------------------------------------------------
+
+	call:
+		  FUNCTION
+		| FUNCTION '(' ')'
+		| FUNCTION '(' explist ')'
+		;
+
+	funcargs:
+		  '(' argdeflist ')'
+		| '[' argdeflist ']'
+		| '<' argdeflist '>'
+		| '(' argdeflist ')' '[' argdeflist ']'
+		| '(' argdeflist ')' '<' argdeflist '>'
+		;
+
+	qualifier:
+		  KW_LOCAL
+		| KW_STATIC
+		| KW_UPVALUE
+		| KW_EXPORT
+		| KW_SHADOW
+		;
+
+	qualifiers:
+		  qualifier
+		| qualifier qualifiers
+		;
+
+	funcdecl:
+		  KW_PROCEDURE NAME funcargs
+		| KW_FUNCTION NAME funcargs
+		| qualifiers KW_PROCEDURE NAME funcargs
+		| qualifiers KW_FUNCTION NAME funcargs
+		;
+
+	funcdef:
+		  KW_PROCEDURE NAME funcargs body
+		| KW_FUNCTION NAME funcargs body
+		| qualifiers KW_PROCEDURE NAME funcargs body
+		| qualifiers KW_FUNCTION NAME funcargs body
+		| KW_PROCEDURE funcargs body
+		| KW_FUNCTION funcargs body
+		| qualifiers KW_PROCEDURE funcargs body
+		| qualifiers KW_FUNCTION funcargs body
+		;
+
+	vardecl:
+		qualifiers NAME
+TODO:		| qualifiers TYPENAME NAME
+		;
+
+TODO:	multivardecl:
+		  vardecl
+		| vardecl ',' multivardecl
+		{ at least first vardecl must specify a datatype }
+		;
+
+	arginfo:
+		  KW_ARGUMENTS
+		| KW_TUPLES
+		| KW_SPECIFIED VARIABLE
+		| KW_SPECIFIED VARIABLE '[' expression ']'
+TODO:		| KW_SPECIFIED explist
+		;
+
+	tabitem:
+		  '(' expression ',' expression ')'
+		| '.' NAME expression
+		| expression expression
+		| funcdecl
+		;
+
+	tabitemlist:
+		  tabitem
+		| tabitem ',' tabitemlist
+		;
+
+	ctor:
+		  '[' explist ']'
+		| KW_TABLE '[' tabitemlist ']'
+		| TYPENAME '[' explist ']'
+		;
+
+	field:
+		  CONSTANT
+		| VARIABLE
+		| FUNCTION
+		| NAME
+		;
+
+	simplexp:
+		  INUM
+		| RNUM
+		| KW_TRUE
+		| KW_FALSE
+		| KW_NIL
+		| STRING
+		| CONSTANT
+		| VARIABLE
+		| '(' explist ')'
+		| '(' TYPENAME ')' simplexp
+		| call
+		| vardecl
+		| funcdecl
+		| funcdef
+		| arginfo
+		| ctor
+		| TYPENAME
+		| simplexp '[' expression ']'
+		| simplexp '.' field
+		| simplexp '(' explist ')'
+		| simplexp ':' NAME '(' explist ')'
+		;
+
+	expression:
+		  simplexp
+		| OPERATOR expression
+		| expression OPERATOR expression
+		;
+
+	explist:
+		  expression
+		| expression ',' explist
+		;
+
+	assignstat:
+		  explist ';'
+		| explist '=' explist ';'
+		| explist SHORTHAND_OPERATOR explist ';'
+		| explist '.' OPERATOR explist ';'
+		;
+
+	constdeclstat:
+		qualifiers KW_CONSTANT NAME '=' expression ';'
+		{ expression must be constant, compile time evaluated }
+		;
+
+	body:
+		  '{' block '}'
+		| NAME ':' '{' block '}'
+		;
+
+	argdef:
+		  NAME
+TODO:		| TYPENAME NAME
+		;
+
+	argdeflist:
+		  argdef
+		| argdef ',' argdeflist
+		;
+
+	filelist:
+		  STRING
+		| STRING ',' filelist
+		;
+
+	importstat:
+		  KW_IMPORT filelist ';'
+		| KW_IMPORT STRING KW_AS NAME ';'
+		;
+
+	ifstat:
+		  KW_IF expression statement
+		| KW_IF expression statement KW_ELSE statement
+		;
+
+	case:
+		KW_CASE explist statement
+		;
+
+	caselist:
+		  case
+		| case caselist
+		;
+
+	switchstat:
+		  KW_SWITCH expression caselist
+		| KW_SWITCH expression caselist KW_ELSE statement
+		;
+
+	whilestat:
+		KW_WHILE expression statement
+		;
+
+	dostat:
+		  KW_DO statement KW_WHILE expression
+		| KW_DO statement KW_UNTIL expression
+		;
+
+	forstat:
+TODO:		  KW_FOR expression KW_IN explist statement
+		| KW_FOR expression '=' expression ','  expression
+				statement
+		| KW_FOR expression '=' expression ','  expression
+				','  expression statement
+		;
+
+	breakstat:
+		  KW_BREAK
+		| KW_BREAK BLOCKNAME
+		;
+
+	contstat:
+		  KW_CONTINUE
+		| KW_CONTINUE BLOCKNAME
+		;
+
+	repeatstat:
+		  KW_REPEAT
+		| KW_REPEAT BLOCKNAME
+		;
+
+	returnstat:
+		  KW_RETURN ';'
+		| KW_RETURN expression ';'
+		;
+
+	xblock:
+		block
+		;
+
+	trystat:
+		  KW_TRY xblock
+		| KW_TRY xblock KW_EXCEPT xblock
+		;
+
+	statement:
+		  body
+		| EOF
+		| KW_END ';'
+		| ';'
+		| KW_INCLUDE filelist ';'
+		| importstat
+TODO: (?)	| KW_ALWAYS ':'
+		| throwstat
+		| retrystat
+		| ifstat
+		| switchstat
+		| whilestat
+		| dostat
+		| forstat
+		| breakstat
+		| contstat
+		| repeatstat
+		| returnstat
+		| trystat
+		| constdeclstat
+		| assignstat
+		;
+
+	block:
+		  <empty>
+		| statement
+		| statement block
+		;

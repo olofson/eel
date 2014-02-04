@@ -1,0 +1,32 @@
+///////////////////////////////////////////////
+// Platform information
+// Copyright (C) 2007 David Olofson
+///////////////////////////////////////////////
+
+import "system";
+
+export function main<args>
+{
+	print("Platform information:\n");
+	print("  'system' module constants:\n");
+	print("        ARCH: ", ARCH, "\n");
+	print("       SOEXT: ", SOEXT, "\n");
+	print("      DIRSEP: ", DIRSEP, "\n");
+	print("     EXENAME: ", EXENAME, "\n");
+	print("     EXEPATH: ", EXEPATH, "\n");
+	print("     CFGPATH: ", CFGPATH, "\n");
+	print("    HOMEPATH: ", HOMEPATH, "\n");
+	print("  environment:\n");
+	for local i = 0, sizeof $ - 1
+		if typeof index($, i) == array
+		{
+			local a = index($, i);
+			print("    ", key($, i), ":\n");
+			for local j = 0, sizeof a - 1
+				print("      [", j, "]: ", a[j], "\n");
+		}
+		else
+			print("    ", key($, i), ": ",
+					index($, i), "\n");
+	return 0;
+}

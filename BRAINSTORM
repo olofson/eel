@@ -1,0 +1,536 @@
+Potential Bugs and Design Problems:
+-----------------------------------------------------------
+* "EEL Metamethods: When Rules Break Down." The problem is
+  that normally, EEL VM instructions are atomic, and
+  intentionally so. (This eliminates the need for special
+  sync code just to ensure that values aren't fatally
+  corrupted.)
+     Now, if some objects have metamethods that are
+  implemented in EEL, do we prohibit microthread
+  rescheduling until a metamethod completes, and accept
+  the fact that bounded scheduling latencies (max one VM
+  instruction) go out the window? This is probably sort of
+  ok, as you cannot safely mix real time and non real time
+  code in the same OS thread anyway.
+     Or do we just lock an object while a metamethod is in
+  progress, to ensure that only one metamethod at a time is
+  running? This will require priority inheritance or similar
+  to avoid deadlocks!
+     Could just put waiting microthreads in a queue on the
+  object, and reschedule so metamethods run in a first-come-
+  first-serve fashion. Microthreads would go back to their
+  previous scheduling policies as their metamethods finish.
+
+
+Design and Implementation:
+-----------------------------------------------------------
+* Handle exceptions before stack unwind? Note that the
+  current try..except construct compiles the exception
+  block as a sub function on the same level as the try
+  block. Exception-before-unwind would allow a construct
+  with a block that actually runs instantly, with the try
+  block frozen at the instruction that threw the exception.
+     Of coures, this would make it possible to implement an
+  "operation level" retry feature. The problem with this is
+  that an exception handler cannot really do much about the
+  problem, except in a few specific cases. For example, if
+  one gets XDIVBYZERO when operating on indexable types, it
+  is not possible to just adjust and retry, as the entire
+  operation (looping over all items) is aborted by the
+  exception. One would have to make such metamethods call
+  the exception handler directly, inside the "item loop",
+  instead of just giving up and returning an exception code.
+
+* Special strings! Though table lookups can be made pretty
+  fast by means of hashing and the like, it's never as fast
+  as indexing with an integer constant.
+     By creating a special string type, or using a flag in
+  the 'string' object, we can add an array of "enumeration
+  values"; one for each context it which a string may have
+  a special meaning. The idea is that a special string can
+  be translated directly into a context specific integer
+  constant.
+     With this in place, named object metamethods can be
+  handled pretty much as fast as operators.
+
+* Call using an existing range of registers as arguments,
+  instead of using the argument stack? This would be nice
+  and efficient for "special calls", such as metamethod
+  invocations, constructors included. It makes no
+  difference to the metamethod implementations, except
+  that (with the current stack implementation), results
+  cannot be returned by overwriting stack elements, which
+  is sort of how metamethods work currently.
+     Then again, a metamethod changing the first few stack
+  elements (or wherever the arguments are placed) *could*
+  be subverted into "results via argument stack", just as
+  one would implement normal function calls over the new
+  argument stack.
+     What I'm thinking is that modulo some restrictions
+  and hardwired shortcuts, operators, metamethods and
+  functions/procedures could all be the same thing - that
+  is, functions. (Procedures already *are* functions
+  internally; they just happen to return no results.)
+  Metamethods would have hardcoded prototypes and they'd
+  need to be called with the correct "self" type, but
+  they'd still be functions.
+
+* Merge dstring and string, with automated transitions
+  between immutable and dynamic...?
+    The bad news is one important and intentional
+  difference between the two: dstrings are not immutable,
+  for the very reason that you're supposed to be able to
+  modify the very objects, rather than just replacing them.
+  Is this feature really important?
+
+* Enlarging tables without rebuilding the hash table!
+    When the hash table becomes too inefficient, one is
+  supposed to switch to the next bigger size. (Usually
+  power of two.) However, the "proper" method of building a
+  new hash table of the new size, is not going to fly in a
+  real time system.
+    What we can do instead, is just leave the leave the old
+  part of the table alone. Then we move items to the right
+  bins as we run into them, while using the table.
+    The most "interesting" part is actually finding the
+  items that are not yet in the correct bins: If we cannot
+  find an item in the bin it's supposed to be in, we
+  (recursively) look in the bin it would have been in if
+  the table was of the next smaller size.
+    The problem is that there is theoretically no upper
+  limit to the potential recursion depth. A table that is
+  constructed by gradually adding items will get a history
+  of "misplaced" items in every size generation.
+    One trick that might help statistically is to first try
+  the next older table size the first N requests, where N
+  is a "sensible" value based on the size of the table at
+  the time it is resized.
+
+* Two-faced weak reference object?
+    One face would be a container with one slot for the
+  object the weak reference refers to. This face would not
+  own the target object! Instead, the target object, and
+  only the target object, owns *it*, meaning that this face
+  will have it's destructor called when the target object
+  goes away.
+    The other face is the visible interface part, which
+  allows access to the target object by handing out normal
+  references. When the other face is destroyed, this face
+  will remain as long as it has owners, but it will return
+  nil when asked for the target object.
+
+* Initialization error handling should generate messages
+  that can be printed with eel_perror(). As it is, they
+  just return exception codes, that are checked for non
+  zero values and nothing more.
+
+* Move constant tables to the module level, like static
+  variables? Functions cannot exist (or at least, can't be
+  used) without their modules anyway, and this could save
+  some space by sharing identical constants.
+    The only potential issue I can see with this is that it
+  restricts the total number of constants in a module,
+  which could be a problem when (ab)using EEL as a data
+  description language. OTOH, we can just add a CGET
+  instruction with a 24 or 32 bit index operand.
+
+* VM refactoring + optimization idea:
+	* Turn each instruction into an inline function.
+	* Implement macro instructions by adding opcodes
+	  that use two or more of these inlines.
+  This eleminates some instruction dispatching and operand
+  extraction overhead, and allows for some more C compiler
+  optimizations. It also makes it easy to JIT compile EEL
+  VM code to native code via C by pasting calls to these
+  inlines into "EEL C function" compatible functions, that
+  simply replace the original functions.
+    Note that the instruction inlines in a macro can share
+  operands! This means we can effectively create new
+  instructions with optimal operand layout and optimized
+  code, without semantically adding new instructions for
+  the compiler to deal with.
+
+* Unify simple and object types. The type field of values
+  would contain the actual type ID; never EEL_TOBJREF. The
+  "is object" test would be (type >= EEL__TCLASSES), which
+  is simpler and probably faster than the current bit test.
+  The object reference type values would still carry
+  pointers to EEL_object for unified refcounting logic, but
+  other than that, all values would be treated the same.
+  The VM would look up operator callbacks via single level
+  indexing, without checking the type field more closely,
+  or looking at the object type field.
+     Alternatively, one bit in the type ID field of values
+  could be used for marking object references. One would
+  remove the bit to get the actual type ID, and test it to
+  find out whether or not the type is an object reference.
+  This allows packing all types in a contiguous range, and
+  still have room for large numbers of both simple and
+  reference types.
+
+* Currently, the boolean binary operators generate boolean
+  results, regardless of operand types. Is that actually
+  useful? For example, having 'or' *select* the first
+  operand that is "true" (ie != nil, != 0, or any object)
+  means we can type something like
+  	t = t or table [];
+  to assign an empty table to t if it doesn't already
+  contain something. (As it is, that code would just assign
+  'true' to t.)
+     Not very nice without lazy evaluation, though...
+
+
+Important features:
+-----------------------------------------------------------
+* D style mixins? (Sophisticated compiler level macros.)
+
+* Read-only function/procedure arguments? This would allow
+  some easy optimizations, and probably enforces good
+  style. Whether the latter is good or bad is probably a
+  matter of taste, but there is the option of allowing
+  arguments to be copied into local variables by
+  "redeclaring" them using 'local <argname>', with no
+  initializer. (That would be the only place you can
+  declare a variable without also initializing it.)
+
+* 'stream' abstract base class, to deal with the current
+  excuse for file and network I/O subsystem. "Abuse" some
+  operators C++ style, to implement a handy I/O API, piggy-
+  backed on the current metamethod/operator subsystem. This
+  eliminates the need for virtual member functions.
+     All stream operators will effectively be inplace
+  operators, in the sense that they have the side effect of
+  altering the state of the stream! (Otherwise, non-inplace
+  operators would clone the stream before operating on it,
+  and you could not chain stream operations, as inplace
+  operation statements do not generate results.) Stream
+  operators will return the stream where applicable, for
+  chaining.
+     Ideas:
+       Seeking: (result: new current position)
+	s * <position>;		Seek to absolute position
+	s / <position>;		Absolute seek from EOF
+	s + <offset>;		Seek forward
+	s - <offset>;		Seek backward
+       File info:
+	sizeof s;		Returns length of file
+       Read/write: (result: stream, for chaining)
+	s << <object>;		Write <object> to stream
+	s >> <variable>;	Read value for <variable>
+				The type of <variable>
+				determines what is read!
+       Raw read:
+        s >> <count>;		Read <count> bytes
+        			Result: dstring
+        s >> <typeid>;		Deserialize an instance
+        			of <typeid>.
+        			Result: value or object.
+
+* Expansion of arrays (and maybe other indexable types)
+  into arguments for function calls! Of course, this needs
+  run-time argument checking - so we just use CGET + CALL
+  for CCALL, and we're done! :-) (No change for CALL, of
+  course.)
+
+* Implement 'in' operator for <typeid> vs <typeid>. (IFF
+  we are to implement proper inheritance support, that is.
+  The dynamic nature of EEL and similar languages makes
+  C++ style inheritance somewhat irrelevant...)
+
+* Would it be possible to allow expressions like this one:
+	xmax = r1.(x + w) |< r2.(x + w);
+  without nasty side effects? The <object>.(<expression>)
+  syntax would have to be interpretted as an "operator"
+  .(), that makes <object> the top level namespace for
+  resolving symbols in the expression. That is, very much
+  like .(<explist>) is already handled, only allowing not
+  only explists.
+
+
+"Nice to have" features:
+-----------------------------------------------------------
+* dstrings as bit arrays? (Binary logic operators etc...)
+
+* Global type ID registry, or similar solution. Need to be
+  able to mark serialized chunks with file/network safe
+  type IDs for certain applications.
+     Suggestion: 32 bit binary IDs, where the top 24 bits
+  are allocated from a central registry, and the low 8 bits
+  are maintained by users locally.
+
+* Thousands separator! (That is, a "blank" character that's
+  accepted inside number literals, maybe with some checking
+  that separators are actually in the right places, like
+  thousands, 65536'ths and the like.)
+
+* Add register dump to the VM dump output. Only bother
+  checking registers that are used by the dumped code.
+  Registers that are in the clean table are safe to dump.
+  Registers that hold object references to objects that are
+  in some limbo list are safe to dump. References to
+  strings in the cache are safe, but should be ignored.
+  Simple types, except 'real' values, are safe to dump.
+
+* Implicit static typing! Variable declarations would take
+  the type from the initialization assignment, unless the
+  declaration explicitly specifies the type. The VM could
+  then have special VM instructions for certain types, and
+  the compiler could disregard memory management for non-
+  reference types.
+    The bad news is that one will need special versions of
+  frequently used instructions, that throw an exception if
+  the target value is not of the same type as the result.
+    Now, what's the default type for function arguments?
+
+* Add some way to tag indexable objects (and/or classes ?)
+  with a "native" enum. When indexed with an enumval, these
+  objects should recast the index enumvals to the "native"
+  enum. If the recast fails, so should the index operation.
+
+* Typename as value, to talk to (read-only) the CCLASS!
+
+* 'pragma functional;' to get a compile error if any code
+  that modifies an instance is generated in the current
+  context. Only objects are considered; not values! (Or you
+  wouldn't even be able to load a value or an objref into a
+  variable. :-)
+
+* 'pragma inplace;' to get a compile error if any code is
+  generated that creates a new object as a result of
+  applying an operator. That is, allow only in-place
+  operations; note clone + modify operations. Only objects
+  are considered.
+
+* A range type, for ranges in switch cases and stuff...?
+  Ex:
+	r = 5..10;
+	if(z in r) ...;
+	for i in r ...;
+	if(x in 7+/-1) ...;
+
+* Where v is some vector object,
+	v[5] = 1, 2, 3;
+  and
+	v[5..7] = 1, 2, 3;
+  and/or
+	v[5..] = 1, 2, 3;
+  should be shorthand for
+	v[5, 6, 7] = 1, 2, 3;
+
+* Use enums for indexing arrays! This allows fast indexing
+  and run-time type checking, and with typed variables
+  (even pure compile time typing), it allows for compile
+  time type checking.
+     Further, it would be fast and easy to (ab)use the enum
+  subsystem for field indexing of via *untyped* references
+  as well. All the compiler has to do is find the enum name
+  in *one* of the enum classes in scope, and register an
+  indexing enum class for classes as needed. If at run
+  time, the index turns out to be from the wrong enum class
+  (that is, the same name is found in other classes), the
+  VM just looks up the requested name in the enum class
+  that the object uses for indexing.
+     The enum translation can be done using mapping tables
+  if actually looking up names by string or hash is too
+  slow. Actually, the compiler could keep track of enums
+  globally, and for any name that occurs more than once,
+  create a table that maps enum class IDs to enum values,
+  for translating the name into a member of intended enum
+  class. Then the compiler would just use a reference to
+  that object whenever it sees a name and can't be certain
+  which enum class is being referred to.
+
+* 'using' blocks and statements, to pull in arbitrary
+  namespaces? The statement version would keep the pulled
+  in namespace in scope until the end of the scope the
+  statement is in.
+
+* Inline VM assembler! Handy for VM debugging, testing new
+  ideas, and maybe for some weird stuff in the built-in
+  library. And, it's fun. ;-)
+
+* Use a special syntax for method invocations? We need to
+  be able to add built-in (and user) methods to classes
+  without polluting their indexing space, and method calls
+  need an implicit 'this' argument.
+     How about using ':' for methods and stick with '.' for
+  normal indexing? That should work for calling as well as
+  installing methods, though some clases may not support
+  user methods.
+     Use '::' for specifically calling a class method and
+  '..' for setting a class method.
+     Use '.' for setting an instance method. Use ':' for
+  calling a class method, or an overriding instance method,
+  if there is one.
+     That is: '.' and [] are *always* per-instance. '..'
+  and '::' are always per class. ':' is per class, unless
+  the instance has a method by the same name.
+     Remove the 'object.method ([args])' call syntax, and
+  use only ':' and '::' for method invocations. Use ':[]'
+  and '::[]' to locate methods by explicit indexing, rather
+  than implicit look-up by name or via symbol.
+
+* deepclone <object>; Like clone, but recursively
+  scans <object> for references, and makes clones of the
+  referenced objects as well. The result is a completely
+  new tree of objects, identical to the object tree headed
+  by the original object.
+	NOTE: Must handle loops! I suppose I could just
+	mark objects as I go, skipping nodes that are
+	already marked. Then I unmark using the same
+	approach. Unfortunately, one probably has to do
+	this in parallel with the clone in some way, to
+	get an exact copy of the network structure.
+
+* Maybe the module loader should be implemented in EEL and
+  running in the context of the VM loading the module, to
+  avoid the issues with memory management, thread safe
+  adding/removal of modules etc? The EEL loader could
+  actually just be some loop that calls some instruction
+  that drives a C state machine or something. (BTW, load()
+  is already an EEL function in the built-in library.)
+
+* Warn whenever expensive run-time binding operations have
+  to be done as a result of using dynamic typing. (Non-
+  obvious cases, that is.) (Irrelevant until we actually
+  have static typing, obviously!)
+
+* Code as first class data. Operators on the function class?
+  Concatenate functions and stuff? Pass closures as args,
+  so that evaluation can be done only if/when the value is
+  actually needed?
+
+* Perhaps we should have another, independent implementation
+  of EEL? Something based on lex + Bison, generating C code?
+  That would cover compiling EEL to native code as an extra
+  bonus, apart from the obvious cross verification.
+
+* Native VM support for RPC style calling, so that non real
+  time code can be "called" from real time context and the
+  like. An RPC call would block the calling EEL thread until
+  the result comes back. (That is, the EEL VM would proceed
+  with other EEL threads, and eventually return to the
+  calling "real" thread, so it can meet it's deadline.)
+
+* EEL based build system for add-ons...?
+
+* Region list type, for making a collection of ranges in
+  one or more indexable objects accessible as a
+  contiguous array?
+
+* 'cond' statement! Basically a cleaner syntax for an
+  if-chain, possibly allowing for some easy optimization
+  tricks. Maybe use switch { <expr>: <statement>
+  <expr>: <statement> ...} syntax?
+
+
+Optimizations:
+-----------------------------------------------------------
+* Automatic in-place operations. Provided we can reliably
+  tell whether or not an object has only one user, we can
+  avoid doing the functional thing when evaluating infix
+  expressions. Is it safe to have eel_operate() go in-place
+  whenever (refcount == 1) || (refcount == 2) && (in limbo)?
+  (Nice thing with the current limbo system - in this case;
+  an object can only ever be in one limbo list.)
+
+* INIT and ASSIGN versions of *BOP* and others? These icky
+  "access instructions" tend to add a lot of overhead...
+
+* Implement SETINDEX and GETINDEX via LISTs.
+
+* How about putting variable declarations in the manipulator
+  trees? That would completely eliminate the code needed to
+  calculate initializers that are never used, intermediate
+  variables would not interfere with common subexpression
+  elimination, and the temporary values would be held in
+  temporary registers instead of (managed) stack variables.
+
+* Assignments to block local variables (ie variables inside
+  the current {...} block) could be dealt with without the
+  clean table and reference counting, provided limbo
+  cleaning is not done until the code is done with these
+  variables. Along with a simple rule: "Limbo clean only
+  when leaving a block" (which is how it's done now
+  anyway), might be an easy way to avoid a great deal of
+  refcounting overhead...
+
+* Use the compiler event system to track assignments, so we
+  can eliminate memory management code for variables that
+  are known to be of simple types. Basically, we can
+  generate statically typed code until we pull in external
+  values that may result in values of unpredictable types.
+  The next logical step would be to allow explicit typing
+  of function arguments and results.
+
+
+Memory management:
+-----------------------------------------------------------
+* State global scratchpad buffer?
+
+* Position based, compile time generated "cleanup maps" to
+  replace the clean table, and possibly also the limbo
+  lists? The point is that we do a great deal of
+  refcounting and other memory management work that isn't
+  really needed unless there is an exception.
+
+* Garbage collection observations:
+	1. All we need to do is look for circular refences,
+	   deliberately created by scripts. Everything else
+	   is handled by refcounting.
+	2. Objects that cannot hold references to other
+	   objects can only be leaf nodes in garbage
+	   formations.
+	2b.Objects that hold only leaf node objects can be
+	   considered leaf nodes, since they can have no
+	   back references from their children.
+	3. Only objects that are NOT in any Limbo List
+	   are potential candidates for collection. That
+	   means we can move objects to another list when
+	   unlinking them from Limbo Lists and there - the
+	   Cold List; the only place to look for candidates!
+	   We can filter leaf node objects (2) out right at
+	   the source by never passing them to the Cold
+	   List.
+	4. If a formation of objects is garbage, the sum of
+	   all refcounts will equal the number of pointers
+	   to objects within the formation. (Correct...?)
+	5. If references from other places than objects look
+	   different (ie a separate refcount or say 65536
+	   increments, to keep it all in one Uint32), we can
+	   directly see if an object is a canidate or not.
+	6. Any objects referred to by an object that is not
+	   garbage are not garbage either.
+
+  2b is interesting. We could drastically reduce the number
+  of objects we need to garbage collect by having container
+  objects check the types of objects assigned to their
+  fields. We just assume objects cannot be involved in
+  cycles until they tells us otherwise. We could mark
+  potential offenders with some flag bit, and move them to a
+  special list right away, or when they get off whatever
+  limbo list they're in.
+
+* Don't realloc() the heap. Add another one! This would
+  virtually impact nothing but the *CALL and RETURN
+  instructions, and most of the work is in the "heap
+  overflow" in *CALL anyway.
+    *CALL:
+	* If the called function needs too many elements,
+	  allocate a new memory block and put the new
+	  register frame at the start of it. The call stack
+	  memory manager is wired to correctly detect the
+	  end of the new heap block, but heap indexing is
+	  *always* done from the initial heap start
+	  address.
+	* Some context info is added to the call frame,
+	  so that RETURN can tell when it leaves the new
+	  heap block.
+    RETURN:
+	* When the function that caused the heap extension
+	  returns, the heap block is freed and the call
+	  stack memory manager is restored to it's previous
+	  state.
+  Note that for this to work reliably, heap indices must
+  always be at least the same size as pointers - or just
+  make them pointers...?

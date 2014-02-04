@@ -1,0 +1,372 @@
+
+---------------------------------------------------------------------
+	The EEL Language
+---------------------------------------------------------------------
+
+Introduction:
+      -------------------------------------------------------------
+	EEL, the Extensible Embeddable Language, is a dynamic typed
+	language with C-like syntax, built-in high level data types
+	and automatic memory management. It compiles into bytecode
+	that runs on a custom virtual machine, and can be extended
+	with custom data types and native functions (C API) at run
+	time.
+      -------------------------------------------------------------
+
+
+Intended use:
+      -------------------------------------------------------------
+	EEL is designed for hard real time applications, and allows
+	memory management and other critical tasks to be handled by
+	custom code or hooked up to services provided by real time
+	kernels. Though EEL aims to be generally fast and efficient,
+	the priority is determinism (ie bounded worst case response
+	time), as opposed to maximum throughput.
+	   One must realize that a language can only *allow*
+	applications to respond to input in bounded time, and only
+	within the limits of the underlying operating system and
+	hardware. EEL cannot magically fix broken application
+	designs, nor can it turn general purpose operating systems
+	into real time operating systems.
+	   What EEL *can* do is add a nice, high level "in-line"
+	scripting/programming language to a real time system,
+	without automatically making the system non-deterministic.
+      -------------------------------------------------------------
+
+
+Reserved Words:
+      -------------------------------------------------------------
+	and		arguments	array		as
+	boolean		break		case		continue
+	do		dstring		else		end
+	except		exception	export		false
+	for		function	if		import
+	in		include		integer		local
+	module		nil		not		or
+	procedure	real		repeat		retry
+	return		rol		ror		shadow
+	sizeof		specified	static		string
+	switch		table		throw		true
+	try		tuples		typeid		typeof
+	until		upvalue		vector		vector_d
+	vector_f	vector_s8	vector_s16	vector_s32
+	vector_u8	vector_u16	vector_u32	while
+	xor
+      -------------------------------------------------------------
+
+
+Operators:
+      -------------------------------------------------------------
+	!=	%	&	*	**	+	-	/
+	<	<<	<=	==	>	><	>=	>>
+	>|	^	|	|<	~	and	not	or
+	rol	ror	sizeof	typeof	xor
+      -------------------------------------------------------------
+
+
+Operator precedence:
+      -------------------------------------------------------------
+	Operators in the same block have the same priority.
+
+      (HIGHEST)
+      -------------------------------------------------------------
+	(...)		(Parenthesized expressions)
+      -------------------------------------------------------------
+	(<typename>)	(type casts)
+      -------------------------------------------------------------
+	-		(unary minus)
+	typeof		(determine type of object)
+	sizeof		(determine max index of object)
+	~		(bitwise NOT)
+      -------------------------------------------------------------
+	**		(power)		right associative
+      -------------------------------------------------------------
+	%		(modulus)
+	/		(division)
+	*		(multiplication)
+	&		(bitwise AND)
+      -------------------------------------------------------------
+	-		(subtraction)
+	+		(addition)
+	|		(bitwise OR)
+	^		(bitwise XOR)
+      -------------------------------------------------------------
+	<<		(bitwise left shift)
+	>>		(bitwise right shift)
+	rol		(bitwise rotate left)
+	ror		(bitwise rotate right)
+	><		(bitreverse)
+      -------------------------------------------------------------
+	|<		(select lowest value)
+	>|		(select highest value)
+      -------------------------------------------------------------
+	<		(less than)
+	<=		(less than or equal to)
+	>		(greater than)
+	>=		(greater than or equal to)
+      -------------------------------------------------------------
+	==		(equal)
+	!=		(not equal)
+      -------------------------------------------------------------
+	not		(boolean NOT)
+      -------------------------------------------------------------
+	and		(boolean AND)
+      -------------------------------------------------------------
+	or		(boolean OR)
+	xor		(boolean XOR)
+      -------------------------------------------------------------
+      (LOWEST)
+      -------------------------------------------------------------
+
+
+Built-in types:
+      -------------------------------------------------------------
+	real		Floating point value (normally 64 bits)
+      -------------------------------------------------------------
+	integer		Integer value (normally 32 bits)
+      -------------------------------------------------------------
+	boolean		Boolean value ('false' or 'true')
+      -------------------------------------------------------------
+	typeid		Type/class ID (integer "magic" value)
+      -------------------------------------------------------------
+	string		Pooled, hased constant string
+      -------------------------------------------------------------
+	dstring		Dynamic "Pascal" string/buffer
+      -------------------------------------------------------------
+	vector		1D array of real (normally 64 bit) values
+      -------------------------------------------------------------
+	vector_f	1D array of single precision values
+      -------------------------------------------------------------
+	vector_d	1D array of double precision values
+      -------------------------------------------------------------
+	vector_s8	1D array of signed 8, 16 or 32 bit values
+	vector_s16
+	vector_s32
+      -------------------------------------------------------------
+	vector_u8	1D array of unsigned 8, 16 or 32 bit values
+	vector_u16
+	vector_u32
+      -------------------------------------------------------------
+	array		1D array of dynamic typed values
+      -------------------------------------------------------------
+	table		Hash table with <key, value> items, where
+			'key' and 'value' are dynamic typed values.
+      -------------------------------------------------------------
+
+
+Flow control constructs:
+      -------------------------------------------------------------
+	do
+		<statement>
+	while <condition>;
+
+		break [<blockname>];
+
+		continue [<blockname>];
+
+		repeat [<blockname>];
+
+	Repeat <statement> while <condition> evaluates to true.
+	   A 'break' statement will terminate the loop.
+	   A 'continue' statement will skip to the end of
+	<statement>, into the condition test, and (potentially)
+	reenter the loop body.
+	   A 'repeat' statement will jump to the start of
+	<statement>, bypassing the loop condition test.
+      -------------------------------------------------------------
+	do
+		<statement>
+	until <condition>;
+
+		break [<blockname>];
+
+		continue [<blockname>];
+
+		repeat [<blockname>];
+
+	Repeat <statement> until <condition> evaluates to true.
+	   A 'break' statement will terminate the loop.
+	   A 'continue' statement will skip to the end of
+	<statement>, into the condition test, and (potentially)
+	reenter the loop body.
+	   A 'repeat' statement will jump to the start of
+	<statement>, bypassing the loop condition test.
+      -------------------------------------------------------------
+	for <variable> = <start>, <end>[, <increment>]
+		<statement>
+
+		break [<blockname>];
+
+		continue [<blockname>];
+
+		repeat [<blockname>];
+
+	Execute <statement> once for each value, written to
+	<variable>, in [<start>, <end>] with <increment> steps.
+	<increment> defaults to 1 if not specified. <increment> can
+	be negative. Iteration is inclusive, which means that this
+	construct will always execute <statement> at least once,
+	with <variable> == <start>, regardless of the other
+	parameters.
+	   A 'break' statement inside <statement> will terminate
+	the loop.
+	   A 'continue' statement will end the current iteration,
+	updating the iteration variable and testing for the end
+	condition before (potentially) reentering the loop body.
+	   A 'repeat' statement will jump to the start of
+	<statement>, bypassing the loop condition test and without
+	changing the iteration variable.
+      -------------------------------------------------------------
+TODO:	for <variable> in <explist>
+		<statement>
+
+		break [<blockname>];
+
+		continue [<blockname>];
+
+		repeat [<blockname>];
+
+	Execute <statement> once for each item in <explist>.
+	The current item is assigned to <variable> for each
+	iteration. <explist> can be one or more values or indexable
+	objects, meaning that this is actually a 2D iteration; one
+	dimension to iterate over the expressions, and one to
+	iterate through any indexable objects returned from those
+	expressions.
+	   A 'break' statement inside <statement> will terminate
+	the loop.
+	   A 'continue' statement will end the current iteration,
+	moving to the next item in <explist> and testing for the
+	end condition before (potentially) reentering the loop
+	body.
+	   A 'repeat' statement will jump to the start of the loop
+	body, to reiterate with the same item.
+      -------------------------------------------------------------
+	if <condition>
+		<statement1>
+	[else if <condition>
+		<statement2>
+	[else
+		<statement3>]]
+      -------------------------------------------------------------
+TODO:	route <expression>
+	{
+		...
+	}
+
+	  in <explist>
+		<statement>
+
+	  not in <explist>
+		<statement>
+
+	  else
+		<statement>
+
+	  always
+		<statement>
+
+		break [<blockname>];
+
+		repeat [<blockname>];
+
+	Scan the explists for matches to <expression>, executing
+	the statement of each 'in' section that has a match, and
+	each 'not in' section that does *not* have a match. The
+	section explists may contain both constant and variable
+	expressions. The statement of a matching section will only
+	be executed once, even if there are multiple hits in its
+	explist.
+	   An 'else' section's statement is executed only if there
+	was no hit in any other section before that 'else' section.
+	There can be more than one 'else' section, and they can be
+	placed anywhere	in the list, just like '[not] in' sections.
+	   An 'always' section's statement is always executed,
+	unless the whole statement is terminated with 'break'.
+	There can be multiple 'always' sections.
+      -------------------------------------------------------------
+TODO:	switch <expression>
+	{
+	  case <explist>
+		<statement>
+	  [case <explist>
+		<statement>
+	  [...]]
+	  [else
+		<statement>]
+	}
+
+		break [<blockname>];
+
+	Scan the explists of the 'case' sections until one is found
+	that contains a match to <expression>, then execute the
+	stametent of that section. The explists must contain only
+	constant values. (The compiler should verify that there is
+	only one occurence of each case value in the entire
+	'switch' statement.)
+	   The 'else' statement is executed only if no other
+	section was hit.
+      -------------------------------------------------------------
+	try
+		<statement1>
+	[except
+		<statement2>]
+
+		throw <expression>;
+
+		retry;			(Only in 'except' blocks)
+
+	Try to execute <statement1>.
+	   If an exception is thrown, that is not caught on lower
+	levels, execution continues in the statement of the
+	'except' block.
+	   A 'retry' statement can be issued inside an 'except'
+	block to rerun the 'try' block of the same try...except
+	statement.
+      -------------------------------------------------------------
+	while <condition>
+		<statement>
+
+		break [<blockname>];
+
+		continue [<blockname>];
+
+		repeat [<blockname>];
+
+	While <condition> evaluates to true, execute <statement>.
+	<statement> may use a 'break' statement to terminate the
+	loop at any time, or a 'continue' statement to instantly
+	restart the loop. 'continue' results in <condition> being
+	tested before (potentially) reentering <statement>. A
+	'repeat' statement instantly restarts the loop, bypassing
+	the condition test.
+      -------------------------------------------------------------
+
+
+Declarations & definitions:
+      -------------------------------------------------------------
+	Function/procedure arguments:
+	p				No arguments
+	p[optional_args]		Only optional arguments
+	p<tuple_args>			Only argument tuples
+	p(required_args)		Only required arguments
+	p(required_args)[optional_args]	Required + optional
+	p(required_args)<tuple_args>	Required + tuples
+
+	Arguments are passed as a 1D array of values, which is what
+	dictates how required, optional and tuple arguments can be
+	combined. Basically, it has to be possible to determine
+	which arguments are specified, and which argument is which,
+	by simply looking at the declaration and the total argument
+	count. Thus, you cannot mix optional and tuple arguments,
+	and optional or tuple arguments must come after any
+	required arguments.
+      -------------------------------------------------------------
+	procedure name<argdeflist>
+	function name<argdeflist>
+
+	Procedures have no return values, whereas functions return
+	exactly one value. (True multiple returns are dangerous and
+	not really needed, considering that one can just as easily
+	return a vector, array or table as a single return value.)
+      -------------------------------------------------------------

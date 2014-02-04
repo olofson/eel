@@ -1,0 +1,130 @@
+/////////////////////////////////////////////////////////////
+// EEL VM benchmark - bench.eel adapted for profiling the VM
+// Copyright (C) 2004, 2005, 2009 David Olofson
+/////////////////////////////////////////////////////////////
+
+import "loops" as lp;
+import "random" as rnd;
+import "ackermann" as ack;
+import "divtest" as div;
+import "tak" as tak;
+import "heapsort" as hs;
+
+export function main<args>
+{
+	if specified args[1]
+		local innercount = (integer)args[1];
+	else
+		innercount = 1;
+
+	if specified args[2]
+		local outercount = (integer)args[2];
+	else
+		outercount = 1;
+
+	local start = getms();
+	local sic = get_instruction_count();
+	local results = table [];
+	local icounts = table [];
+	procedure reset()
+	{
+		upvalue start = getms();
+		upvalue sic = get_instruction_count();
+	}
+	procedure enter(name)
+	{
+		upvalue start;
+		upvalue sic;
+		upvalue results;
+		upvalue icounts;
+		local time = getms() - start;
+		local ic = get_instruction_count() - sic;
+		try
+			if results[name] <= time
+				return;
+		results[name] = time;
+		icounts[name] = ic;
+	}
+
+	for local j = 1, outercount
+	{
+		print("==============================================\n");
+		print("Loop benchmark:\n");
+		for local i = 1, innercount
+		{
+			reset();
+			lp.bench(1000000);
+			enter("loops");
+		}
+		print("Loop benchmark done.\n");
+
+		print("==============================================\n");
+		print("Division benchmark:\n");
+		for local i = 1, innercount
+		{
+			reset();
+			div.main("", 1000000);
+			enter("divtest");
+		}
+		print("Division benchmark done.\n");
+
+		print("==============================================\n");
+		print("Random benchmark:\n");
+		for local i = 1, innercount
+		{
+			reset();
+			rnd.test(3000000);
+			enter("random");
+		}
+		print("Random benchmark done.\n");
+
+		print("==============================================\n");
+		print("Ackermann benchmark:\n");
+		print("(Preparing...)\n");
+		ack.test(8);
+		print("(Done.)\n");
+		for local i = 1, innercount
+		{
+			reset();
+			ack.test(8);
+			enter("ackermann");
+		}
+		print("Ackermann benchmark done.\n");
+
+		print("==============================================\n");
+		print("Tak benchmark:\n");
+		for local i = 1, innercount
+		{
+			reset();
+			tak.main("", 8);
+			enter("tak");
+		}
+		print("Tak benchmark done.\n");
+
+		print("==============================================\n");
+		print("Heapsort benchmark:\n");
+		for local i = 1, innercount
+		{
+			reset();
+			hs.main("", 100000);
+			enter("heapsort");
+		}
+		print("Heapsort benchmark done.\n");
+	}
+
+	print("==============================================\n");
+	print("Benchmark results:\n");
+	for local r = 0, sizeof results - 1
+	{
+		print("\"", key(results, r), "\":");
+		for local s = sizeof key(results, r), 12
+			print(" ");
+		print(index(results, r), " ms");
+		if index(icounts, r)
+			print("\t", index(icounts, r), " instructions\n");
+		else
+			print("\n");
+	}
+	print("==============================================\n");
+	return 0;
+}

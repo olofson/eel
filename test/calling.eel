@@ -1,0 +1,47 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2002-2005 David Olofson
+/////////////////////////////////////////////
+
+function f1
+{
+	print("  Inside f1()\n");
+	return 5;	//Ignored return value
+}
+
+procedure f2(arg1, arg2, arg3)
+{
+	print("  f2() called with arg1=", arg1,
+			" arg2=", arg2, " arg3=", arg3, "\n");
+}
+
+function f3
+{
+	print("  Inside f3()\n");
+	return 333;
+}
+
+function f4(arg1, arg2, arg3)
+{
+	print("  f4() called with arg1=", arg1,
+			" arg2=", arg2, " arg3=", arg3, "\n");
+	return arg2 + arg3;
+}
+
+export function main<args>
+{
+	print("Function calling tests:\n");
+
+	print("Before f1()\n");
+	f1();
+	print("After f1()\n");
+	f2("a string", 42, 5.2);
+
+	print("f3 returned ", f3(), "\n");
+	print("f4 returned ", f4("another string", 84, 52), "\n");
+	local var = f4("a third string", 126, 57);
+	print("var = ", var, "\n");
+
+	print("Function calling tests done.\n");
+	return 0;
+}

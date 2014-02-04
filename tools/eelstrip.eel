@@ -1,0 +1,503 @@
+//////////////////////////////////////////////////////////
+// Strip EEL source files of all comments and formatting
+// Copyright (C) 2010, 2011 David Olofson
+//////////////////////////////////////////////////////////
+//
+// TODO:
+//	* Operator tokenization
+//
+
+import "io", "dir";
+
+constant ESS_FIRST_TOKEN = 128;
+
+static tokens = [
+	// TK_KW_*
+	"include", "import", "as", "end",
+
+	"return", "if", "else", "switch", "case", "default",
+	"for", "do", "while", "until", "break", "continue", "repeat",
+
+	"try", "untry", "except", "throw", "retry", "exception",
+
+	"local", "static", "upvalue", "export", "shadow", "constant",
+
+	"procedure",
+
+	"true", "false", "nil",
+
+	"arguments", "tuples", "specified",
+
+	// Operators
+	"typeof", "sizeof", "clone", "not", "and", "or", "xor", "in",
+
+	// Types
+	"real", "integer", "boolean", "typeid",
+
+	// Classes
+	"string", "function", "module", "array", "table", "vector",
+	"vector_d", "vector_f", "dstring"
+];
+static tokentab;
+
+function is_whitespace(c)
+{
+	switch c
+	  case ' ', '\t', '\r', '\n'
+		return true;
+	  default
+		return false;
+}
+
+// First character of an identifier
+function is_kwalpha0(c)
+{
+	return c >= 'a' and c <= 'z' or
+			c >= 'A' and c <= 'Z' or
+			c == '_';
+}
+
+// Subsequent characters of an identifier
+function is_kwalpha(c)
+{
+	return c >= 'a' and c <= 'z' or
+			c >= 'A' and c <= 'Z' or
+			c >= '0' and c <= '9' or
+			c == '_';
+}
+
+function is_delimiter(c)
+{
+	switch c
+	  case ' ', '\r', '\n', '\t',
+			'{', '}', '(', ')', '[', ']', '<', '>',
+			',', '.', ';', ':', '!', '?', '%', '|',
+			'*', '/', '+', '-', '~', '^',
+			'#', '=', '\'', '"'
+		return true;
+	return false;
+}
+
+function is_operchar(c)
+{
+	switch c
+	  case '<', '>', '!', '?', '%', '|',
+			'*', '/', '+', '-', '~', '^',
+			'#', '=', '\'', '"'
+		return true;
+	return false;
+}
+
+function is_operator(c1, c2)
+{
+	//FIXME: We might rule out a few legal cases here, but all
+	//FIXME: it costs is a space character when that happens...
+	return is_operchar(c1) and is_operchar(c2);
+}
+
+function skip_quoted(buf, pos)
+{
+	local delim = buf[pos];
+	local bm2 = nil;	// Can't safely look *two* chars back...!
+	pos += 1;
+	while pos < sizeof buf - 1
+	{
+		if buf[pos] == delim and (buf[pos - 1] != '\\' or
+				buf[pos - 1] == '\\' and bm2 == '\\')
+			break;
+		bm2 = buf[pos - 1];
+		pos += 1;
+	}
+	return pos;
+}
+
+procedure encode_newlines(buf)
+{
+	local i = 0;
+	while i < sizeof buf - 1
+	{
+		switch buf[i]
+		  case '\'', '"'
+			i = skip_quoted(buf, i);
+		  case '\n'
+		  {
+			buf[i] = 1;
+			while i < sizeof buf - 1
+			{
+				if buf[i + 1] == '\n'
+				{
+					delete(buf, i + 1);
+					buf[i] += 1;
+					if buf[i] == 8
+						break;
+				}
+				else
+					break;
+			}
+		  }
+		i += 1;
+	}
+}
+
+// NOTE:
+//	This will sometimes tokenize words that should actually be left as
+//	"names", such as table field indices with the .somename syntax! However,
+//	the EEL lexer is aware of this, and turns these back into names when
+//	that's what the parser expects - so we get some bonus compression and
+//	obfuscation! ;-)
+//
+procedure tokenize(buf)
+{
+	local i = 0;
+	local word = dstring [];
+	while i < sizeof buf - 1
+	{
+		switch buf[i]
+		  case '\'', '"'
+			i = skip_quoted(buf, i);
+		delete(word);
+		if is_kwalpha0(buf[i])
+			while i < sizeof buf - 1
+			{
+				if not is_kwalpha(buf[i])
+					break;
+				word.+ buf[i];
+				i += 1;
+			}
+		local w = (string)word;
+		if w in tokentab
+		{
+			local s = sizeof w;
+			delete(buf, i - s, s - 1);
+			buf[i - s] = tokentab[w];
+			i -= s - 1;
+			// A token doesn't need a whitespace delimiter!
+			if buf[i] == ' '
+				delete(buf, i);
+		}
+		else
+			i += 1;
+	}
+}
+
+procedure strip(f, out, newlines)
+{
+	local lastout = nil;
+	try while true
+	{
+		local b = read(f)[0];
+		local c = b;
+		if newlines
+			while b == '\n'
+			{
+				do
+				{
+					if b == '\n'
+						out.+ '\n';
+					b = read(f)[0];
+				}
+				while is_whitespace(b);
+				c = b;
+			}
+		if is_whitespace(b)
+		{
+			while is_whitespace(b)
+				b = read(f)[0];
+			c = b;
+			// Insert space only if needed - but make sure we don't
+			// accidentally create a legal EEL di- or trigraph!
+			if not is_delimiter(b) and not is_delimiter(lastout) and
+					not is_operator(b, lastout)
+				out.+ ' ';
+		}
+		if b == '/'
+		{
+			b = read(f)[0];
+			if b == '/'
+			{
+				do
+					b = read(f)[0];
+				until b == '\n';
+				if newlines
+					c = '\n';
+				else if lastout == ' '
+					c = nil;
+				else
+					c = ' ';
+			}
+			else if b == '*'
+			{
+				local last = nil;
+				do
+				{
+					last = b;
+					b = read(f)[0];
+					if newlines
+						if b == '\n'
+							c = b;
+				}
+				until last == '*' and b == '/';
+				if lastout == ' '
+					c = nil;
+				else
+					c = ' ';
+			}
+			else
+			{
+				out.+ '/';
+				c = b;
+			}
+		}
+		else if b == '\''
+		{
+			out.+ b;
+			local bm1, local bm2 = nil;
+			while true
+			{
+				b = read(f)[0];
+				if b == '\'' and (bm1 != '\\' or
+						bm1 == '\\' and bm2 == '\\')
+					break;
+				out.+ b;
+				bm2 = bm1;
+				bm1 = b;
+			}
+			c = b;
+		}
+		else if b == '"'
+		{
+			out.+ b;
+			local bm1, local bm2 = nil;
+			while true
+			{
+				b = read(f)[0];
+				if b == '\"' and (bm1 != '\\' or
+						bm1 == '\\' and bm2 == '\\')
+					break;
+				out.+ b;
+				bm2 = bm1;
+				bm1 = b;
+			}
+			c = b;
+		}
+		if c != nil
+		{
+			out.+ c;
+			lastout = c;
+		}
+	}
+}
+
+procedure usage(name)
+{
+	print(	"\n"
+		"usage:    ", name, " <infilename> [<infilename> ...] [-stdout]\n"
+		"          ", name, " -a [-r] [<inpath>] [-stdout]\n"
+		"          ", name, " <infilename> -o <outfilename>\n"
+		"\n"
+		"   Switches:\n"
+		"          -stdout  Write stripped output to standard output\n"
+		"          -a       Strip all *.eel files in the current directory\n"
+		"          -r       Recurse into subdirectories\n"
+		"          -x       Output file extension [ess]\n"
+		"\n"
+		"   NOTE:  If no output file name, or -stdout, is specified, the output is\n"
+		"          written to the corresponding .eel files. (For example, the output\n"
+		"          from 'name.eel' would be written to 'name.ess'.)\n"
+		"\n"
+	);
+}
+
+// Extract file extension from 'path'.
+function getext(path)
+{
+	try
+	{
+		local p = path;
+		for local i = sizeof p - 1, 0, -1
+		{
+			if p[i] == '.'
+				return copy(p, i + 1, sizeof p - 1 - i);
+		}
+	}
+	return nil;
+}
+
+//Return 'path' with file extension (if present) replaced by 'extension'.
+function setext(path, extension)
+{
+	local s = path;
+	for local i = sizeof path - 1, 0, -1
+		if path[i] == '.'
+		{
+			s = copy(path, 0, i);
+			break;
+		}
+	return s + "." + extension;
+}
+
+function is_dir(path)
+{
+	try
+	{
+		directory [path];
+		return true;
+	}
+	return false;
+}
+
+function findfiles(list, path, recursive)
+{
+	local d = nil;
+	try
+		d = directory [path];
+	except
+	{
+		print("ERROR: \"", path, "\" is not a directory, or could not be opened!\n");
+		return false;
+	}
+	while true
+	{
+		local n = d:read();
+		if not n
+			break;
+		if n == "." or n == ".."
+			continue;
+		local sp = path + "/" +  n;
+		if is_dir(sp)
+		{
+			if recursive
+				findfiles(list, sp, recursive);
+		}
+		else
+		{
+			if getext(n) != "eel"
+				continue;
+			list.+ path + "/" +  n;
+		}
+	}
+	return true;
+}
+
+export function main<args>
+{
+	local all = false;
+	local recursive = false;
+	local infiles = [];
+	local outfile = nil;
+	local extension = "ess";
+
+	tokentab = table [];
+	for local i = 0, sizeof tokens - 1
+		tokentab[tokens[i]] = i + ESS_FIRST_TOKEN;
+
+	// Arguments
+	for local i = 1, arguments - 1
+		switch args[i]
+		  case "-o"
+		  {
+			if not specified args[i + 1]
+			{
+				print("\nThe -o switch needs an argument!\n\n");
+				usage(args[0]);
+				return 1;
+			}
+			outfile = args[i + 1];
+			i += 1;
+		  }
+		  case "-stdout"
+			outfile = true;
+		  case "-a"
+			all = true;
+		  case "-r"
+			recursive = true;
+		  case "-x"
+		  {
+			if not specified args[i + 1]
+			{
+				print("\nThe -x switch needs an argument!\n\n");
+				usage(args[0]);
+				return 1;
+			}
+			extension = args[i + 1];
+			i += 1;
+		  }
+		  default
+			infiles.+ args[i];
+	if recursive and not all
+	{
+		print("ERROR: -r makes no sense without -a!\n");
+		usage(args[0]);
+		return 1;
+	}
+	if not sizeof infiles and not all
+	{
+		print("ERROR: No input files specified!\n");
+		usage(args[0]);
+		return 1;
+	}
+	if all and sizeof infiles > 1
+	{
+		print("ERROR: Input files specified along with -a!\n");
+		usage(args[0]);
+		return 1;
+	}
+	if all and typeof outfile == string
+	{
+		print("ERROR: Output file specified along with -a!\n");
+		usage(args[0]);
+		return 1;
+	}
+
+	if all
+	{
+		if sizeof infiles
+			local inpath = infiles[0];
+		else
+			inpath = ".";
+		if not findfiles(infiles, inpath, recursive)
+		{
+			print("Could not find input files! Aborting.\n");
+			return 1;
+		}
+	}
+	if not sizeof infiles
+	{
+		print("ERROR: No input files found!\n");
+		usage(args[0]);
+		return 1;
+	}
+
+	for local i = 0, sizeof infiles - 1
+	{
+		if outfile != true
+			print("Stripping \"", infiles[i], "\"... ");
+
+		// Process!
+		local f = file [infiles[i], "rb"];
+		local buf = dstring [];
+		strip(f, buf, true);
+		close(f);
+
+		// Postprocessing
+		encode_newlines(buf);
+		tokenize(buf);
+
+		// Output
+		if outfile == true
+			print(buf);
+		else
+		{
+			if outfile
+				local ofn = outfile;
+			else
+				ofn = setext(infiles[i], extension);
+			print("Writing to \"", ofn, "\"... ");
+			write(file [ofn, "wb"], buf);
+		}
+		if outfile != true
+			print("OK!\n");
+	}
+
+	return 0;
+}

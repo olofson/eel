@@ -1,0 +1,19 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+// This file should NOT compile!
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	if specified args[0]
+	{
+		if specified args[1]
+			local x = 2;
+		// Should fail when leaving the 'if' statement above!
+	}
+	else
+		x = 0;
+	return 0;
+}

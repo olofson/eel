@@ -1,0 +1,418 @@
+////////////////////////////////////////////////////////////////
+// default_theme.eel - Default theme for the EELBox GUI Toolkit
+// Copyright (C) 2005, 2010-2011 David Olofson
+////////////////////////////////////////////////////////////////
+
+module default_theme;
+
+import "ebgui";
+import "SDL" as SDL;
+import "recttools" as RT;
+import "text" as text;
+import "math";
+import "drawtools";
+
+// Theme constructor
+export function Create
+{
+	local no = table [
+		// Rendering target surface
+		.target			GetTarget(),
+		
+		// Theme color map
+		.colors			vector_s32 [],
+
+		// Default font
+		.font			text.Open("microfont_sh.png"),
+
+		// Default drawing style for Selector() items.
+		.SelectorItemStyle	"flat",
+
+		// Color management
+		procedure SetForegroundColor(self, r, g, b)
+		{
+			self.colors[CFG] = SDL.MapColor(self.target, r, g, b);
+		}
+		procedure SetMarkColor(self, r, g, b)
+		{
+			self.colors[CMK] = SDL.MapColor(self.target, r, g, b);
+		}
+		procedure SetPassiveColors(self, r, g, b, contrast)
+		{
+			local t, local c = self.(target, colors);
+			c[CPHL] = SDL.MapColor(t, (r, g, b) * (1 + contrast));
+			c[CPSHL] = SDL.MapColor(t, (r, g, b) * (1 + contrast * .35));
+			c[CPBG] = SDL.MapColor(t, r, g, b);
+			c[CPSSH] = SDL.MapColor(t, (r, g, b) / (1 + contrast * .35));
+			c[CPSH] = SDL.MapColor(t, (r, g, b) / (1 + contrast));
+		}
+		procedure SetActiveColors(self, r, g, b, contrast)
+		{
+			self.(ar, ag, ab) = r, g, b;
+			local t, local c = self.(target, colors);
+			c[CAHL] = SDL.MapColor(t, (r, g, b) * (1 + contrast));
+			c[CASHL] = SDL.MapColor(t, (r, g, b) * (1 + contrast * .35));
+			c[CABG] = SDL.MapColor(t, r, g, b);
+			c[CASSH] = SDL.MapColor(t, (r, g, b) / (1 + contrast * .35));
+			c[CASH] = SDL.MapColor(t, (r, g, b) / (1 + contrast));
+		}
+
+		// Rendering tools
+		procedure Box(self, rect, color)
+		{
+			box(self.target, rect, self.colors[color]);
+		}
+		procedure Bar(self, rect, color)
+		{
+			SDL.FillRect(self.target, clone rect, self.colors[color]);
+		}
+		procedure FocusBox(self, rect)
+		{
+			box(self.target, rect, self.colors[CMK]);
+		}
+		procedure FocusBar(self, rect)
+		{
+			SDL.FillRect(self.target, clone rect, self.colors[CMK]);
+		}
+		procedure PassiveBox(self, rect)
+		{
+			box(self.target, rect, self.colors[CPBG]);
+		}
+		procedure PassiveBar(self, rect)
+		{
+			SDL.FillRect(self.target, clone rect, self.colors[CPBG]);
+		}
+		procedure ActiveBox(self, rect)
+		{
+			box(self.target, rect, self.colors[CABG]);
+		}
+		procedure ActiveBar(self, rect)
+		{
+			SDL.FillRect(self.target, clone rect, self.colors[CABG]);
+		}
+
+		procedure PassiveBlock3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPHL, CPBG, CPSH, CPSHL, CPSSH]);
+		}
+		procedure PassiveBlock3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPHL, CPBG, CPSH, CPSHL, CPSSH]);
+			SDL.FillRect(t, RT.Shrink(rect, 1), c[CPBG]);
+		}
+		procedure PassiveDepression3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPSH, CPBG, CPHL, CPSSH, CPSHL]);
+		}
+		procedure PassiveDepression3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPSH, CPBG, CPHL, CPSSH, CPSHL]);
+			SDL.FillRect(t, RT.Shrink(rect, 1), c[CPBG]);
+		}
+		procedure PassiveDent3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPSSH, CPBG, CPSHL, CPBG, CPBG]);
+		}
+		procedure PassiveDent3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPSSH, CPBG, CPSHL, CPBG, CPBG]);
+			SDL.FillRect(t, RT.Shrink(rect, 1), c[CPBG]);
+		}
+		procedure PassiveFatBlock3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPHL, CPBG, CPSH, CPSHL, CPSSH]);
+			rbox3d(t, RT.Shrink(rect, 1),
+					c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+		}
+		procedure PassiveFatBlock3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CPHL, CPBG, CPSH, CPSHL, CPSSH]);
+			local r = RT.Shrink(rect, 1);
+			rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+			r.(x, y) += 1;
+			r.(w, h) -= 2;
+			SDL.FillRect(t, r, c[CPBG]);
+		}
+
+		procedure ActiveBlock3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CAHL, CABG, CASH, CASHL, CASSH]);
+		}
+		procedure ActiveBlock3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CAHL, CABG, CASH, CASHL, CASSH]);
+			SDL.FillRect(t, RT.Shrink(rect, 1), c[CABG]);
+		}
+		procedure ActiveFatBlock3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CAHL, CABG, CASH, CASHL, CASSH]);
+			rbox3d(t, RT.Shrink(rect, 1),
+					c[CASHL, CABG, CASSH, CASHL, CASH]);
+		}
+		procedure a_fxbar_v(self, _r)[_w0, _w1]
+		{
+			if specified _w0
+				local w0 = _w0;
+			else
+				w0 = 0.;
+			if specified _w1
+				local w1 = _w1;
+			else
+				w1 = 2. * PI;
+			local r = clone _r;
+			local t = self.target;
+			local y0, local h = r.(y, h);
+			if h <= 0
+				return;
+			for local y = 0, h - 1
+			{
+				local cc = SDL.MapColor(t, self.(ar, ag, ab) *
+						(1. + sin(w0 + w1 * y / h) * .3));
+				r.y = y + y0;
+				r.h = 1;
+				SDL.FillRect(t, clone r, cc);
+			}
+		}
+		procedure a_fxbar_h(self, _r)[_w0, _w1]
+		{
+			if specified _w0
+				local w0 = _w0;
+			else
+				w0 = 0.;
+			if specified _w1
+				local w1 = _w1;
+			else
+				w1 = 2. * PI;
+			local r = clone _r;
+			local t = self.target;
+			local x0, local w = r.(x, w);
+			if w <= 0
+				return;
+			for local x = 0, w - 1
+			{
+				local cc = SDL.MapColor(t, self.(ar, ag, ab) *
+						(1. + sin(w0 + w1 * x / w) * .3));
+				r.x = x + x0;
+				r.w = 1;
+				SDL.FillRect(t, clone r, cc);
+			}
+		}
+		procedure ActiveFatBlock3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CAHL, CABG, CASH, CASHL, CASSH]);
+			local r = RT.Shrink(rect, 1);
+			rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+			r.(x, y) += 1;
+			r.(w, h) -= 2;
+			if r.h <= 0
+				return;
+			self:a_fxbar_v(r);
+		}
+		procedure ActiveDepression3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CASH, CABG, CAHL, CASSH, CASHL]);
+		}
+		procedure ActiveDepression3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CASH, CABG, CAHL, CASSH, CASHL]);
+			SDL.FillRect(t, RT.Shrink(rect, 1), c[CABG]);
+		}
+		procedure ActiveDent3D_OL(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CASSH, CABG, CASHL, CABG, CABG]);
+		}
+		procedure ActiveDent3D(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			rbox3d(t, rect, c[CASSH, CABG, CASHL, CABG, CABG]);
+			SDL.FillRect(t, RT.Shrink(rect, 1), c[CABG]);
+		}
+
+		procedure PassiveHRidge(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:PassiveBar(rect);
+			local r = clone rect;
+			local m = floor(r.w * .03);
+			r.x += m;
+			r.w = rect.w - (r.x - rect.x) - m;
+			r.y += (r.h - 3) / 2;
+			if r.h < 15 and r.h % 2
+				r.h = 3;
+			else
+				r.h = 4;
+			rbox3d(t, r, c[CPSSH, CPBG, CPSHL, CPBG, CPBG]);
+		}
+		procedure PassiveVRidge(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:PassiveBar(rect);
+			local r = clone rect;
+			local m = floor(r.h * .03);
+			r.y += m;
+			r.h = rect.h - (r.y - rect.y) - m;
+			r.x += (r.w - 3) / 2;
+			if r.w < 15 and r.w % 2
+				r.w = 3;
+			else
+				r.w = 4;
+			rbox3d(t, r, c[CPSH, CPBG, CPHL, CPSSH, CPSHL]);
+		}
+		procedure PassiveHGrip(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:PassiveBar(rect);
+			local r = clone rect;
+			r.x += 1;
+			r.w = rect.w - (r.x - rect.x) - 1;
+			if rect.h > 15
+			{
+				r.y += (r.h - 8) / 2;
+				r.h = 2;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+				r.y += 3;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+				r.y += 3;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+			}
+			else
+			{
+				r.y += (r.h - 5) / 2;
+				r.h = 2;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+				r.y += 3;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+			}
+		}
+		procedure PassiveVGrip(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:PassiveBar(rect);
+			local r = clone rect;
+			r.y += 1;
+			r.h = rect.h - (r.y - rect.y) - 1;
+			if rect.w > 15
+			{
+				r.x += (r.w - 8) / 2;
+				r.w = 2;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+				r.x += 3;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+				r.x += 3;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+			}
+			else
+			{
+				r.x += (r.w - 5) / 2;
+				r.w = 2;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+				r.x += 3;
+				rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
+			}
+		}
+
+		procedure ActiveHRidge(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:ActiveBar(rect);
+			local r = clone rect;
+			local m = floor(r.w * .03);
+			r.x += m;
+			r.w = rect.w - (r.x - rect.x) - m;
+			r.y += (r.h - 3) / 2;
+			if r.h < 15 and r.h % 2
+				r.h = 3;
+			else
+				r.h = 4;
+			rbox3d(t, r, c[CASH, CABG, CAHL, CASSH, CASHL]);
+		}
+		procedure ActiveVRidge(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:ActiveBar(rect);
+			local r = clone rect;
+			local m = floor(r.h * .03);
+			r.y += m;
+			r.h = rect.h - (r.y - rect.y) - m;
+			r.x += (r.w - 3) / 2;
+			if r.w < 15 and r.w % 2
+				r.w = 3;
+			else
+				r.w = 4;
+			rbox3d(t, r, c[CASH, CABG, CAHL, CASSH, CASHL]);
+		}
+		procedure ActiveHGrip(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:a_fxbar_v(rect, 1.25 * PI, 1.25 * PI);
+			local r = clone rect;
+			r.x += 1;
+			r.w = rect.w - (r.x - rect.x) - 1;
+			if rect.h > 15
+			{
+				r.y += (r.h - 8) / 2;
+				r.h = 2;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+				r.y += 3;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+				r.y += 3;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+			}
+			else
+			{
+				r.y += (r.h - 5) / 2;
+				r.h = 2;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+				r.y += 3;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+			}
+		}
+		procedure ActiveVGrip(self, rect)
+		{
+			local t, local c = self.(target, colors);
+			self:a_fxbar_h(rect, 1.25 * PI, 1.25 * PI);
+			local r = clone rect;
+			r.y += 1;
+			r.h = rect.h - (r.y - rect.y) - 1;
+			if rect.w > 15
+			{
+				r.x += (r.w - 8) / 2;
+				r.w = 2;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+				r.x += 3;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+				r.x += 3;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+			}
+			else
+			{
+				r.x += (r.w - 5) / 2;
+				r.w = 2;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+				r.x += 3;
+				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
+			}
+		}
+	];
+	no.font:Offset(-1, 1);
+	no:SetPassiveColors(96, 96, 96, 1.1);
+	no:SetActiveColors(128, 96, 64, 1.3);
+	no:SetForegroundColor(255, 255, 255);
+	no:SetMarkColor(255, 0, 0);
+	return no;
+}

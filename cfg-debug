@@ -1,0 +1,3 @@
+#!/bin/sh
+#CFLAGS="-O0 -g -funsigned-char" ./configure --prefix=/usr --disable-static --enable-debug --enable-epm
+CFLAGS="-O0 -g -funsigned-char -lrt" ./configure --prefix=/usr --disable-static --enable-debug

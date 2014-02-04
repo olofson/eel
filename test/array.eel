@@ -1,0 +1,106 @@
+////////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2004, 2005, 2011 David Olofson
+////////////////////////////////////////////////
+
+procedure print_tree(indent, a)
+{
+	if not indent
+		print("-------------\n");
+	for local j = 0, sizeof a - 1
+	{
+		for local i = indent, 1, -1
+			print("   ");
+		if typeof a[j] == array
+		{
+			print("array[", j, "]:\n");
+			print_tree(indent + 1, a[j]);
+		}
+		else
+			print("array[", j, "] = ", a[j], "\n");
+	}
+}
+
+procedure roll(a)
+{
+	local tmp = a[0];
+	for local i = 0, sizeof a - 2
+		a[i] = a[i + 1];
+	a[sizeof a - 1] = tmp;
+}
+
+export function main<args>
+{
+	print("Array tests:\n");
+
+	print("\nCreate an array:\n");
+	local a = [10, 10+10, 3*10, 4*10, 100/2];
+	print_tree(0, a);
+
+	print("\nRecursively multiply the first value by 10:\n");
+	a[1, 2, 3, 4] = a[0, 1, 2, 3] * 10;
+	print_tree(0, a);
+
+	print("\nGenerate some new values and roll the array:\n");
+	a[0, 1, 2, 3, 4] = 11 * (1, 2, 3, 4, 5);
+	print_tree(0, a);
+	roll(a);
+	print_tree(0, a);
+
+	print("\nDito with some objects (strings):\n");
+	a = ["ten", "twenty", "thirty", "fourty", "fifty"];
+	print_tree(0, a);
+	roll(a);
+	print_tree(0, a);
+
+	print("\nAn array of arrays:\n");
+	a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+	print_tree(0, a);
+	roll(a);
+	print_tree(0, a);
+
+	print("\nInplace operations:\n");
+	local x = ["ping"];
+	local y = [];
+	(x, y).+ "pong";
+	print_tree(0, x);
+	print_tree(0, y);
+
+	print("\n'insert' and 'delete':\n");
+	a = [1, 3, 5, 7];
+	print_tree(0, a);
+	insert(a, 3, 6);
+	insert(a, 2, 4);
+	insert(a, 1, 2);
+	print_tree(0, a);
+	delete(a, 0);
+	delete(a, 1);
+	delete(a, 2);
+	delete(a, 3);
+	print_tree(0, a);
+
+	print("\n'copy':\n");
+	a = ["-1-", "-2-", "-3-", "-4-", "-5-", "-6-", "-7-", "-8-"];
+	print("    Original:\n");
+	print_tree(2, a);
+	print("    First half:\n");
+	print_tree(2, copy(a, 0, 4));
+	print("    Last half:\n");
+	print_tree(2, copy(a, 4));
+	print("    Middle:\n");
+	print_tree(2, copy(a, 2, 4));
+
+	print("\n'insert' and 'delete':\n");
+	a = ["-1-", "-2-", "-3-", "-4-", "-5-", "-6-", "-7-", "-8-"];
+	print("    Original:\n");
+	print_tree(2, a);
+	local d1, local d2, local d3 = a[1, 3, 5];
+	print("    [1, 3, 5] deleted:\n");
+	delete(a, d1);
+	delete(a, d2);
+	delete(a, d3);
+	print_tree(2, a);
+
+	print("\nArray tests done.\n");
+	return 0;
+}

@@ -1,0 +1,48 @@
+////////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005, 2009, 2011 David Olofson
+////////////////////////////////////////////////
+
+import "io";
+
+function wc(fn)
+{
+	local nl, local nw, local nc = 0;
+	local b = "";
+	local inword = false;
+	local f = file [fn, "rb"];
+	for local i = 1, sizeof f
+	{
+		b = read(f);
+		nc += 1;
+		if b == "\n"
+			nl += 1;
+		if b == " " or b == "\t" or b == "\n"
+			inword = false;
+		else if not inword
+		{
+			nw += 1;
+			inword = true;
+		}
+	}
+	return [nl, nw, nc];
+}
+
+export function main<args>
+{
+	if specified args[1]
+		local rep = (integer)args[1];
+	else
+		rep = 1;
+	for local i = 1, rep - 1
+		wc("wc-input.txt");
+	local res = wc("wc-input.txt");
+	print(res[0], " ", res[1], " ", res[2], "\n");
+	if res[0] != 25
+		throw "Wrong number of lines! Should be 25.";
+	if res[1] != 137
+		throw "Wrong number of words! Should be 137.";
+	if res[2] != 6096
+		throw "Wrong number of characters! Should be 6096.";
+	return 0;
+}

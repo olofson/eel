@@ -1,0 +1,2 @@
+#!/bin/sh
+CFLAGS="-O0 -g" ./configure --prefix=/usr --enable-debug --enable-epm

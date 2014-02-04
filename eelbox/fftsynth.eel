@@ -1,0 +1,706 @@
+//////////////////////////////////////////
+// fftsynth.eel - Simple FFT Synth
+// Copyright (C) 2006 David Olofson
+//////////////////////////////////////////
+
+import "math";
+import "SDL" as SDL;
+import "dsp" as dsp;
+import "midi" as midi;
+
+
+ // System constants
+//////////////////////////////////////////
+
+constant FS = 44100;	// Output sample rate (Hz)
+constant BUF = 1024;	// Output buffer size (sample frames)
+constant FIFO = 2048;	// PlayAudio() FIFO buffer size (sample frames)
+constant FFT = 1024;		// FFT window size
+constant WINDOW = 1024;		// Overlap window size
+constant FFTOCT = 9;		// Octaves used
+constant MSPERFRAME = 30;	// ms per visualization update
+constant MSPERLOADFRAME = 300;	// ms per load meter update
+
+
+ // Pseudo-random number generator
+//////////////////////////////////////////
+
+static IM = 139968;
+static IA = 3877;
+static IC = 29573;
+static LAST = 42;
+
+function rnd(max)
+{
+	LAST = (LAST * IA + IC) % IM;
+	return (max * LAST) / IM;
+}
+
+
+ // Instrument definitions
+//////////////////////////////////////////
+
+function Bass
+{
+	constant FASTDECAY = .95;
+	constant SLOWDECAY = .995;
+	constant FILTERDECAY = .75;
+	constant SEQ_FILTERDECAY = .65;
+	constant OSCILLATORS = 200;
+	constant MINCUT = 1;
+	constant MAXCUT1 = 2;
+	constant MAXCUT2 = 16;
+	local o = table [
+		.a	0,
+		.d	FASTDECAY,
+		.fa	0,
+		.fd	FILTERDECAY,
+		.maxcut	MAXCUT2,
+		.cnt	1,
+		.seq	false,
+		.nf	0,
+		.f	0,
+		.reso	0,
+		.resom	0,
+		.resoph	0,
+		.ph	vector[],
+		.dph0	vector[],
+		procedure Note(self, v)
+		{
+			if v
+				self.(a, d, fa) = 1, SLOWDECAY, 1;
+			else
+				self.d = FASTDECAY;
+		}
+		procedure Switch(self, v)
+		{
+			self.seq = v;
+			if v
+			{
+				self.fd = SEQ_FILTERDECAY;
+				self.cnt = 1;
+			}
+			else
+				self.(fd, maxcut) = FILTERDECAY, MAXCUT2;
+		}
+		procedure Frequency(self, f)
+		{
+			self.nf = f;
+		}
+		procedure Control(self, v)
+		{
+			self.reso = v;
+		}
+		procedure Process(self, fdata)
+		{
+			if self.seq
+			{
+				self.cnt -= 1;
+				if not self.cnt
+				{
+					self.cnt = 12;
+					self.maxcut = MAXCUT1 +
+							rnd(MAXCUT2 - MAXCUT1);
+					self.a = .95;
+					self.fa = .85;
+				}
+				self.a >|= .75;
+			}
+			local f, local dph0, local ph = self.(f, dph0, ph);
+			ph.#+ dph0 #* (f * PI / FFT * WINDOW);
+			local a = (.5 - self.reso * .3) * self.a ** 7;
+			local cutoff = self.fa ** 3;
+			cutoff = (MINCUT + self.reso *
+					(self.maxcut - MINCUT)) *
+					(1 - cutoff) +
+					(OSCILLATORS - 1) * cutoff;
+			local m = 0;
+			for local h = 0, cutoff
+			{
+				local i =  f * dph0[h];
+				m = a / (h + 1.5);
+				// Filter peak
+				m *= 1 + self.reso * (h / cutoff) ** 3 * 30;
+				dsp.c_add_polar_i(fdata, i, m, ph[h]);
+			}
+
+			// Smooth roll-off...
+			local frac = cutoff - floor(cutoff);
+			local cco = ceil(cutoff);
+			local i = f * dph0[cco];
+			m = a / (cutoff + 1.5);
+			m *= 1 + self.reso * 20;
+			dsp.c_add_polar_i(fdata, i, m * frac, ph[cco]);
+
+			// Bass enhancer
+			dsp.c_add_polar_i(fdata, f * dph0[0] * .5,
+					.1 * self.a ** 5, ph[0] * .5);
+
+			// Filter frequency
+			self.resoph += cutoff * f * PI / FFT * WINDOW;
+
+			// Filter resonance: Excitation
+			self.resom += m * self.reso;
+
+			// Filter resonance: Damping
+			self.resom *= .5 + .3 * self.reso;
+
+			// Filter resonance: Saturation
+			self.resom |<= 1;
+
+			// Filter output + distortion
+			for local h = 1, 30, 2
+				dsp.c_add_polar_i(fdata, cutoff * f * h,
+						.2 * self.resom ** h / h,
+						self.resoph * h);
+
+			// Update envelopes
+			self.f += (self.nf - self.f) * .5;
+			self.a *= self.d;
+			self.fa *= self.fd;
+		}
+	];
+	for local i = 1, OSCILLATORS
+	{
+		o.ph.+ rnd(2 * PI);
+		o.dph0.+ i;
+	}
+	return o;
+}
+
+
+function Whistle
+{
+	constant FASTDECAY = .5;
+	constant SLOWDECAY = .1;
+	constant OSCILLATORS = 300;
+	local o = table [
+		.a	0,
+		.ta	0,
+		.d	FASTDECAY,
+		.nf	0,
+		.f	0,
+		.vid	0,
+		.ph	vector[],
+		.dph0	vector[],
+		procedure Note(self, v)
+		{
+			if v
+				self.ta = 1;
+			else
+				self.ta = 0;
+		}
+		procedure Switch(self, v)
+		{
+			if v
+				self.d = SLOWDECAY;
+			else
+				self.d = FASTDECAY;
+		}
+		procedure Frequency(self, f)
+		{
+			self.nf = f;
+		}
+		procedure Control(self, v)
+		{
+			self.vib = v ** 2;
+		}
+		procedure Process(self, fd)
+		{
+			local lfo = sin(SDL.GetTicks() * .011) * .02;
+			lfo += sin(SDL.GetTicks() * .017) * .05;
+			lfo += sin(SDL.GetTicks() * .04) * self.vib;
+			local f = self.f * (1 + lfo * .1);
+			self.ph.#+ self.dph0 #* (f * PI / FFT * WINDOW);
+			local low = self.a * .2;
+			local dph0, local ph = self.(dph0, ph);
+			dsp.c_add_polar_i(fd, f * dph0[0], 2 * low, ph[0]);
+			for local h = 1, OSCILLATORS - 1
+			{
+				local i = f * dph0[h];
+				local m = low / (h + 100);
+				dsp.c_add_polar_i(fd, i, m, ph[h]);
+			}
+			self.f += (self.nf - self.f) * .4;
+			self.a += (self.ta - self.a) * self.d;
+		}
+	];
+	for local i = 1, OSCILLATORS
+	{
+		o.ph.+ rnd(2 * PI);
+		o.dph0.+ 1 + i * .007 + rnd(.01) * (i - 1);
+	}
+	return o;
+}
+
+
+function Strings
+{
+	constant FASTDECAY = .2;
+	constant SLOWDECAY = .02;
+	constant OSCILLATORS = 500;
+	constant VOICES = 10;
+	local o = table [
+		.a	0,
+		.ta	0,
+		.d	FASTDECAY,
+		.nf	0,
+		.f	0,
+		.vid	0,
+		.ph	vector[],
+		.dph0	vector[],
+		procedure Note(self, v)
+		{
+			if v
+				self.ta = 1;
+			else
+				self.ta = 0;
+		}
+		procedure Switch(self, v)
+		{
+			if v
+				self.d = SLOWDECAY;
+			else
+				self.d = FASTDECAY;
+		}
+		procedure Frequency(self, f)
+		{
+			self.nf = f;
+		}
+		procedure Control(self, v)
+		{
+			self.vib = v ** 2;
+		}
+		procedure Process(self, fd)
+		{
+			local fph = PI / FFT * WINDOW;
+			local vf = vector [];
+			local t = SDL.GetTicks() * 2 * PI / 1000;
+			for local j = 0, VOICES - 1
+			{
+				local w = j / VOICES;
+				local m = .08 * sin(t * 6 + w * 2);
+				local h = (sin(t * (.55 + w)) +
+					sin(t * (2.3 + w * 1.7))) * .007;
+				vf.+ (1 + m * self.vib + h) * self.f;
+			}
+			local low = self.a;
+			local dph0, local ph = self.(dph0, ph);
+			for local h = 0, OSCILLATORS - 1
+			{
+				local f = vf[h % VOICES];
+				ph[h] += dph0[h] * f * fph;
+				local i = f * dph0[h];
+				local m = low / (h + 20);
+				dsp.c_add_polar_i(fd, i, m, ph[h]);
+			}
+			self.f += (self.nf - self.f) * .4;
+			self.a += (self.ta - self.a) * self.d;
+		}
+	];
+	for local j = 0, VOICES - 1
+		for local i = 1, OSCILLATORS / VOICES
+		{
+			local ind = (i - 1) * VOICES + j;
+			o.ph[ind] =  rnd(2 * PI);
+			o.dph0[ind] = 1 + (i - 1) * (.995 + rnd(.01));
+		}
+	return o;
+}
+
+ 
+function Crash
+{
+	constant FASTDECAY = .95;
+	constant SLOWDECAY = .995;
+	constant OSCILLATORS = 2000;	// Number of oscillators
+	local o = table [
+		.a	0,		// Amplitude
+		.d	SLOWDECAY,	// Decay factor
+		.nf	0,		// Target frequency (bin)
+		.f	0,		// Current frequency (bin)
+		.ph	vector[],	// Oscillator phases
+		.dph0	vector[],	// Oscillator phase frequencies
+		procedure Note(self, v)
+		{
+			if v
+				self.a = 1;
+		}
+		procedure Switch(self, v)
+		{
+			if v
+				self.d = FASTDECAY;
+			else
+				self.d = SLOWDECAY;
+		}
+		procedure Frequency(self, f)
+		{
+			self.nf = f;
+		}
+		procedure Control(self, v)
+		{
+		}
+		procedure Process(self, fd)
+		{
+			// Update oscillator phase accumulators
+			self.ph.#+ self.dph0 #* (self.f * PI / FFT * WINDOW);
+
+			// Render oscillators in frequency space
+			local low = 3 * self.a ** 10;
+			if self.a == 1
+				local high = 7;
+			else
+				high = 30 * (1 - self.a) ** 1.5 * self.a ** 4;
+			local f, local dph0, local ph = self.(f, dph0, ph);
+			for local h = 0, OSCILLATORS - 1
+			{
+				// Calculate center FFT bin (fractional)
+				local i = f * dph0[h];
+
+				// Calculate magnitude
+				local m = low / (h + 30) + high / (h + 300);
+
+				// Add component
+				dsp.c_add_polar_i(fd, i, m, ph[h]);
+			}
+
+			// Update frequency and amplitude
+			self.f += (self.nf - self.f) * .5;
+			self.a *= self.d;
+		}
+	];
+	for local i = 1, OSCILLATORS
+	{
+		local w = (i - 1) / OSCILLATORS;
+		o.ph.+ rnd(2 * PI);
+		o.dph0.+ 1 + w * (15 + rnd(15));
+	}
+	return o;
+}
+
+
+function HiHat
+{
+	constant FASTDECAY = .93;
+	constant SLOWDECAY = .993;
+	constant OSCILLATORS = 300;
+	local o = table [
+		.a	0,
+		.d	SLOWDECAY,
+		.nf	0,
+		.f	0,
+		.ph	vector[],
+		.dph0	vector[],
+		procedure Note(self, v)
+		{
+			if v
+				self.a = 1;
+		}
+		procedure Switch(self, v)
+		{
+			if v
+				self.d = FASTDECAY;
+			else
+				self.d = SLOWDECAY;
+		}
+		procedure Frequency(self, f)
+		{
+			self.nf = f;
+		}
+		procedure Control(self, v)
+		{
+		}
+		procedure Process(self, fd)
+		{
+			self.ph.#+ self.dph0 #* (self.f * PI / FFT * WINDOW);
+			local low = 4 * self.a ** 7;
+			local f, local dph0, local ph = self.(f, dph0, ph);
+			for local h = 0, OSCILLATORS - 1
+			{
+				local i = f * dph0[h];
+				local m = low / (h + 50);
+				dsp.c_add_polar_i(fd, i, m, ph[h]);
+			}
+			self.f += (self.nf - self.f) * .5;
+			self.a *= self.d;
+		}
+	];
+	for local i = 1, OSCILLATORS
+	{
+		local w = (i - 1) / OSCILLATORS;
+		o.ph.+ rnd(2 * PI);
+		o.dph0.+ 1 + w * (4 + rnd(1));
+	}
+	return o;
+}
+
+
+ // Waveform and spectrum plotter
+//////////////////////////////////////////
+
+procedure plot(surface, tdata, fdata, adata)
+{
+	SDL.FillRect(surface, nil, SDL.MapColor(surface, 0, 0, 0));
+	local r = SDL.Rect[0, 0, 1, surface.h];
+
+	// Plot windowed IFFT output
+	local c = SDL.MapColor(surface, 0, 0, 255);
+	for local x = 0, surface.w - 1
+	{
+		local m = .5 - tdata[FFT * x / surface.w] * .5;
+		local y1, local y2 = m * surface.h, surface.h * .5;
+		local y = y1 |< y2;
+		r.(x, y, h) = x, y, (y1 >| y2) - y;
+		SDL.FillRect(surface, r, c);
+	}
+
+	// Plot FFT spectrum
+	c = SDL.MapColor(surface, 0, 255, 0);
+	try for local x = 0, surface.w - 1, 2
+	{
+		local m = (integer)(2 ** (FFTOCT * x / surface.w));
+		m = .5 - fdata[m * 2] * .5;
+		local y1, local y2 = m * surface.h, surface.h * .5;
+		local y = y1 |< y2;
+		r.(x, y, h) = x, y, (y1 >| y2) - y;
+		SDL.FillRect(surface, r, c);
+	}
+	c = SDL.MapColor(surface, 255, 0, 0);
+	try for local x = 1, surface.w - 1, 2
+	{
+		local m = (integer)(2 ** (FFTOCT * x / surface.w));
+		m = .5 - fdata[m * 2 + 1] * .5;
+		local y1, local y2 = m * surface.h, surface.h * .5;
+		local y = y1 |< y2;
+		r.(x, y, h) = x, y, (y1 >| y2) - y;
+		SDL.FillRect(surface, r, c);
+	}
+
+	// Plot audio data
+	c = SDL.MapColor(surface, 255, 0, 255);
+	try for local x = 0, surface.w - 1
+	{
+		local m = .5 - adata[sizeof adata * x / surface.w] * .5;
+		SDL.Plot(surface, c, x, m * surface.h);
+	}
+}
+
+
+ // CPU load plotter
+//////////////////////////////////////////
+
+procedure plot_load(surface, times, colors)
+{
+	local scale = surface.w / (dsp.sum(times) >| 1);
+	local x = 0;
+	for local i = 0, sizeof times - 2
+	{
+		local x2 = x + times[i] * scale;
+		local r = SDL.Rect[floor(x), 0, ceil(x2 - x), 5];
+		SDL.FillRect(surface, r, colors[i]);
+		x = x2;
+	}
+}
+
+
+ // Main program
+//////////////////////////////////////////
+
+export function main<args>
+{
+	local screen = SDL.SetVideoMode(800, 400, 0, SDL.SWSURFACE);
+	SDL.SetCaption("FFTSynth", args[0]);
+
+	SDL.OpenAudio(FS, BUF, FIFO);
+
+	local usingmidi = false;
+	try
+	{
+		midi.OpenMIDI();
+		usingmidi = true;
+	}
+
+	// FFT spectrum; (FFT/2 + 1) <re, im> pairs.
+	local fd = vector [];
+	for local i = 1, FFT + 2
+		fd.+ 0;
+
+	// Time data (ie audio waveform)
+	local td = vector [];
+	td[FFT - 1] = 0;
+	local last_td = nil;
+
+	// Overlap-add window, padded to match FFT size.
+	// Note that this window is a bit "fat" in the overlap areas,
+	// in order to compensate slightly for the AM distortion.
+	// Basically, we trade some distortion at the pure IFFT
+	// frequencies for less distortion in between them.
+	local win = vector [];
+	for local i = 1, (FFT - WINDOW) / 2
+		win.+ 0;
+	for local i = 0, WINDOW - 1
+		win.+ (.5 - cos(i * 2 * PI / WINDOW) * .5) ** .75;
+	for local i = 1, (FFT - WINDOW) / 2
+		win.+ 0;
+
+	local out = nil;		// Output buffer
+	local fx, local fy = 0;		// Control values
+	local pitch = 0;
+	local bend = 0;
+	local instrument = Bass();	// Current instrument
+
+	// Window refresh timing
+	local nextrefresh = SDL.GetTicks() + MSPERFRAME;
+	local nextloadrefresh = SDL.GetTicks() + MSPERLOADFRAME;
+
+	// CPU load
+	local lt = getus();
+	local loadp = vector[0, 0, 0, 0, 1];
+	local loadpa = clone loadp;
+	local loadc = [SDL.MapColor(screen, 255, 0, 0),
+			SDL.MapColor(screen, 0, 128, 255),
+			SDL.MapColor(screen, 255, 128, 0),
+			SDL.MapColor(screen, 0, 128, 0)];
+	function dt
+	{
+		local nt = getus();
+		local r = nt - upvalue lt;
+		lt = nt;
+		return r;
+	}
+
+	while true
+	mainloop:
+	{
+		while true
+		{
+			if not usingmidi
+				break;
+			local ev = midi.ReadMIDI();
+			if not ev
+				break;
+			switch ev.type
+			  case midi.NOTEON
+				if ev.velocity
+				{
+					pitch = (ev.pitch - 60) / 12 + 3;
+					instrument:Frequency(2 **
+							(pitch + bend));
+					instrument:Note(true);
+				}
+				else
+					instrument:Note(false);
+			  case midi.NOTEOFF
+				instrument:Note(false);
+			  case midi.CONTROLCHANGE
+			  {
+				local v = ev.value / 127;
+				switch ev.control
+				  case 1
+					instrument:Control(v);
+				  case 64
+					instrument:Switch(v >= .5);
+			  }
+			  case midi.PITCHBEND
+			  {
+				bend = ev.value / 8192;
+				instrument:Frequency(2 ** (pitch + bend));
+			  }
+		}
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYDOWN
+			  {
+				switch ev.sym
+				  case SDL.KF1
+					instrument = Bass();
+				  case SDL.KF2
+					instrument = Whistle();
+				  case SDL.KF3
+					instrument = Strings();
+				  case SDL.KF4
+					instrument = Crash();
+				  case SDL.KF5
+					instrument = HiHat();
+				instrument:Frequency(2 ** (FFTOCT * fx));
+				instrument:Control(fy);
+			  }
+			  case SDL.KEYUP
+				if ev.sym == SDL.KESCAPE
+					break mainloop;
+			  case SDL.MOUSEBUTTONDOWN
+				if ev.button == SDL.BUTTON_LEFT
+					instrument:Note(true);
+				else
+					instrument:Switch(true);
+			  case SDL.MOUSEBUTTONUP
+				if ev.button == SDL.BUTTON_LEFT
+					instrument:Note(false);
+				else
+					instrument:Switch(false);
+			  case SDL.MOUSEMOTION
+			  {
+				fx = ev.x / screen.w;
+				fy = 1 - ev.y / screen.h;
+				instrument:Frequency(2 ** (FFTOCT * fx));
+				instrument:Control(fy);
+			  }
+			  case SDL.QUIT
+				break mainloop;
+		}
+
+		if SDL.AudioSpace() < WINDOW
+		{
+			SDL.Delay(10);
+			continue mainloop;
+		}
+
+		loadpa[4] += dt();	// Free time (transparent)
+
+		// Render instruments
+		fd.#* 0;
+		instrument:Process(fd);
+		loadpa[0] += dt();	// Instruments (red)
+
+		// IFFT and apply window for overlap-add
+		last_td = td;
+		td = dsp.ifft_real(fd);
+		loadpa[1] += dt();	// IFFT (teal)
+
+		// Generate output
+		local c = FFT / 2;
+		local wh = WINDOW / 2;
+		td.#* win;
+		out = copy(last_td, c, wh) #+ copy(td, c - wh, wh);
+
+		// Play!
+		SDL.PlayAudio(out);
+		loadpa[2] += dt();	// Windowing + output (yellow)
+
+		// Plotting
+		if SDL.GetTicks() >= nextrefresh
+		{
+			plot(screen, td, fd, out);
+			if SDL.GetTicks() >= nextloadrefresh
+			{
+				loadp = clone loadpa;
+				loadpa.#* 0;
+				nextloadrefresh = SDL.GetTicks() +
+						MSPERLOADFRAME;
+			}
+			plot_load(screen, loadp, loadc);
+			SDL.Flip();
+			nextrefresh = SDL.GetTicks() + MSPERFRAME;
+		}
+		loadpa[3] += dt();	// Rendering (green)
+	}
+
+	if usingmidi
+		midi.CloseMIDI();
+	SDL.CloseAudio();
+	return 0;
+}

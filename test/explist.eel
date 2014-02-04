@@ -1,0 +1,105 @@
+/////////////////////////////////////////////
+// EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Expression list tests:\n");
+
+	print("\n Expressions:\n");
+
+	print("  local x, local y, local z, local w = 10, 20, 30, 40;\n");
+	local x, local y, local z, local w = 10, 20, 30, 40;
+	procedure check
+	{
+		upvalue x, upvalue y, upvalue z, upvalue w;
+		print("\tx: ", x, "\ty: ", y, "\tz: ", z, "\tw: ", w, "\n");
+		if x != 10
+			throw "'x' should be 10, not " + (string)x + "!";
+		if y != 20
+			throw "'y' should be 10, not " + (string)y + "!";
+		if z != 30
+			throw "'z' should be 10, not " + (string)z + "!";
+		if w != 40
+			throw "'w' should be 10, not " + (string)w + "!";
+		print("    OK!\n");
+		x, y, z, w = 0;
+	}
+	check();
+	
+	print("  x, y, z, w = 10 * (1, 2, 3, 4);\n");
+	x, y, z, w = 10 * (1, 2, 3, 4);
+	check();
+
+	print("  x, y, z, w = (1, 2, 3, 4) * 10;\n");
+	x, y, z, w = (1, 2, 3, 4) * 10;
+	check();
+
+	print("  x, y, z, w = -(-10, -20, -30, -40);\n");
+	x, y, z, w = -(-10, -20, -30, -40);
+	check();
+
+	print("  x, y, z, w = 2 * (1, 2, 3, 4) * 5;\n");
+	x, y, z, w = 2 * (1, 2, 3, 4) * 5;
+	check();
+
+	print("  x, y, z, w = (10, 20), (3, 4) * 10;\n");
+	x, y, z, w = (10, 20), (3, 4) * 10;
+	check();
+
+	print("  x, y, z, w = (1, 4, 2, 20) * (10, 5, 15, 2);\n");
+	x, y, z, w = (1, 4, 2, 20) * (10, 5, 15, 2);
+	check();
+
+	print("  x, y, z, w = 1 * 10, 4 * 5, 2 * 15, 20 * 2;;\n");
+	x, y, z, w = 1 * 10, 4 * 5, 2 * 15, 20 * 2;
+	check();
+
+	print("\n Indexing:\n");
+	local a = table [
+			"ten"		10,
+			"twenty"	20,
+			"thirty"	30,
+			"fourty"	40
+		];
+	print("  (a is a table of <word, number>)\n");
+
+	print("  x, y, z, w = a.(ten, twenty, thirty, fourty);\n");
+	x, y, z, w = a.(ten, twenty, thirty, fourty);
+	check();
+
+	print("  x, y, z, w = a.ten, a.twenty, a.thirty, a.fourty);\n");
+	x, y, z, w = a.ten, a.twenty, a.thirty, a.fourty;
+	check();
+
+	print("  x, y, z, w = a[\"ten\", \"twenty\","
+			" \"thirty\", \"fourty\"];\n");
+	x, y, z, w = a["ten", "twenty", "thirty", "fourty"];
+	check();
+
+	print("  x, y, z, w = a.(twenty, thirty, fourty, ten) +"
+			" (-10, -10, -10, 30);\n");
+	x, y, z, w = a.(twenty, thirty, fourty, ten) + (-10, -10, -10, 30);
+	check();
+
+	a = table [
+			"ten"		table ["num" 10],
+			"twenty"	table ["num" 20],
+			"thirty"	table ["num" 30],
+			"fourty"	table ["num" 40]
+		];
+	print("  (a is a table of <word, table of <\"num\", number>>)\n");
+
+	print("  x, y, z, w = a.(ten, twenty, thirty, fourty).num;\n");
+	x, y, z, w = a.(ten, twenty, thirty, fourty).num;
+	check();
+
+	print("  x, y, z, w = a[\"ten\", \"twenty\","
+			" \"thirty\", \"fourty\"].num;\n");
+	x, y, z, w = a["ten", "twenty", "thirty", "fourty"].num;
+	check();
+
+	print("\nExpression list tests done.\n");
+	return 0;
+}

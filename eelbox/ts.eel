@@ -1,0 +1,72 @@
+/////////////////////////////////////////////
+// ts.eel - TCP Server
+// (Port of ts.cpp from NET2)
+/////////////////////////////////////////////
+
+import "SDL", "NET2";
+
+export function main<args>
+{
+	local count = 0;	// # of bytes sent
+	local sockets = [];	// Array of connected sockets
+
+	// This is where we tell NET2 to start accepting TCP/IP
+	// connections on port 6666. This call does not wait for
+	// a connection to come in. It tells NET2 to do the waiting
+	// and it returns immediately. After this call returns your
+	// program will get an event any time a computer trys to
+	// connect to the port given in this call.
+	local servsock = TCPAcceptOn(6666);
+
+	while true
+	{
+		local ev = WaitEvent();
+		switch ev.type
+		  case TCPACCEPTEVENT
+		  {
+			// This next piece of code handles an accept event.
+			// This event tells us that an connection has been
+			// accepted. Here, all we do is count it. You
+			// would normally take some other action.
+			local s = ev.socket;
+			print("accept(", s.index, ")\n");
+			sockets[s.index] = s;
+		  }
+		  case TCPRECEIVEEVENT
+		  {
+			// This next piece of code is for handling receive
+			// events. This kind of event tells us we have input
+			// waiting on a socket. You need to grab all of it.
+			// No that we get the socket from the event. You
+			// can use the socket to tell you which user sent
+			// the information to you. Note that TCPRead() tries
+			// to read a string if no type argument is given.
+			while true
+			{
+				local d = TCPRead(ev.socket);
+				if d == nil
+					break;
+				count += sizeof d;
+				print(d);
+			}
+		  }
+		  case TCPCLOSEEVENT
+		  {
+			// If an error occurs on a socket or the other
+			// computer closes the connection you will get a
+			// close event. When you get a close event you
+			// must close the socket. Use the socket in the
+			// event to tell you which connection went away.
+			local i = ev.socket.index;
+			print("close(", i, ")\n");
+			print("count = ", count, "\n");
+			TCPClose(sockets[i]);
+		  }
+		  case ERROREVENT
+			print("NET2 error: ", ev.error, "\n");
+		  case QUIT
+			break;
+	}
+
+	return 0;
+}

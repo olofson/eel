@@ -1,0 +1,30 @@
+//////////////////////////////////////////
+// miditest.eel - EEL MIDI Module Test
+// Copyright (C) 2006-2007 David Olofson
+//////////////////////////////////////////
+// NOTE:
+//      As of EEL 0.1.11, MIDI is only
+//      available on Linux (ALSA).
+//////////////////////////////////////////
+
+import "midi", "SDL";
+
+export function main<args>
+{
+	OpenMIDI();
+	for local i = 1, 10
+	{
+		local ev = ReadMIDI();
+		if not ev
+		{
+			Delay(10);
+			repeat;
+		}
+		print(EventName(ev.type), ": ");
+		for local j = 1, sizeof ev - 1
+			print(" ", key(ev, j), ":", index(ev, j));
+		print("\n");
+	}
+	CloseMIDI();
+	return 0;
+}

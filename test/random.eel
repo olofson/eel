@@ -1,0 +1,49 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Based on the Lua Random Number Generator
+// test code by Roberto Ierusalimschy, for
+// The Great Computer Language Shootout.
+// EEL version by David Olofson, 2004-2005
+/////////////////////////////////////////////
+
+static IM = 139968;
+static IA = 3877;
+static IC = 29573;
+static LAST = 42;
+
+function gen_random(max)
+{
+	LAST = (LAST * IA + IC) % IM;
+	return (max * LAST) / IM;
+}
+
+export procedure test[n]
+{
+	if specified n
+		local N = (integer) n;
+	else
+		N = 1;
+	local t = getms();
+	print("  Trying ", N, "...\n");
+	for local i = N-1, 1, -1
+		gen_random(100);
+	print("      Time: ", getms() - t, " ms\n");
+}
+
+export function main<args>
+{
+	print("Random Number Generator benchmark:\n");
+	if specified args[1]
+		test(args[1]);
+	else
+	{
+		test(1000);
+		local tv = gen_random(100);
+		print("1000'nd value: ", tv, "\n");
+		if (integer)(tv * 1000) != 8163
+			throw "1000'nd value should be
+					 approximately 8.163!";
+	}
+	print("Random Number Generator benchmark done.\n");
+	return 0;
+}

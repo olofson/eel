@@ -1,0 +1,728 @@
+/*(PD)
+-----------------------------------------------------------------
+	zstest.eel - ZeeSpace test
+-----------------------------------------------------------------
+ * David Olofson, 2005, 2006, 2010-2012
+ *
+ * This code is in the Public Domain. No warranty!
+ */
+
+import "math";
+import "SDL" as SDL;
+import "ZeeSpace" as zs;
+import "text" as text;
+
+constant SPEED256 = 32.;
+constant SPEED90 = 15.;
+
+// System
+static t = 0;		// Current time (s)
+static mt = 0;		// Current morph time (s)
+static intro = false;	// Intro sequence running
+
+// Display
+static screen;
+static flags = SDL.SWSURFACE | SDL.RESIZABLE;	// SDL screen flags
+static screenw = 640;
+static screenh = 480;
+static ks = vector_u8 [];	// State of keys
+static font;
+
+// ZeeSpace objects
+static map;		// "Static" map surface
+static work;		// Intermediate work surface
+static drawpipe;	// Pipeline for drawing shapes
+
+// Flags & selectors
+static running = true;
+static stuff = false;
+static morph = false;
+static scroll = true;
+static shadows = true;
+static bump = true;
+static rebuild = true;
+static relight = true;
+static graph = 0;
+static scale = 64;
+
+// Angles
+static pitch = 0;
+static altitude = 0;
+
+// Ambient light
+static ambient = .3;
+
+// Levels and other parameters
+static sealevel = 0;
+static fog = 140;
+
+// Terrain parameters
+static t_x = 0;
+static t_y = 0;
+static t_r = 0;
+static t_interpolation = zs.BICUBIC;
+static t_extendmode = zs.DIV1P5;
+static t_base = 0;
+static t_height = 100;
+static t_scale = 256;
+static t_p0 = 80;
+static t_p1 = 50;
+static t_p2 = 20;
+
+
+function roundstr(v, decimals)
+{
+	return (string)(floor(v * 10 ** decimals + .5) / 10 ** decimals);
+}
+
+
+procedure draw_terrain(m, base, height, scale, p0, p1, p2, u, v, r)
+{
+	local amps = vector [height, p0, p1, p2];
+	zs.PerlinTerrainZ(m, base + height / 2,
+			u, v, cos(r) / scale, sin(r) / scale,
+			amps, t_interpolation | t_extendmode);
+}
+
+
+procedure draw_stuff(p, m, objects)
+{
+	local px = ZS_Pixel [0, 0, 0, 255, 0, 0];
+	objects /= 5;
+	for local i = 0, objects - 1
+	{
+		local w = 10 + zs.RndGet(80);
+		local h = 10 + zs.RndGet(80);
+		local x = zs.RndGet(m.w - w);
+		local y = zs.RndGet(m.h - h);
+		px.z = 30 + zs.RndGet(100);
+		px.r = 128 + 20 * sin(i);
+		px.g = 128 + 20 * sin(i + 6.25 / 3);
+		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		zs.Block(p, m, x, y, w, h, px);
+	}
+	for local i = 0, objects - 1
+	{
+		local r = 10 + zs.RndGet(40);
+		px.z = 50 + zs.RndGet(100);
+		px.r = 128 + 20 * sin(i);
+		px.g = 128 + 20 * sin(i + 6.25 / 3);
+		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		zs.Cylinder(p, m, r + zs.RndGet(m.w - 2 * r),
+				r + zs.RndGet(m.h - 2 * r),
+				r, px);
+	}
+	for local i = 0, objects - 1
+	{
+		local r = 10 + zs.RndGet(60);
+		local h = 30 * 256 + zs.RndGet(100 * 256);
+		px.z = 1 + zs.RndGet(50);
+		px.r = 128 + 20 * sin(i);
+		px.g = 128 + 20 * sin(i + 6.25 / 3);
+		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		zs.Cone(p, m, r + zs.RndGet(m.w - 2 * r),
+				r + zs.RndGet(m.h - 2 * r),
+				r, h, px);
+	}
+	for local i = 0, objects - 1
+	{
+		local r = 10 + zs.RndGet(60);
+		px.r = 128 + 20 * sin(i);
+		px.g = 128 + 20 * sin(i + 6.25 / 3);
+		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		px.z = 20 + zs.RndGet(100);
+		zs.Dome(p, m, r + zs.RndGet(m.w - 2 * r),
+				r + zs.RndGet(m.h - 2 * r),
+				r, r, px);
+	}
+	for local i = 0, objects - 1
+	{
+		local r = 10 + zs.RndGet(40);
+		local h = 20 + zs.RndGet(100);
+		px.z = 1 + zs.RndGet(50);
+		px.r = 128 + 20 * sin(i);
+		px.g = 128 + 20 * sin(i + 6.25 / 3);
+		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		zs.Beehive(p, m, r + zs.RndGet(m.w - 2 * r),
+				r + zs.RndGet(m.h - 2 * r),
+				r, h, px);
+	}
+}
+
+
+procedure draw_water(m, sealevel)
+{
+	local px = ZS_Pixel [];
+	px.z = sealevel;
+	zs.WaterZ(m, nil, px, 96);
+}
+
+
+procedure draw_water2(m, altitude, sealevel)
+{
+	local afx = sin(altitude * 2 * PI / 360);
+	local px = ZS_Pixel [80, 112, 160, 80,
+			(afx + afx * afx * afx) / 2, sealevel];
+	zs.Fog(m, nil, px, 48 - 24 * afx);
+}
+
+
+procedure draw_fog(m, altitude, density)
+{
+	local afx = sin(altitude * 2 * PI / 360);
+	local px = ZS_Pixel [255, 192, 255, 0, afx / 2, 150];
+	density = 256 - density;
+	zs.Fog(m, nil, px, density * density / 128 + 100 - 90 * afx);
+}
+
+
+procedure start_intro
+{
+	mt = .8;
+	pitch = 15;
+	altitude = 0;
+	relight = true;
+	intro = true;
+}
+
+
+procedure leave_intro
+{
+	if not intro
+		return;
+	intro = false;
+	pitch = 90;
+	altitude = 45;
+	relight = true;
+}
+
+
+procedure run_intro(dt)
+{
+	if not intro
+		return;
+	pitch += SPEED90 * .7 * dt;
+	pitch |<= 90;
+	altitude += SPEED90 / 16 * dt;
+	altitude += (45 - altitude) * .1 * dt;;
+	relight = true;
+	if altitude > 44.9
+		leave_intro();
+}
+
+// Open or resize window
+procedure open_screen
+{
+	screen = SDL.SetVideoMode(screenw, screenh, 24, flags);
+
+	// Create map (landscape + objects) and work (lighting) surfaces
+	map = ZS_Surface [screenw + 1, screenh + 1];
+	work = ZS_Surface [screenw + 1, screenh + 1];
+	rebuild, relight = true;
+}
+
+
+procedure check_input(dt)
+{
+	// Action/event keys
+	while true
+	{
+		local ev = SDL.PollEvent();
+		if not ev
+			break;
+		switch ev.type
+		  case SDL.MOUSEBUTTONDOWN
+			graph = (graph + 1) % 4;
+		  case SDL.KEYDOWN
+		  {
+			leave_intro();
+			switch ev.sym
+			  case SDL.KESCAPE
+				running = false;
+			  case SDL.KF1
+				graph = 0;
+			  case SDL.KF2
+				graph = 1;
+			  case SDL.KF3
+				graph = 2;
+			  case SDL.KF4
+				graph = 3;
+			  case SDL.KKP_MULTIPLY, SDL.KASTERISK
+				if scale < 256
+					scale *= 2;
+			  case SDL.KKP_DIVIDE, SDL.KSLASH
+				if scale > 2
+					scale /= 2;
+			  case SDL.Kb
+				bump, relight = not bump, true;
+			  case SDL.Ks
+				shadows, relight = not shadows, true;
+			  case SDL.Kt
+				stuff, rebuild = not stuff, true;
+			  case SDL.Kr
+				scroll = not scroll;
+			  case SDL.KSPACE
+				morph, rebuild = not morph, true;
+			  case SDL.Ki
+			  {
+				switch t_interpolation
+				  case zs.NEAREST
+					t_interpolation = zs.BILINEAR;
+				  case zs.BILINEAR
+					t_interpolation = zs.BICUBIC;
+				  case zs.BICUBIC
+					t_interpolation = zs.ADAPTIVE;
+				  default
+					t_interpolation = zs.NEAREST;
+			  }
+			  case SDL.Kx
+			  {
+				switch t_extendmode
+				  case zs.STOP
+					t_extendmode = zs.EXTEND;
+				  case zs.EXTEND
+					t_extendmode = zs.DIV1P5;
+				  case zs.DIV1P5
+					t_extendmode = zs.DIV2;
+				  case zs.DIV2
+					t_extendmode = zs.DIV3;
+				  case zs.DIV3
+					t_extendmode = zs.DIV4;
+				  default
+					t_extendmode = zs.STOP;
+			  }
+			  default
+				ks[ev.sym] = 1;
+		  }
+		  case SDL.KEYUP
+			ks[ev.sym] = 0;
+		  case SDL.VIDEORESIZE
+		  {
+			screenw = 10 >| ev.w;
+			screenh = 10 >| ev.h;
+			open_screen();
+		  }
+		  case SDL.QUIT
+			running = false;
+	}
+
+	// Control/state keys
+
+	local shift = ks[SDL.KLSHIFT] or ks[SDL.KRSHIFT];
+	local ctrl = ks[SDL.KLCTRL] or ks[SDL.KRCTRL];
+
+	// Terrain scale (fundamental period size in pixels)
+	if shift
+		local ss = .5;
+	else
+		ss = .1;
+	if ks[SDL.KEND]
+	{
+		if dt < .1
+			t_scale *= 1 - dt * ss;
+		else
+			t_scale *= 1 - ss;
+		if t_scale < .5
+			t_scale = .5;
+		rebuild = true;
+	}
+	else if ks[SDL.KHOME]
+	{
+		if dt < .1
+			t_scale *= 1 + dt * ss;
+		else
+			t_scale *= 1 + ss;
+		if t_scale > 1024
+			t_scale = 1024;
+		rebuild = true;
+	}
+
+	if ctrl
+	{
+		// Terrain fine detail
+		if ks[SDL.KPLUS] or ks[SDL.KKP_PLUS]
+		{
+			t_p2 += SPEED256 * dt;
+			if t_p2 > 255
+				t_p2 = 255;
+			rebuild = true;
+		}
+		else if ks[SDL.KMINUS] or ks[SDL.KKP_MINUS]
+		{
+			t_p2 -= SPEED256 * dt;
+			if t_p2 < 0
+				t_p2 = 0;
+			rebuild = true;
+		}
+
+		// 3D rendering camera pitch
+		if ks[SDL.KUP]
+		{
+			pitch += SPEED90 * dt;
+			if pitch > 90
+				pitch = 90;
+		}
+		else if ks[SDL.KDOWN]
+		{
+			pitch -= SPEED90 * dt;
+			if pitch < 0
+				pitch = 0;
+		}
+
+		// Sun altitude
+		if ks[SDL.KLEFT]
+		{
+			altitude -= SPEED90 * dt;
+			if altitude < 0
+				altitude = 0;
+			relight = true;
+		}
+		else if ks[SDL.KRIGHT]
+		{
+			altitude += SPEED90 * dt;
+			if altitude > 90
+				altitude = 90;
+			relight = true;
+		}
+	}
+	else if shift
+	{
+		// Terrain base level
+		if ks[SDL.KPAGEDOWN]
+		{
+			t_base -= SPEED256 * dt;
+			if t_base < 0
+				t_base = 0;
+			rebuild = true;
+		}
+		else if ks[SDL.KPAGEUP]
+		{
+			t_base += SPEED256 * dt;
+			if t_base > 256
+				t_base = 256;
+			rebuild = true;
+		}
+
+		// Terrain medium detail
+		if ks[SDL.KPLUS] or ks[SDL.KKP_PLUS]
+		{
+			t_p1 += SPEED256 * dt;
+			if t_p1 > 255
+				t_p1 = 255;
+			rebuild = true;
+		}
+		else if ks[SDL.KMINUS] or ks[SDL.KKP_MINUS]
+		{
+			t_p1 -= SPEED256 * dt;
+			if t_p1 < 0
+				t_p1 = 0;
+			rebuild = true;
+		}
+
+		// Fog level
+		if ks[SDL.KDELETE]
+		{
+			fog -= SPEED256 * dt;
+			if fog < 0
+				fog = 0;
+			rebuild = true;
+		}
+		else if ks[SDL.KINSERT]
+		{
+			fog += SPEED256 * dt;
+			if fog > 256
+				fog = 256;
+			rebuild = true;
+		}
+
+		// Terrain rotation
+		if ks[SDL.KLEFT]
+		{
+			t_r -= .1 * PI * dt;
+			rebuild = true;
+		}
+		else if ks[SDL.KRIGHT]
+		{
+			t_r += .1 * PI * dt;
+			rebuild = true;
+		}
+	}
+	else
+	{
+		// Terrain height (amplitude)
+		if ks[SDL.KPAGEDOWN]
+		{
+			t_height -= SPEED256 * dt;
+			if t_height < 0
+				t_height = 0;
+			rebuild = true;
+		}
+		else if ks[SDL.KPAGEUP]
+		{
+			t_height += SPEED256 * dt;
+			if t_height > 256
+				t_height = 256;
+			rebuild = true;
+		}
+
+		// Terrain coarse detail
+		if ks[SDL.KPLUS] or ks[SDL.KKP_PLUS]
+		{
+			t_p0 += SPEED256 * dt;
+			if t_p0 > 255
+				t_p0 = 255;
+			rebuild = true;
+		}
+		else if ks[SDL.KMINUS] or ks[SDL.KKP_MINUS]
+		{
+			t_p0 -= SPEED256 * dt;
+			if t_p0 < 0
+				t_p0 = 0;
+			rebuild = true;
+		}
+
+		// Sealevel
+		if ks[SDL.KDELETE]
+		{
+			sealevel -= SPEED256 * dt;
+			if sealevel < 0
+				sealevel = 0;
+			rebuild = true;
+		}
+		else if ks[SDL.KINSERT]
+		{
+			sealevel += SPEED256 * dt;
+			if sealevel > 255
+				sealevel = 255;
+			rebuild = true;
+		}
+
+		// Move around in the terrain
+		if ks[SDL.KUP]
+		{
+			local td = 100 * dt / t_scale;
+			t_x += td * sin(t_r);
+			t_y -= td * cos(t_r);
+			rebuild = true;
+		}
+		else if ks[SDL.KDOWN]
+		{
+			local td = -100 * dt / t_scale;
+			t_x += td * sin(t_r);
+			t_y -= td * cos(t_r);
+			rebuild = true;
+		}
+		if ks[SDL.KLEFT]
+		{
+			local td = -100 * dt / t_scale;
+			t_x += td * cos(t_r);
+			t_y += td * sin(t_r);
+			rebuild = true;
+		}
+		else if ks[SDL.KRIGHT]
+		{
+			local td = 100 * dt / t_scale;
+			t_x += td * cos(t_r);
+			t_y += td * sin(t_r);
+			rebuild = true;
+		}
+	}
+}
+
+
+export function main<args>
+{
+	ks[SDL.KLAST] = 0;
+	for local i = 1, arguments - 1
+		switch args[i]
+		  case "-d"
+		  {
+			flags |= SDL.DOUBLEBUF;
+			print("Requesting double buffered display.\n");
+		  }
+		  case "-f"
+		  {
+			flags |= SDL.FULLSCREEN;
+			print("Requesting fullscreen display.\n");
+		  }
+		  case "-hw"
+		  {
+			flags &= ~SDL.SWSURFACE;
+			flags |= SDL.HWSURFACE;
+			print("Requesting hardware display surface.\n");
+		  }
+		  case "-w"
+		  {
+			if arguments < i + 2
+				throw "The -w switch needs an argument!";
+			screenw = (integer)args[i + 1];
+			print("Requested width ", screenw, ".\n");
+		  }
+		  case "-h"
+		  {
+			if arguments < i + 2
+				throw "The -h switch needs an argument!";
+			screenh = (integer)args[i + 1];
+			print("Requested height ", screenh, ".\n");
+		  }
+
+	open_screen();
+
+	SDL.SetCaption("ZeeSpace Test - (C) 2006-2011 David Olofson", "ZeeSpace");
+
+	font = text.Open("microfont_sh.png");
+
+	// Set up
+	drawpipe = ZS_Pipe [];
+	zs.PipeZ(drawpipe, zs.Z_NORMAL | zs.ZB_ABOVE);
+	zs.PipeColor(drawpipe, zs.C_NORMAL);
+	zs.PipeAlpha(drawpipe, zs.A_FIXED, 1.);
+	zs.PipeIntensity(drawpipe, zs.I_FIXED, 1.);
+	zs.PipeWrite(drawpipe, zs.CW_RGB | zs.AW_OFF | zs.IW_OFF | zs.ZW_ON);
+
+	start_intro();
+	local t1, local t2, local fps_start = SDL.GetTicks();
+	local fps_count = 0;
+	local fps = 0;
+	local dy_ffw = 0;
+	while running
+	{
+		local dt = (t2 - t1) * .001;
+
+		check_input(dt);
+		run_intro(dt);
+
+		if morph
+		{
+			t_r += dt * .5;
+			mt += dt;
+		}
+
+		local dy = dt * 100 + dy_ffw;
+		dy_ffw = dy - floor(dy);
+		dy = floor(dy);
+		if scroll and dy
+		{
+			local td = dy / t_scale;
+			t_x += td * sin(t_r);
+			t_y -= td * cos(t_r);
+
+			// Scroll!
+			local r = ZS_Rect [0, 0, map.w, 1];
+			for local y = map.h - dy - 1, 0, -1
+			{
+				r.y = y;
+				zs.RawCopy(zs.ALL, map, r, map, 0, y + dy);
+			}
+
+			// Update!
+			r.(x, y, w, h) = 0, 0, map.w, dy;
+			local new = zs.View(map, r);
+			zs.RawFill(zs.ALL, new, nil, ZS_Pixel
+					[160, 128, 96, 255, 1, 0]);
+			zs.RndReset(.5 + sin(mt) * .5);
+			draw_terrain(new, t_base, t_height, t_scale,
+					t_p0, t_p1, t_p2,
+					t_x, t_y, t_r);
+			if sealevel >= 1
+				draw_water(new, sealevel);
+			relight = true;
+		}
+
+		// Building and rendering!
+		if morph or rebuild
+		{
+			if morph
+				local ws = work;
+			else
+				ws = map;
+			zs.RawFill(zs.ALL, ws, nil, ZS_Pixel
+					[160, 128, 96, 255, 1, 0]);
+			zs.RndReset(.5 + sin(mt) * .5);
+			draw_terrain(ws, t_base, t_height, t_scale,
+					t_p0, t_p1, t_p2,
+					t_x, t_y, t_r);
+			if stuff
+				draw_stuff(drawpipe, ws, 30);
+			if sealevel >= 1
+				draw_water(ws, sealevel);
+			rebuild = false;
+			relight = true;
+		}
+		if relight
+		{
+			if morph
+				zs.RawFill(zs.I, work, nil, ZS_Pixel [
+						0, 0, 0, 0, 1, 0]);
+			else
+				zs.RawCopy(zs.ALL, map, nil, work, 0, 0);
+			if shadows
+				zs.SimpleShadow(work, altitude, 256 / t_scale,
+						1 - ambient, .3);
+			if bump
+				zs.BumpMap(work, altitude, ambient,
+						256 / t_scale);
+			if sealevel >= 1
+				draw_water2(work, altitude, sealevel);
+			if fog
+				draw_fog(work, altitude, fog);
+			zs.ApplyIntensity(work);
+			relight = false;
+		}
+		switch graph
+		  case 0
+			if pitch == 90
+				zs.Blit2SDL(work, screen);
+			else
+				zs.Render3D2SDL(work, screen, pitch);
+		  case 1
+			zs.Graph2SDL(work, screen, scale);
+		  case 2
+			zs.Z2SDL(work, screen, scale);
+		  case 3
+			zs.I2SDL(work, screen);
+
+		// fps meter, scale etc
+		if fps_count > 50 or t2 - fps_start > 250
+		{
+			fps = fps_count * 1000. / (t2 - fps_start);
+			fps_count = 0;
+			fps_start = t2;
+		}
+		font:PutString(roundstr(fps, 1) + " fps (" + 
+				roundstr(fps * screenw * screenh / 1000000, 2) +
+				" Mpixel/s)", 0, 0);
+		font:PutString("t_scale: " + roundstr(t_scale, 2) +
+				"\t[HOME/END]", 0, 10);
+		switch t_interpolation
+		  case zs.NEAREST
+			font:PutString("NEAREST [i]", 0, 20);
+		  case zs.BILINEAR
+			font:PutString("BILINEAR [i]", 0, 20);
+		  case zs.BICUBIC
+			font:PutString("BICUBIC [i]", 0, 20);
+		  case zs.ADAPTIVE
+			font:PutString("ADAPTIVE [i]", 0, 20);
+		switch t_extendmode
+		  case zs.STOP
+			font:PutString("STOP [x]", 0, 30);
+		  case zs.EXTEND
+			font:PutString("EXTEND [x]", 0, 30);
+		  case zs.DIV1P5
+			font:PutString("DIV1P5 [x]", 0, 30);
+		  case zs.DIV2
+			font:PutString("DIV2 [x]", 0, 30);
+		  case zs.DIV3
+			font:PutString("DIV3 [x]", 0, 30);
+		  case zs.DIV4
+			font:PutString("DIV4 [x]", 0, 30);
+
+		// Display and timing
+		SDL.Flip();
+		t += dt;
+		t1 = t2;
+		t2 = SDL.GetTicks();
+		fps_count += 1;
+	}
+	return 0;
+}

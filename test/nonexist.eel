@@ -1,0 +1,28 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+// This is a test of the compiler error
+// handling and module management.
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Trying to load and compile a non-existant file:\n");
+
+	try
+	{
+		load("does_not_exist.eel");
+		throw "fail";
+	}
+	except
+		if exception == "fail"
+			throw "Loading and compiling succeeded, "
+					"though it should not!";
+		else
+			print("  Loading/compiling failed, "
+					"as it should.\n");
+
+	print("Nonexistant file load/compile test done.\n");
+	return 0;
+}

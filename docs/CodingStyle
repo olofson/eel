@@ -1,0 +1,280 @@
+
+                        .------------------.
+                        | EEL Coding Style |
+                        `------------------´
+
+    *************************************************************
+    * This document is based on CodingStyle from Audiality, but *
+    * the style differs slightly from that of early Audiality   *
+    * releases. Especially note the type naming convention,     *
+    * which is no longer POSIX style "some_type_t".             *
+    *************************************************************
+
+In case you've read the Linux kernel CodingStyle document: I basically
+agree with it, in the parts that apply to this project. The only major
+differences are opening brace placement, and a special indentation to
+improve readability of switch() statements. Oh, and the real time
+programming section, of course.
+
+
+REAL TIME PROGRAMMING
+---------------------
+First of all, you must realize that major parts of EEL are strictly
+designed for use in hard real time systems. The virtual machine must
+UNDER NO CIRCUMSTANCES OTHER THAN FATAL ERRORS stall, or wait for
+non-real time resources.
+
+For example, the virtual machine must not access objects that can be
+locked by non real time threads. (It could be made to work, but only
+on operating systems that support priority inheritance or other means
+of dealing with priority inversion without real time scheduling
+breaking down.)
+
+Another example would be dynamic memory allocation using malloc(). You
+just can't do that from within the virtual machine, as there is no
+bound whatsoever on how long malloc() can take on a normal OS,
+including many RTOSes. The OS may have to swap data to a hard drive
+first, to free up physical RAM for you.
+
+This may seem unreasonably harsh, but there really is no way this can
+be avoided. Time is time, and we can't pause it while fumbling. EEL
+code that is deterministic by design must be deterministic when
+executed on the EEL virtual machine, running on a hard real time OS.
+
+You think this doesn't matter, because no normal OS supports hard real
+time anyway? Well, that's your problem. EEL is meant for people who
+need real time scripting in hard real time environments, where worst
+case scheduling latencies can be as low as just a few microseconds. In
+such environments, proper design *definitely* makes a difference.
+
+
+INDENTATION
+-----------
+Tabs are 8 characters wide, period. And there's no need to fake them
+using spaces - that only makes the code slower to navigate with the
+cursor keys. I totally agree with Linus Torvalds:
+
+	"Now, some people will claim that having 8-character
+	 indentations makes the code move too far to the right,
+	 and makes it hard to read on a 80-character terminal
+	 screen.  The answer to that is that if you need more
+	 than 3 levels of indentation, you're screwed anyway,
+	 and should fix your program."
+
+Lines should be at most 80 characters long. (So that I can view at
+least three files side by side on my 21" screen. :-) If you have to
+break statements, try to leave an operator last on each line, and
+indent by *two* tabs, like this:
+
+	if( (we are getting close to the right margin) &&
+			(we need to check something else as well) )
+	{
+		...
+	}
+
+
+BRACE PLACEMENT
+---------------
+Here, I don't quite agree with Linus. I'm using a large high end
+monitor most of the time, so I find saving lines by placing opening
+braces at the end of lines pointless. Indeed, indent + syntax high-
+lighting keeps tracks of things regardless, but I think
+
+	if(something)
+	{
+		do this
+	}
+	else
+	{
+		do that
+	}
+
+is more readable and cleaner looking than
+
+	if(something) {
+		do this
+	} else {
+		do that
+	}
+
+There are no exceptions;
+
+	do
+	{
+		various stuff
+	}
+	while(waiting for something);
+
+and
+
+	int function()
+	{
+		body
+	}
+
+
+SWITCH STATEMENTS
+-----------------
+My own special favourite: switch(). For readability, I like to indent
+them like this:
+
+	switch(variable)
+	{
+	  case VALUE_1:
+		some code
+		break;
+	  case VALUE_2:
+		some other code
+		break;
+	  default:
+		even more code
+		break;
+	}
+
+Two spaces before each case label, including default. Just to avoid
+breaking that invisible line between the opening and closing braces,
+or something. :-)
+
+
+GOTO
+----
+Well, just don't use that, ok? I've dropped it, even for the classical
+error handling deal. It's simply horrible, and not even high level
+enough for the mid-level language that is C.
+
+
+NAMING
+------
+First of all, "Hungarian notation" (encoding types into names) is
+strictly forbidden. It makes no sense in a language with compile time
+type checking, and just makes names longer and more confusing. And I
+assume most coders understand what can happen if Hungarian notation
+is used in public interfaces...
+
+Shorthand should generally be avoided, except for frequently used
+prefixes, or prefixes that would simply be too long if not shortened.
+Names should be real words as far as possible, as long as they don't
+get unreasonably long. An exception to the shorthand rule would be
+commonly known and accepted acronyms for long words, such as 'mul'
+for 'multiplication', or 'fix' or 'fixp' for 'fixed point'.
+
+Capitalization is strictly lower case for functions and variables,
+and UPPER CASE for constants (including enum values) and macros.
+Words are separated by underscores, as in some_function().
+
+Type names should have a prefix in UPPER CASE, followed by an
+underscore and a lower case name. Examples: EEL_state, EEL_some_type.
+
+Terminology should be clean and consistent, and prefixes should be
+used wherever it makes sense, to "mark" functions in an object
+oriented fashion, so that one can directly see where they belong.
+
+Some example function names:
+
+	a_wave_alloc()		Audiality Wave Allocate
+	a_wave_alloc_range()	Audiality Wave Allocate Range
+	a_wave_convert()	Audiality Wave Convert
+	a_group_controlf()	Audiality Group Control, fl. point
+
+Some bad examples of function names:
+	a_ldstr()		Single instance a shorthand!
+	a_internal_mix_all_active_voices()	Too long!!!
+	a_ProcessBusses()	CapitalsAndNoSpaces! (Unreadable.)
+
+Global variables should simply be avoided as far as possible. Local
+variable names should be short and simple. Our favorites 'i' and 'j'
+are just fine for loop counters and the like. A single letter 'l'
+(lower case 'L') should be avoided, as it may look like the number '1'.
+
+If you can't keep track of your local variables in a function, you
+should probably rewrite the function, and possibly split it up in
+smaller functions. Use 'inline' if function call overhead is an
+issue.
+
+
+FUNCTIONS
+---------
+Functions should do what their names suggest, and nothing but that.
+
+A function should preferably be shorter than 80 lines. Shorter is
+better. Break things up and write helper functions if you have to. Use
+the 'inline' directive if performance is critical. An exception to the
+80 line rule is functions containing switch() cases with simple, "flat"
+code, and things like that. Such functions can be significantly longer
+than 80 lines.
+
+If you end up throwing all sorts of operations into a single function,
+and/or if you end up with more than 5-10 local variables, you should
+probably start thinking about a better approach to solve the problem.
+
+
+COMMENTS
+--------
+The basic idea is that code should not need comments for people to
+understand it. If something is so tricky that you need to explain how
+it works, chances are that the design is bad, and the code isn't worth
+documenting anyway.
+
+As Linus says, "Generally, you want your comments to tell WHAT your
+code does, not HOW."
+
+Any large comment blocks should be kept outside of function bodies,
+and if they describe *how* anything works, it should be about higher
+levels of interaction that is not obvious when looking at the single
+function alone. Be careful, though, since again; if you need to
+describe HOW something works, it's quite possibly an indication of bad
+design.
+
+
+PROJECT STRUCTURE
+-----------------
+All EEL source files, except API headers, are kept in the "src"
+subdirectory. The API headers are all kept in the "includes"
+subdirectory. All source and header file names are lower case.
+Legal characters are a..z, 0..9 and _ (underscore). Extensions
+are .c for C source files and .h for C header files.
+
+Headers are installed in a subdirectory eel in the compiler
+"include" directory, and should have plain, simple names without
+any project prefix. Examples: eel.h, register.h, version.h.
+
+Source files and private headers in the "src" directory should have
+the prefix "e_". No files - headers included - from the "src"
+directory will be installed, and thus, must not contain any public
+API definitions.
+
+
+GNU indent
+----------
+GNU indent's default settings are of course useless. In fact, indent
+can't even handle my indentation style without a minor patch. (Which
+I should submit to the maintainer some time... For now, contact me if
+you want it.)
+
+The following switches, including my custom -iclo (Indent Case Label
+Only) option work for me:
+
+	-npro -kr -ts8 -i8 -ip8 -pi8 -ci16 -nlp -fca
+	-bl -bls -cd1 -bli0 -nfc1 -npcs
+	-sbi0 -cbi0 -cli2 -iclo -ncs -bbo
+	-nce -nsai -nsaf -nsaw
+
+(Without -iclo, everything inside a switch() would be offset by two
+spaces, which is not desired, as it results in a mess of mixed tabs
+and spaces...)
+
+
+C++
+---
+No, not in this project. The complexity doesn't warrant C++, and I'd
+rather not yell at every code contributor for throwing in his or her
+own favorite C++ features.
+
+IMHO, C++ is a "language toolkit" rather than a real, "production
+strength" programming language. One can certainly write nice C++ code,
+but one basically has to design one's own language, picking from the
+available features.
+
+However, the most important reason to stay away from C++ right now is
+the lack of a single, de-facto standard C++ ABI. I just don't want to
+deal with the mess that C++ and libs/modules still is.

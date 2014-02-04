@@ -1,0 +1,42 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2004, 2005 David Olofson
+/////////////////////////////////////////////
+
+function func(arg1, arg2, arg3)
+{
+	print("  in func():\n");
+	print("    arg1 = ", arg1, ", arg2 = ", arg2, ", arg3 = ", arg3, "\n");
+	function localfunc(a)
+	{
+		print("    in localfunc():\n");
+		function localfunc2(a2)
+		{
+			print("      in localfunc2():\n");
+			print("        a2 = ", a2, "\n");
+			print("        upvalue (level 2) arg3 = ",
+					upvalue arg3, "\n");
+			print("      leaving localfunc2()\n");
+			return arg3 + a2;
+		}
+		print("      a = ", a, "\n");
+		print("      upvalue arg2 = ", upvalue arg2, "\n");
+		print("    leaving localfunc()\n");
+		return localfunc2(arg2 * a);
+	}
+	print("  leaving func()\n");
+	return localfunc(arg1);
+}
+
+export function main<args>
+{
+	print("Function nesting tests:\n");
+
+	local r = func(5, 10, 15);
+	print("Result: ", r, "\n");
+	if r != 65
+		throw "Result should be 65!";
+
+	print("Function nesting tests done.\n");
+	return 0;
+}

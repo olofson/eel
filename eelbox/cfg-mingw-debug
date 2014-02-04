@@ -1,0 +1,5 @@
+#!/bin/sh
+TARGET=i686-pc-mingw32
+PREFIX=/opt/mingw/usr
+export CFLAGS="-O0 -g -Wall"
+./configure --host=${TARGET} --prefix=${PREFIX}/${TARGET} --enable-debug --disable-epm --disable-shared

@@ -1,0 +1,25 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+import "math";
+
+procedure check(prompt, val, correct)
+{
+	if floor(abs(val - correct) * 10000)
+		throw prompt + (string)val + ", should be " +
+				string(correct) + "! - FAILED";
+	else
+		print(prompt, val, " - PASS\n");
+}
+
+export function main<args>
+{
+	check("E = ", E, 2.71828182);
+	check("PI = ", PI, 3.14159265);
+	check("sqrt(2) = ", sqrt(2), 1.4142136);
+	check("sin(1) = ", sin(1), .841471);
+	check("sin(PI) = ", sin(PI), 0.);
+	return 0;
+}

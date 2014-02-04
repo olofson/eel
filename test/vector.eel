@@ -1,0 +1,105 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005, 2006 David Olofson
+/////////////////////////////////////////////
+
+procedure print_v(v)[_pre]
+{
+	if specified _pre
+		local pre = _pre;
+	else
+		pre = "";
+	for local i = 0, sizeof v - 1
+		print(pre, "    [", i, "] = ", v[i], "\n");
+}
+
+export function main<args>
+{
+	print("Vector tests:\n");
+
+	print("  vector v[]:\n");
+	local v = vector [5, 10, 15, 20, 25];
+	print_v(v);
+
+	print("  v[0, 2, 4] = v[0, 2, 4] + 1:\n");
+	v[0, 2, 4] = v[0, 2, 4] + 1;
+	print_v(v);
+
+	print("  v.#+ .1 (inplace):\n");
+	v.#+ .1;
+	print_v(v);
+
+	print("  vector u[]:\n");
+	local u = vector [1, 2, 4, 2, 1];
+	print_v(u);
+
+	print("  u #*= .5 (shorthand, copying):\n");
+	u #*= .5;
+	print_v(u);
+
+	print("  u.#* v (inplace):\n");
+	u.#* v;
+	print_v(u);
+
+	if(u[0] != 3.05)
+		throw "u[0] should be 3.05!";
+	if(u[1] != 10.1)
+		throw "u[1] should be 10.1!";
+	if(u[2] != 32.2)
+		throw "u[2] should be 32.2!";
+	if(u[3] != 20.1)
+		throw "u[3] should be 20.1!";
+	if(u[4] != 13.05)
+		throw "u[4] should be 13.05!";
+
+	print("  vector v[]:\n");
+	v = vector [5, 10, 15, 20, 25];
+	print_v(v);
+	print("  array a[]:\n");
+	local a = array [1, 2, 3];
+	print_v(a);
+	print("  v.+ a (append values):\n");
+	v.+ a;
+	print_v(v);
+
+	print("  v.+ u (append vector):\n");
+	v.+ u;
+	print_v(v);
+
+	print("  v.+ a (error checking test):\n");
+	try
+	{
+		a = array [4, 5, 6, "A", "B", "C"];
+		v.+ a;
+		throw "Appending strings to a vector should fail!";
+	}
+	except
+		print("    Ok.\n");
+
+	print("  'insert' and 'delete':\n");
+	v = vector [1, 3, 5, 7];
+	print_v(v);
+	insert(v, 3, 6);
+	insert(v, 2, 4);
+	insert(v, 1, 2);
+	print_v(v, "  ");
+	delete(v, 0);
+	delete(v, 1);
+	delete(v, 2);
+	delete(v, 3);
+	print_v(v, "    ");
+
+	print("  'copy':\n");
+	v = vector [1, 2, 3, 4, 5, 6, 7, 8];
+	print("    Original:\n");
+	print_v(v, "  ");
+	print("    First half:\n");
+	print_v(copy(v, 0, 4), "  ");
+	print("    Last half:\n");
+	print_v(copy(v, 4), "  ");
+	print("    Middle:\n");
+	print_v(copy(v, 2, 4), "  ");
+
+	print("Vector tests done.\n");
+	return 0;
+}

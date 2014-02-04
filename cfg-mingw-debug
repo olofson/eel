@@ -1,0 +1,4 @@
+#!/bin/sh
+PREFIX=/mingw
+CFLAGS="-O0 -g -Wall"
+./configure --prefix=${PREFIX} --enable-debug --disable-epm

@@ -1,0 +1,76 @@
+/////////////////////////////////////////////
+// Temporary EEL Benchmark
+// Based on the heapsort programs from
+// The Computer Language Shootout Benchmarks;
+// http://shootout.alioth.debian.org
+// EEL version by David Olofson, 2005
+/////////////////////////////////////////////
+
+static IM = 139968;
+static IA = 3877;
+static IC = 29573;
+static LAST = 42;
+
+function gen_random(max)
+{
+	LAST = (LAST * IA + IC) % IM;
+	return (max * LAST) / IM;
+}
+
+procedure heapsort(n, _ra)
+{
+	local ra = _ra;	// Hack. EEL argument access sucks...
+	local l = (integer)(n / 2) + 1;
+	local ir = n;
+	local rra = 0.;
+	while true
+	{
+		if l > 1
+		{
+			l = l - 1;
+			rra = ra[l];
+		}
+		else
+		{
+			rra = ra[ir];
+			ra[ir] = ra[1];
+			ir = ir - 1;
+			if ir == 1
+			{
+				ra[1] = rra;
+				return;
+			}
+		}
+		local i = l;
+		local j = l * 2;
+		while j <= ir
+		{
+			if (j < ir) and (ra[j] < ra[j + 1])
+				j = j + 1;
+			if rra < ra[j]
+			{
+				ra[i] = ra[j];
+				i = j;
+				j = j + i;
+			}
+			else
+				j = ir + 1;
+		}
+		ra[i] = rra;
+	}
+}
+
+export function main<args>
+{
+	local ary = vector [];	// Slightly faster than array
+	if specified args[1]
+		local N = (integer)args[1];
+	else
+		N = 2;
+	for local i = 1, N
+		ary[i] = gen_random(1.);
+	ary[N + 1] = 0;
+	heapsort(N, ary);
+	print(ary[N], "\n");
+	return 0;
+}

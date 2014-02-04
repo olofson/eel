@@ -1,0 +1,214 @@
+FIXME: This document isn't totally up to date...
+
+	Memory Management
+	-----------------
+
+The current imlementation of EEL uses automatic memory management,
+based on a combination of basic concepts:
+
+	* Deferred Reference Counting
+		Assigning to temporary VM registers does not
+		affect object reference counts; only assigning
+		to variables and fields in objects does.
+
+	* Limbo Object Lists
+		"Limbo lists" are used to keep track of newly
+		created objects and objects returned from
+		function calls, so that these objects can be
+		disposed of if they're left around by code that
+		doesn't assign them to any variables or such,
+		or in case an exception aborts execution at the
+		"wrong" time.
+
+	* Register Clean Tables
+		The register frame of each function context has
+		space allocated for a table that keeps track of
+		registers that are used for local variables, so
+		that these can reliably release any objects they
+		hold when leaving contexts for one reason or
+		another. The reason why this isn't hardcoded by
+		the compiler is that that would break down if
+		an exception occurs while any stack variables
+		in the aborted context hold any objects.
+
+	* Lazy Freeing (optional)
+		Instead of being destroyed instantly, objects
+		may be passed to a garbage list for delayed
+		incremental destruction. This avoids potential
+		long stalls when freeing large lists and trees
+		of objects.
+
+
+	Limbo Lists Explained
+	---------------------
+
+EEL uses a construct called "limbo list" to keep track of objects
+without a strict coupling to a reference. The primary use for this
+mechanism is to avoid strict refcounting whenever a register is
+assigned to.
+
+Rules for limbo:
+	* Limbo membership counts to the refcount of objects.
+	* That an object is in limbo means that it's in the
+	  local limbo list, or in a limbo list of some caller
+	  up the chain.
+	* NEVER remove an object from a limbo list, unless it's
+	  your own list! (Basically; the only valid use of the
+	  "limbo unlink" operation is when the VM is doing limbo
+	  cleaning.)
+	* When leaving a context, it's limbo list is dissolved,
+	  and objects in it have their refcount decreased. This
+	  kills any objects that have not been given owners
+	  outside the context. This process is called "limbo
+	  cleaning."
+	* Limbo cleaning can theoretically be performed after
+	  every statement, though it's normally only done when
+	  leaving or restarting (looping) {...} blocks, and when
+	  leaving functions.
+
+Calling functions, operators and constructors:
+
+Functions, operators and constructors are equivalent WRT memory
+management. (In fact, they differ only in calling conventions.)
+They can take and return values and objects. There are five distinct
+cases of returned objects:
+
+	1) Return is newly created. The object is truly in
+	   limbo, and we're fully responsible for it.
+		State:	refcount == 1; not in limbo
+		Action:	Add to limbo
+
+	2) Return is an old reused object. We have been given a
+	   reference ownership that we're responsible for.
+		State:	refcount > 1; not in limbo
+		Action:	Add to limbo
+
+	3) Return is an old reused object in limbo. The object
+	   is in our limbo list (limbo ownership), or in one up
+	   the call chain (borrowed limbo ownership.) Now, we
+	   also have an extra reference ownership that we need
+	   to drop.
+		State:	refcount > 1; in limbo
+		Action:	Decrease refcount
+
+	4) Return is an argument that we passed. Now we have
+	   another ownership to keep track of, so we add the
+	   object to our limbo list.
+		State:	refcount > 1; not in limbo
+		Action: Add to limbo
+
+	5) Return is an argument in limbo. Could be local limbo,
+	   or some caller's. Either way, we got a refcount we
+	   don't need, so we get rid of it.
+		State:	refcount > 1; in limbo
+		Action:	Decrease refcount
+
+That is, despite all these different situations, there are only
+two legal actions: if the object is in limbo, decrease the refcount,
+otherwise add it to limbo. Any returned object will carry a ref
+ownership that we hand over to limbo - unless it's already there,
+in which case we just throw it away.
+
+
+	EEL Internal Objects
+	--------------------
+
+EEL_state
+	The top level scripting engine interface. This is where the
+	compiler and symbol table lives.
+
+EEL_vm
+	The EEL virtual machine. This object corresponds to one
+	virtual CPU. The EEL VM in itself is not thread safe! If a
+	State has multiple VMs, they will run as independent
+	scripting engines, unless you run EEL code that communicates
+	across VMs (or processes, or computers, for that matter) by
+	means of IPC. In real time configurations, each VM has it's
+	own memory manager.
+
+EEL_symbol
+	Named symbol. Used by the compiler to represent various
+	logical objects, such as variables, functions, classes,
+	language keywords, operators etc.
+	   Symbols are arranged in a tree. The implementation allows
+	any symbol to have children, though the compiler uses that
+	only for certain symbol types.
+	   Symbols are owned by the compiler, and thus, the EEL
+	state object. Virtual Machines are not allowed to access
+	symbols, or use the compiler directly.
+
+EEL_value
+	Tagged value container. Can contain a value of one of the
+	primitive types;
+
+	Normal types, accessible to EEL code:
+	EEL_TNIL	nil - no value, no type
+	EEL_TREAL	Real value (floating point)
+	EEL_TINTEGER	Integer value
+	EEL_TBOOLEAN	Boolean value
+	EEL_TTYPEID	Type ID (class table index)
+	EEL_TOBJECT	Object reference
+
+	Internal VM types, not seen from EEL:
+	EEL_TLIST	Reference to a block of EEL_value elements
+
+EEL_object
+	Type tagged, reference counted object. All EEL "values" that
+	are not primitive type values (ie stuff that fits in an
+	EEL_value struct) are Objects.
+
+	EEL_CCLASS	Class definition
+		These objects represent implementations of classes,
+		such as the built-in string, array and table types,
+		as well as user defined classes. (User defined
+		classes are actually tables. They're just marked
+		with their own class ID, instead of EEL_CTABLE.)
+
+	EEL_CFUNCTION	Function definition
+		Wraps an EEL_function. Serves as the class of
+		Closure. That is, a Closure is basically an instance
+		of a Function; ie a context of the function in the
+		process of executing.
+		   Note: A Function object doesn't *really* unload
+		the VM code of a function. In this respect, the
+		Function object merely serves as a link between
+		references to the Function, and the module the
+		Function belongs to. That is, if you let go of the
+		Module reference, the module will still hang around
+		until all references to it's functions are gone as
+		well.
+FIXME: Shouldn't functions just be user defined classes...?
+
+	EEL_CCLOSURE	"Function instance"
+		A Closure holds the state (the register frame) of
+		a function, and serves as a "stack frame" when
+		calling the functions.
+		   To just call a function, one would instantiate a
+		closure, execute the function's VM code, and then as
+		the code returns, release the closure.
+		   However, it's possible to separate the creation
+		of the Closure and the execution of the function VM
+		code. There are special VM instructions for this,
+		which are used by coroutines and other
+
+	EEL_CSTRING	String value
+		An array of bytes, indexed with integer values,
+		starting at 0.
+		   Note: This is essentially a performance hack. A
+		String behaves just like an Array, except that all
+		elements are hardwired to EEL_TINTEGER, and truncated
+		to one byte per item behind the scenes.
+
+	EEL_CARRAY	Array of values
+		An array of EEL_value elements, indexed with integer
+		values, starting at 0.
+
+	EEL_CTABLE	<key, value> table
+		Basically an Array that can be indexed with symbols
+		of any type, rather than integer indices. Every item
+		has a key and a value, both EEL_value elements. Keys
+		are unique within a table.
+		   Note: Keys are tested by *value* when indexing,
+		so for example, if you use object references, there
+		is only a match when the index and the key point at
+		the same instance.

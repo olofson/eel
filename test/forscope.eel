@@ -1,0 +1,47 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+// This test is intended to verify that 'for'
+// handles iterator declarations correctly.
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("'for' loop iterator declaration tests:\n");
+
+	// First, a loop with a local iterator of it's own
+	print("  'for' with local iterator:\n    ");
+	for local i = 1, 10
+		print(i, " ");
+
+	// A declaration of a new 'i', which is dangerously
+	// close to the previous 'for' statement regarding
+	// sensitivity to lexer and context management bugs.
+	local i = 42;
+	print("\n  New 'i' of main(): ", i, "\n");
+
+	// Let's try again, but with an 'i' that is NOT
+	// local to the 'for' statement.
+	print("  'for' using 'i' of main():\n    ");
+	for i = 1, 10
+		print(i, " ");
+	print("\n  Final 'i' of main(): ", i, "\n");
+
+	// Verify that "forscope2.eel" does NOT compile
+	try
+	{
+		load("forscope2.eel");
+		throw "fail";
+	}
+	except
+		if exception == "fail"
+			throw "\"forscope2.eel\" compiled, "
+					"though it should not!";
+		else
+			print("  \"forscope2.eel\" failed to compile, "
+					"as it should.\n");
+
+	print("'for' loop iterator declaration tests done.\n");
+	return 0;
+}

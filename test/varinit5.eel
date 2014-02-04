@@ -1,0 +1,20 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2010 David Olofson
+/////////////////////////////////////////////
+// This file should NOT compile!
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	switch arguments
+	  case 1
+		local a = 1;
+	  case 2
+		a = 2;
+	  case 3
+		a = 3;
+	// Should fail when leaving the 'switch' statement, as
+	// there is no guarantee that 'a' will be initialized.
+	return 0;
+}

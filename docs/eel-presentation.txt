@@ -1,0 +1,70 @@
+
+	Presentation
+	------------
+
+EEL is a scripting and programming language, designed specifically
+for hard real time applications. The primary target areas of
+application are control engineering and audio synthesis, but EEL
+should also be suitable for game scripting and for adding scripting
+capabilities to real time multimedia applications.
+
+The syntax is C-like, but the language is higher level than C,
+supports object oriented programming, and is "safe" in the sense that
+EEL programs should not be able to crash the virtual machine or the
+host application. EEL has dynamic typing, automatic memory management,
+exception handling and built-in high level data types such as vectors,
+arrays and tables. New such data types can be added at run time by
+host applications. Plans for the near future include support for
+"real" data types (classes) implemented entirely in EEL, with
+operator overides and all.
+
+EEL compiles into bytecode for the integrated virtual machine, which
+means that no explicit support for specific achitectures is needed
+for portability. The implementation is deliberately very self
+contained and has few dependencies, so that it can be easily
+integrated into "strange" environments, such as embedded devices
+running real time operating systems.
+
+At first sight, EEL is basically Yet Another Scripting Language.
+However, as opposed to most other scripting languages, EEL is
+designed and implemented with deterministic execution as the first
+priority, and to allow tight integration with native code through
+the C API. The cost of entering and leaving the VM is considered
+critical, since this often has a major impact on high frame rate
+(>1000 Hz) applications such as machine control and low latency
+musical applications.
+
+While "automatic memory management" - which is a very nice feature
+from the programmer's POV - usually means that the VM uses mark and
+sweep or similar garbage collection, which can make a language
+completely useless for real time applications, EEL is using a
+combination of short-term deferred reference counting and (optional)
+lazy freeing. This allows EEL to constantly maintain deterministict
+execution times, without garbage collection "coffee breaks".
+
+<sidenote>
+As to the claims that reference counting is more expensive than
+"real" garbage collection due to the counting overhead and cache
+misses; consider this: What about the overhead of regularly tracing
+pointers and marking objects, and perhaps more importantly these
+days; the much larger memory footprint? As it is, memory
+technologies can't keep up with the increasing CPU speeds, and as a
+result, memory footprint is often the most important factor in
+performance tuning.
+
+I've seen this first hand even on "old" hardware, and been surprised
+by how much logic overhead a few cache lines of memory is worth.
+Since EEL can easilly be tuned all the way from nearly pure
+refcounting through "infinitely lazy freeing" (that is, leaking
+everything), it might be an interesting excersize to see how this
+affects various applications.
+</sidenote>
+
+In the short term, the primary uses for EEL will be as the
+communication protocol, configuration file format and control
+language of a lab rheometer instrument, and as an off-line and real
+time scripting language for the multimedia audio engine Audiality.
+The former is a proprietary project, while the latter is under the
+LGPL, just like EEL. That is, EEL is driven both by commercial and
+personal interest, as well as a pure interest in VM and compiler
+technology as such.

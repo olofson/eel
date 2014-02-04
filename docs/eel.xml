@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<language name="EEL" version="1.02" kateversion="2.3" section="Scripts" extensions="*.eel;*.EEL" mimetype="text/x-eel">
+	<highlighting>
+		<list name="keywords">
+			<item> include </item>
+			<item> module </item>
+			<item> import </item>
+			<item> as </item>
+			<item> end </item>
+
+			<item> return </item>
+			<item> if </item>
+			<item> else </item>
+			<item> switch </item>
+			<item> case </item>
+			<item> default </item>
+			<item> for </item>
+			<item> in </item>
+			<item> do </item>
+			<item> while </item>
+			<item> until </item>
+			<item> break </item>
+			<item> continue </item>
+			<item> repeat </item>
+
+			<item> try </item>
+			<item> untry </item>
+			<item> except </item>
+			<item> throw </item>
+			<item> retry </item>
+
+			<item> local </item>
+			<item> static </item>
+			<item> upvalue </item>
+			<item> export </item>
+			<item> shadow </item>
+			<item> constant </item>
+
+			<item> function </item>
+			<item> procedure </item>
+
+			<item> true </item>
+			<item> false </item>
+			<item> nil </item>
+
+			<item> arguments </item>
+			<item> tuples </item>
+			<item> specified </item>
+			<item> exception </item>
+
+			<item> not </item>
+			<item> typeof </item>
+			<item> sizeof </item>
+			<item> clone </item>
+			<item> and </item>
+			<item> or </item>
+			<item> xor </item>
+		</list>
+		<list name="types">
+			<item> class </item>
+			<item> value </item>
+			<item> object </item>
+			<item> real </item>
+			<item> integer </item>
+			<item> boolean </item>
+			<item> typeid </item>
+			<item> enumval </item>
+			<item> enum </item>
+			<item> string </item>
+			<item> dstring </item>
+			<item> array </item>
+			<item> table </item>
+			<item> file </item>
+			<item> directory </item>
+			<item> memfile </item>
+			<item> vector </item>
+			<item> vector_u8 </item>
+			<item> vector_s8 </item>
+			<item> vector_u16 </item>
+			<item> vector_s16 </item>
+			<item> vector_u32 </item>
+			<item> vector_s32 </item>
+			<item> vector_f </item>
+			<item> vector_d </item>
+		</list>
+		<list name="attention">
+			<item> FIXME </item>
+			<item> TODO </item>
+			<item> ### </item>
+		</list>
+		<contexts>
+			<context attribute="Normal Text" lineEndContext="#stay" name="Normal">
+			        <DetectChar attribute="Normal Text" context="#stay" char="{" beginRegion="Brace1" />
+        			<DetectChar attribute="Normal Text" context="#stay" char="}" endRegion="Brace1" />
+			        <DetectChar attribute="Normal Text" context="#stay" char="&lt;" beginRegion="Brace2" />
+        			<DetectChar attribute="Normal Text" context="#stay" char="&gt;" endRegion="Brace2" />
+			        <DetectChar attribute="Normal Text" context="#stay" char="[" beginRegion="Brace3" />
+        			<DetectChar attribute="Normal Text" context="#stay" char="]" endRegion="Brace3" />
+				<keyword attribute="Keyword" context="#stay" String="keywords"/>
+				<keyword attribute="Type" context="#stay" String="types"/>
+				<Float attribute="Number" context="#stay"/>
+				<Int attribute="Number" context="#stay"/>
+				<HlCHex attribute="Number" context="#stay"/>
+				<HlCChar attribute="Number" context="#stay"/>
+				<DetectChar attribute="String" context="String" char="&quot;" />
+				<Detect2Chars attribute="Comment" context="Comment1" char="/" char1="*"/>
+				<Detect2Chars attribute="Comment" context="Comment2" char="/" char1="/"/>
+			        <AnyChar attribute="Symbol" context="#stay" String=":!%()[]{}+,-/.*&lt;=&gt;^"/>
+			</context>
+			<context attribute="String" lineEndContext="#stay" name="String">
+				<LineContinue attribute="String" context="#stay"/>
+				<HlCStringChar attribute="String Char" context="#stay"/>
+				<DetectChar attribute="String" context="#pop" char="&quot;"/>
+			</context>
+			<context attribute="Comment" lineEndContext="#stay" name="Comment1">
+				<keyword attribute="Number" context="#stay" String="attention" />
+				<Detect2Chars attribute="Comment" context="#pop" char="*" char1="/"/>
+			</context>
+			<context attribute="Comment" lineEndContext="#pop" name="Comment2">
+				<keyword attribute="Number" context="#stay" String="attention" />
+			</context>
+		</contexts>
+		<itemDatas>
+			<itemData name="Normal Text" defStyleNum="dsNormal" />
+			<itemData name="Keyword"     defStyleNum="dsKeyword" />
+			<itemData name="Type"	defStyleNum="dsDataType"/>
+			<itemData name="Number"      defStyleNum="dsDecVal" />
+			<itemData name="Symbol"       defStyleNum="dsNormal"/>
+			<itemData name="String"      defStyleNum="dsString" />
+			<itemData name="Comment"     defStyleNum="dsComment" />
+		</itemDatas>
+  </highlighting>
+  <general>
+    <keywords casesensitive="1" />
+    <comments>
+      <comment name="singleLine" start="//" />
+      <comment name="multiLine" start="/*" end="*/" />
+    </comments>
+  </general>
+</language>

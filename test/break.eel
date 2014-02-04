@@ -1,0 +1,48 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2004, 2005 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Break tests:\n");
+
+	local x = 0;
+	while true
+	{
+		if x >= 5
+			break;
+		x = x + 1;
+		print("  ", x);
+	}
+	print("\n");
+
+	x, local y = 0, 0;
+	while true
+	outer:
+	{
+		print("Outer: ", x, "\n");
+		while true
+		{
+			print("  Inner: ", y, "\n");
+			if not x
+			{
+				x = 5;
+				continue outer;
+			}
+			if y >= 5
+			{
+				y = 0;
+				if x >= 10
+					break outer;
+				else
+					break;
+			}
+			y = y + 1;
+		}
+		x = x + 1;
+	}
+
+	print("Break tests done.\n");
+	return 0;
+}

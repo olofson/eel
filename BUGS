@@ -1,0 +1,301 @@
+================================================================================
+	APPLICATION CRASH HAZARDS
+================================================================================
+Getting a nan into a LOOP instruction can result in an infinte loop!!!
+--------------------------------------------------------------------------------
+This should not compile! As it is, it generates code that copies the unmanaged
+LISTs for the tuple arguments around, asking for segfaults down the road...
+	w.AddItems = function(self)<caption, value>
+	{
+		switch self.type
+		local it = self.itemconstructor(self, caption, procedure(s)
+		{
+			if not s.parent.silent
+				s.parent:Select(s);
+		});
+		it.value = value;
+		return it;
+	};
+The problem is that object indexing and LIST indexing shares code paths, so the
+reading of a LIST as value cannot simply be prohibited.
+--------------------------------------------------------------------------------
+This (from main() of ffttest.eel) segfaults the VM!!!
+	local ffine, local fcoarse = 0.;
+	procedure SetFrequency
+	{
+		fftview.frequency, synthview.frequency =
+				1. + upvalue ffine + upvalue fcoarse;
+		fftview:Invalidate();
+		synthview:Invalidate();
+	}
+	ebgui.HSlider(sb, procedure(self, v)
+		{
+			upvalue fcoarse = (integer)(20 * v);
+			SetFrequency();
+		});
+	ebgui.HSlider(sb, procedure(self, v)
+		{
+			upvalue ffine = v;
+			SetFrequency();
+		});
+--------------------------------------------------------------------------------
+The current upvalue system does not support upvalue access from within recursive
+functions! More seriously perhaps; the compiler is not aware of this...
+--------------------------------------------------------------------------------
+Make the math operators totally safe; they should generate EEL exceptions - not
+terminate the host application!
+--------------------------------------------------------------------------------
+'getms' uses a static variable for the start timeval. This should be fixed
+before using multiple VMs, or even multiple states in the same process.
+--------------------------------------------------------------------------------
+
+================================================================================
+	VM BUGS
+================================================================================
+Overwriting function/procedure arguments with objrefs is not safe! The objects
+are added to the limbo list, but since they're not assigned to any proper owner,
+they may be destroyed by any subsequent CLEAN instruction, regardless of level.
+   There are two (more or less) obvious solutions:
+	1) Make arguments read-only, to avoid the problem entirely.
+	2) Make arguments true variables, handing the responsibility
+	   for cleaning them over to the callie.
+   1) is dead simple, but will obviously change the language slightly. This
+change could actually be considered an improvement of the ranguage...
+   2) is a bit more complicated, but preserves the current idea that arguments
+should effectively be pre-initialize variables from the callie POV.
+   Oh, BTW, the current "arguments are almost variables" design is in a violent
+conflict with the optional/tuple argument logic. There is no storage for an
+unspecified argument! Trying to write an unspecified argument does not set it -
+it just throws XHIGHINDEX. One way around this would be to make optional and
+tuple arguments read-only at all times regardless of the rules for required
+arguments.
+--------------------------------------------------------------------------------
+When microthreads are introduced, the refcounting system, or rather the rules
+for VM code generation, has to be reworked in some way.
+   The limbo system works fine for objects created locally in a function (limbo
+list) or by some callie (limbo object inheritance), or grabbed from the
+function's constant table (owned by function object + limbo list); these objects
+won't go away all of a sudden, not even if we send references to other threads.
+   However, as it is, reading a reference from a static variable, an upvalue, a
+container object or similar place - ie some place external to the function
+context - does nothing with the object. It just gets a reference without
+ownership.
+   This means that if we have more than one thread of execution, there is a risk
+of the owner of the object waking up, finsishing what it was doing and killing
+the object that we just got a reference to, before we have a chance of assigning
+it to something that bumps the refcount. Boom...
+   Some solutions:
+	1) Modify the limbo list system so an object can be in any number of
+	   limbo lists. (Tables, LISP lists or something.)
+	2) Have the compiler pipe reads of external objects through hidden
+	   local variables, so that INIT takes care of the ownership issue
+	   before we actually start messing with an object.
+   Both 1 and 2 take care of the disown part as well; the limbo list disowns
+objects when leaving a context or a function. Pretty much the same is done for
+variables through the clean tables - which is actually quite interesting. It
+should always be possible to determine at compile time exactly when an object
+may be added to limbo, and the maximum number of limbo objects should be known
+at any point in the code. Thus, it should be possible to replace the limbo
+system with some extra compiler logic that makes use of the clean tables.
+--------------------------------------------------------------------------------
+
+================================================================================
+	COMPILER BUGS
+================================================================================
+This looks pretty stupid, considering that it's generated from an OOP style
+method call. Surely, the compiler should be able to grab the result of the
+"self" evaluation, and just index the method name out of that...?
+	INDGETI R0[0], R2
+	LDC     C5, R3                  ; C5 = <string "gfx">
+	INDGET  R2[R3], R2
+	LDC     C6, R3                  ; C6 = <string "outline">
+	INDGET  R2[R3], R2
+	LDC     C7, R3                  ; C7 = <string "Render">
+	INDGET  R2[R3], R2
+	INDGETI R0[0], R3
+	LDC     C5, R4                  ; C5 = <string "gfx">
+	INDGET  R3[R4], R3
+	LDC     C6, R4                  ; C6 = <string "outline">
+	INDGET  R3[R4], R3
+	LIST    R3*1, 1, R4
+	CALL    R2, R2, 4
+--------------------------------------------------------------------------------
+The compiler seems to generate nonsense argument lists for procedures that take
+no arguments and stuff at times... Example:
+	LDI     5889, R2
+	LIST    R2*1, 1, R3
+	CCALL   C2, R0, R3, 0           ; (MatrixMode)
+	LIST    R0*1, 0, R2
+	CCALL   C3, R0, R2, 0           ; (PushMatrix)
+	LIST    R0*1, 0, R2
+	CCALL   C4, R0, R2, 0           ; (LoadIdentity)
+--------------------------------------------------------------------------------
+Classes do not obey namespaces! This may cause conflicts when (native) modules
+export classes, as they become globally visible.
+--------------------------------------------------------------------------------
+The code below confuses the do ... until with the if statement, failing to pair
+the 'until' keyword with the do statement:
+	if b == '/'
+		do
+			b = read(f);
+		until b == '/n';
+	else ...
+--------------------------------------------------------------------------------
+A 'for' loop accepts an uninitialized iterator variable - but the compiler does
+not understand that the iterator is initialized...!
+--------------------------------------------------------------------------------
+Seems like there's some way to make the compiler "forget" to compile the default
+exception handler for a 'try' block with no explicit 'except' block.
+--------------------------------------------------------------------------------
+Forward declared functions should have their arguments verified by name - not
+just signature! (As it is, the original declaration's argument names are used,
+which results in confusing errors if the function definition tries to use
+different names.)
+--------------------------------------------------------------------------------
+This:
+	...
+        while true
+                try
+                {
+                        delta.remout(0, false);
+                        break;
+                }
+	...
+results in this:
+...
+| INTERNAL ERROR: In module './server.eel' ("./server.eel"),
+| INTERNAL ERROR:   between line 32, column 30 and line 35, column 11:
+| INTERNAL ERROR: Tried to setjump() non-jump instruction!
+...
+(Indeed, 'break' from within try blocks aren't supported yet, but a proper error
+message from the compiler would be much nicer than this...)
+--------------------------------------------------------------------------------
+When using a full path when starting a script, eel doesn't find the file! What
+gives...?
+--------------------------------------------------------------------------------
+Why does this compile? It seems like subsequent statements are pulled in as well
+in some cases, so maybe the ';' is ignored?
+	  local p = ebgui.Panel(toolpanel, "none")
+		:SetAlign("grid", 1, 2, nil, vector [2, 1])
+		.logicrect.w = 5;
+--------------------------------------------------------------------------------
+A stray ')' after an expression is sometimes completely ignored...
+--------------------------------------------------------------------------------
+try blocks mess up when trying to read the parent function's arguments!!!
+--------------------------------------------------------------------------------
+It's sometimes possible to sneak return statements with values into procedures!
+This seems to have something to do with defining procedures inside table
+constructors, and/or maybe inside functions.
+--------------------------------------------------------------------------------
+Detection of function/procedure declaration without definition should be more
+fine grained. The compiler should check for empty declarations in every context
+it leaves, so the error messages can be more specific and more reliable.
+--------------------------------------------------------------------------------
+In an except block, the compiler somehow frees the exception register R[0] after
+reading it. The result is a memory leak and/or that you get something other than
+exception when trying to read it again.
+--------------------------------------------------------------------------------
+Are heap reallocation failures handled properly? Can they be at all? I just
+tried to allocate more than 1 GB VM heap (which is not possible with my
+current kernel), and the VM seemed to hang after printing the "unhandled
+exception" error message.
+--------------------------------------------------------------------------------
+
+================================================================================
+	MEMORY LEAKS
+================================================================================
+Circular references aren't handled automatically, so cycles will cause leaks if
+not broken explicitly. Container types should perhaps register themselves with
+some kind of garbage collector, so they can at least be collected properly when
+shutting down the VM. Eventually, this "emergency GC" could be replaced with
+something real time compatible that can be active at all times.
+--------------------------------------------------------------------------------
+
+================================================================================
+	REAL TIME ISSUES
+================================================================================
+There is no real time memory manager, so unless you plug one in, object
+instantiation and destruction is not going to be real time safe.
+--------------------------------------------------------------------------------
+   Further, if you run out of heap (register) space, the heap (which is a
+single block of memory) will have to be reallocated. That means that even if
+you're using an RT memory manager, there may be quite a bit of memory copying
+to do before the VM can continue running. Once the reallocation is done, the VM
+will also have to reallocate all limbo object lists, since there are pointers to
+the list heads in the call frames.
+--------------------------------------------------------------------------------
+   The table implementation is currently a very simple hack that does naive
+searching when indexing by key value, which means that large tables don't mix
+with RT applications. (Of course, exactly what "large" means depends entirely
+on the application and the CPU speed...)
+--------------------------------------------------------------------------------
+   Finally, there is no support for multiple VMs, nor for running the VM and the
+compiler in different threads. Thus, scripts cannot be loaded and compiled
+without stalling the VM.
+--------------------------------------------------------------------------------
+   In short, there is some work left to do before EEL is as real time safe as
+I'd like it, but it should be safe if you throw in an RT memory manager, start
+up with a sufficiently big heap and stay away from the loader/compiler once you
+get going.
+--------------------------------------------------------------------------------
+
+================================================================================
+	ANNOYING MISFEATURES
+================================================================================
+It is not possible for an anonymous function to call itself by name, obviously!
+But it should be sufficient to just give it a name, right...?
+--------------------------------------------------------------------------------
+With GCC 4.4.1, I get the warnings below, because the compiler doesn't
+understand that the VM exception handling will take care of the situations where
+'v' really wasn't initialized.
+	e_vm.c:968: warning: 'v' may be used uninitialized in this function
+	e_vm.c:943: warning: 'v' may be used uninitialized in this function
+	e_vm.c:936: warning: 'v' may be used uninitialized in this function
+	e_vm.c:928: warning: 'v' may be used uninitialized in this function
+--------------------------------------------------------------------------------
+dstring operations where a dstring is inserted into or added to itself generates
+undefined results, since there are no intermediate buffers. Simplest solution
+would be to allocate a new buffer instead of reallocating when the source is
+'self'.
+--------------------------------------------------------------------------------
+The compiler *should* warn about implicit upvalues in xblocks when reaching
+above the parent of the try...except block! Now it doesn't warn at *all* about
+upvalues in xblocks.
+--------------------------------------------------------------------------------
+It might be an idea to have the compiler predeclare 'main', enforcing the
+correct prototype, to avoid the main() mess of C... Then again, this is really
+up to whatever is using EEL; the "program" idea it's not a language feature.
+Force injected declarations from the client application...?
+--------------------------------------------------------------------------------
+C extension modules should have some way of keeping private global data on a per
+EEL state basis. Static variables won't work if there's more than one EEL state
+in a process! This should probably be strapped onto the EEL_module object.
+--------------------------------------------------------------------------------
+The Cooledit/Midnight Commander syntax highlight file docs/eel.syntax is not
+up to date. (I'm not using Cooledit currently...)
+--------------------------------------------------------------------------------
+
+
+================================================================================
+	EELBox BUGS
+================================================================================
+Update() seems to screw up when handling arrays of Rects! This is a relatively
+new bug; the demos started showing this problem just recently...
+--------------------------------------------------------------------------------
+Rect constructor doesn't handle negative w and h!
+--------------------------------------------------------------------------------
+
+
+================================================================================
+	EBGUI BUGS
+================================================================================
+Sliders get pretty weird knob sizes in guitest.eel...
+--------------------------------------------------------------------------------
+
+
+================================================================================
+	OTHER BUGS
+================================================================================
+DSP module: ifft_real() clears one or more fields in the INPUT vector!!! (This
+happens after the job, though, so the IFFT works fine...)
+--------------------------------------------------------------------------------

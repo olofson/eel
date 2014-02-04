@@ -1,0 +1,40 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+function construct
+{
+	return table [
+		procedure member(self)
+		{
+			print("    Hi! I'm member().\n");
+		}
+	];
+}
+
+
+export function main<args>
+{
+	local calls = 0;
+	local obj = construct();
+	function getobj
+	{
+		print("  getobj()\n");
+		upvalue calls += 1;
+		return upvalue obj;
+	}
+	print("Testing explicit member call:\n");
+	getobj().member(getobj());
+	if calls != 2
+		throw "Explicit member call evaluated 'self' " +
+				(string)calls + " times!";
+	print("Testing OOP syntax member call:\n");
+	calls = 0;
+	getobj():member();
+	if calls != 1
+		throw "OOP sytax member call evaluated 'self' " +
+				(string)calls + " times!";
+	print("Done.\n");
+	return 0;
+}

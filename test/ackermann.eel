@@ -1,0 +1,52 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+//
+// Based on the Lua "Ackermann's Function"
+// test code by Doug Bagley, for
+// The Great Computer Language Shootout.
+//
+// EEL version by David Olofson, 2004, 2005
+/////////////////////////////////////////////
+
+function Ack(M, N)
+{
+	if not M
+		return N + 1;
+	else if not N
+		return Ack(M - 1, 1);
+	else
+		return Ack(M - 1, Ack(M, N - 1));
+}
+
+export procedure test[n]
+{
+	if specified n
+		local N = n;
+	else
+		N = 1;
+	local t = getms();
+	print("  Trying ", N, "...\n");
+	print("    Ack(3,", N, "): ", Ack(3, N), "\n");
+	print("      Time: ", getms() - t, " ms\n");
+}
+
+export function main<args>
+{
+	if specified args[1]
+		test((integer)(args[1]));
+	else
+	{
+		print("Ackermann test:\n");
+		test();
+		test(2);
+		test(3);
+		if Ack(3, 1) != 13
+			throw "Ack(3, 1) should return 13!";
+		if Ack(3, 2) != 29
+			throw "Ack(3, 2) should return 29!";
+		if Ack(3, 3) != 61
+			throw "Ack(3, 3) should return 61!";
+		print("Ackermann test done.\n");
+	}
+	return 0;
+}

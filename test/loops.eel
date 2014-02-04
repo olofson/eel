@@ -1,0 +1,101 @@
+////////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2004, 2005, 2009 David Olofson
+////////////////////////////////////////////////
+
+export procedure bench(loops)
+{
+	loops = (integer)loops;
+	print("  empty 'for' loop, ", loops, " iterations:\n");
+	for local i = 1, 5
+	{
+		local start = getms();
+		for local cnt = loops, 0, -1
+			;
+		local time = getms() - start;
+		print("    Try ", i, ": \ttime: ", time, " ms");
+		try
+			print(" <==> ", 1000.0 * loops / time, " loops/s\n");
+		except
+			print(" <==> >", 1000.0 * loops, " loops/s\n");
+	}
+	print("  Ok.\n");
+}
+
+export function main<args>
+{
+	print("Loop tests:\n");
+
+	print("  while cnt ...:\n");
+	local cnt = 10;
+	while cnt
+	{
+		print("    cnt = ", cnt, "\n");
+		cnt = cnt - 1;
+	}
+	print("  Ok.\n");
+
+	print("  do ... while cnt >= 1:\n");
+	cnt = 10;
+	do
+	{
+		print("    cnt = ", cnt, "\n");
+		cnt = cnt - 1;
+	}
+	while cnt >= 1;
+	print("  Ok.\n");
+
+	print("  do ... until cnt < 1:\n");
+	cnt = 10;
+	do
+	{
+		print("    cnt = ", cnt, "\n");
+		cnt = cnt - 1;
+	}
+	until cnt < 1;
+	print("  Ok.\n");
+
+	print("  for with start and end:\n");
+	for cnt = 1, 10
+		print("    cnt = ", cnt, "\n");
+	print("  Ok.\n");
+
+	print("  for with start, end and increment:\n");
+	for cnt = 10, 1, -1
+		print("    cnt = ", cnt, "\n");
+	print("  Ok.\n");
+
+	print("  for with continue:\n");
+	for cnt = 1, 10
+	{
+		if cnt == 5
+		{
+			print("    (skip)\n");
+			continue;
+		}
+		print("    cnt = ", cnt, "\n");
+	}
+	print("  Ok.\n");
+
+	print("  for with repeat:\n");
+	local done = false;
+	for cnt = 1, 10
+	{
+		print("    cnt = ", cnt, "\n");
+		if cnt == 5 and not done
+		{
+			print("    (repeat)\n");
+			done = true;
+			repeat;
+		}
+	}
+	print("  Ok.\n");
+
+	if specified args[1]
+		bench(args[1]);
+	else
+		bench(1000);
+
+	print("Loop tests done.\n");
+	return 0;
+}

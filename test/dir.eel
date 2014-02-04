@@ -1,0 +1,30 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+import "io", "dir";
+
+export function main<args>
+{
+	if specified args[1]
+		local p = args[1];
+	else
+		p = "./";
+	local d = directory [p];
+	print("Directory of \"", p, "\":\n");
+	while true
+	{
+		local n = d:read();
+		if not n
+			break;
+		try
+		{
+			directory [p + "/" +  n];
+			print("   (dir) ", n, "\n");
+		}
+		except
+			print("  (file) ", n, "\n");
+	}
+	return 0;
+}

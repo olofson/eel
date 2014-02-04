@@ -1,0 +1,35 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+import "callme";
+
+static log = [];
+
+procedure test
+{
+	print("I'm the test() procedure!\n");
+	log.+ "test() was here";
+}
+
+procedure cb(x)
+{
+	print("I'm the callback! I got x = ", x, "\n");
+	log.+ "cb() was here";
+	log.+ x;
+	test();
+}
+
+export function main<args>
+{
+	print("Testing callbacks from other modules:\n");
+	callme(cb, 42);
+	if log[0] != "cb() was here"
+		throw "The callback was never called!";
+	if log[1] != 42
+		throw "The callback did not get the argument!";
+	if log[2] != "test() was here"
+		throw "The test() procedure was never called!";
+	return 0;
+}

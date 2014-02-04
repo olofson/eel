@@ -1,0 +1,38 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005, 2011 David Olofson
+/////////////////////////////////////////////
+
+import "io", "dir";
+
+procedure list(p, indent)
+{
+	local d = directory [p];
+	while true
+	{
+		local n = d:read();
+		if not n
+			break;
+		try
+		{
+			local sp = p + "/" +  n;
+			directory [sp];
+			print(indent, "   (dir) ", n, "\n");
+			if n != "." and n != ".."
+				list(sp, indent + "\t");
+		}
+		except
+			print(indent, "  (file) ", n, "\n");
+	}
+}
+
+export function main<args>
+{
+	if specified args[1]
+		local p = args[1];
+	else
+		p = "./";
+	print("Tree of \"", p, "\":\n");
+	list(p, "");
+	return 0;
+}

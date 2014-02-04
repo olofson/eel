@@ -1,0 +1,1025 @@
+
+* Might be an idea for eel_export_lconstants() to fail if an
+  existing constant is redefined...!
+
+* Add miniz...?
+
+* Physics:
+	* Use the constraints system for applying "long time"
+	  forces...? (Constraints operate via forces now anyway;
+	  that might change, though.)
+		* Downside (?): Not owned by bodies...
+
+	* Constraints should act on rf[] not f[]! No issue as long
+	  as we're using IMPULSEFORCES - and we should be using
+	  "objectified forces" (implemented as constraints?) for
+	  that event driven AI stuff anyway...!
+
+	* Add velocity aware tests for fast moving objects!
+		if(max(abs(dvx), abs(dvy)) > APPROX_MAX_DELTA)
+			subdivide_test(..., APPROX_MAX_DELTA);
+
+	* Build 2D and 3D float vector types into the VM, as
+	  native value types...?
+
+	* Shapes: "...providing different areas of the same object
+	  with different friction, elasticity or callback values."
+
+	* Per-body or per-shape collision response parameters.
+
+	* Body 'e' field not implemented!
+
+* Exception handling segfaults:
+	* There *should* be garbage in the argument stack if
+	  there's an exception thrown while constructing arguments,
+	  right...? Who's supposed to clean that up!?
+		* What about C functions...?
+	* Looks like an exception inside a C function results in
+	  the VM trying to unroll twice...
+
+	1. Unwinding must include the C stack!!!
+	2. ???
+		* Still segfaults when cleaning up after dumping.
+
+	* Exceptions trigger a VM dump whenever we transition from
+	  a native function back into the VM, but that shouldn't
+	  be more than a bandwidth issue...?
+
+
+	* EEL 'clean' function for cleaning out nil refs (as in, dead
+	  weakrefs) from arrays? (Might need a "back-index adjust" feature
+	  to be of much use.)
+		* Maybe we need a proper objref list class for this?
+
+	* EEL needs to make proper use of the argument stack when
+	  compiling large constructors! As it is, it runs out of
+	  registers, just as it did before the argument stack.
+	     It might be a good idea to collect up to four items,
+	  to make use of PUSH2/3/4. More than that is pointless,
+	  though, if not suboptimal in terms of performance.
+
+	* One way to deal with the EEL_T*/EEL_C* warnings without
+	  losing the "trapping unhandled EEL_T*s" feature:
+		* Put them all in a single enum.
+		* Create a DEBUG macro that evaluates to the full
+		  list of non-EEL_T* symbols in DEBUG mode, and
+		  nothing (ie implicit default) in release mode.
+
+	* Operator cleanup:
+		* Remove all nonsense "special" operators!
+		* Switch to a specific concatenation operator!
+		* Implement array concatenation!!!
+		* Remove the specific vector operators?
+		* Rename |< and >| as 'min' and 'max'...? Or
+		  remove them, and throw in some nice builtin
+		  functions? min(), max(), clamp(), ...
+
+	* 'if' statement with empty "action" statement ==> WARNING!
+
+	* Convert ZeeSpace to the same naming conventions as my
+	  other projects; ZS_typename - not ZS_TypeName!
+
+	* EELBox should reload OpenGL automatically after
+	  restarting the video backend!
+
+	* Generic 2D arrays in EEL core or dsp?
+		* Interpolated Get()/Set() methods.
+		* 2D vector operations.
+		* Graphics rendering operations.
+		* Tools for converting to/from surfaces/textures.
+		* Later on:
+			* Interleaved buffers, for interfacing
+			  directly with SDL, ZeeSpace and OpenGL.
+
+	* Introduce standard install locations:
+		* "./eel" for stuff installed along with the app
+		* "~/.eel" for per-user stuff
+		* "/usr/share/eel" (?) for system wide stuff
+		* Subdirectories:
+			* "modules" for shared modules (GUI etc)
+			* "tools" for devtools, installers etc
+			* "config" for configuration files
+
+	* Maybe the 'module' declaration should be required for
+	  anything 'import'ed? We don't really want 'import' to
+	  create multiple instances in the process - at least not
+	  implicitly, as a result of forgetting the 'module'
+	  declaration...!
+
+	* EELBox should perhaps have
+		* AAPlot()
+		* Line()
+		* AALine()
+		* ExtractColor() (return [r, g, b, a])
+
+	* Future of EBGUI and the K2 GUI: Strict MVC design!
+		* GUIs should be defined using markup and/or
+		  dedicated EEL modules - no "inline" code!
+		* Application/GUI interaction is done entirely
+		  using messages. (Like parts of EELSynth.)
+		* Optionally, widgets can be "wrapped" locally
+		  as a way of keeping state data accessible, and
+		  automatically synchronized.
+			* Support callback notification?
+		* "End of message queue" notification callback
+		  for widget implementations! This would make it
+		  trivial to implement mouse move filtering and
+		  similar on the widget level.
+
+	* EELBox OpenGL should be wired so that any EEL call
+	  before loading OpenGL just results in an exception - not
+	  a segfault!
+	    Temporary hack: All calls wired to a dummy that prints
+	  a warning message.
+
+	* Module import order matters! Memory leaks in Kobo II can
+	  be "fixed" by rearranging the import statements.
+
+	* There is something wring with module memory management!
+	  Can't safely hold modules by means of references to
+	  functions they export, apparently; that results in
+	  double free crasches down the road...
+
+	* The optimizer screws up the line number info!
+		* Unfortunately, it's not trivial to fix...
+
+	* Remove builtin.eel and eelbox.eel! One may have "core"
+	  libs implemented in EEL, but they should not be required
+	  to even compile anything at all... That's a nasty catch
+	  22, which caused a lot of problems in the 0.2.x branch.
+
+	* Constructors allow a stray terminating comma before the
+	  closing bracket! Why, and what does that do?
+
+	* Putting function references in static tables creates
+	  memory leaks!
+
+	* Lots of new, interesting warnings to sort out...
+
+	* Various examples broken!
+		* ZeeSpace demos using removed APIs!
+
+	* Implement vacall()!
+
+	* Owner trace debug call!!! Figuring out why objects are
+	  unintentionally kept around is hopeless as it is.
+
+	* Avoid the extra weakref relocation sweep when inserting
+	  items in tables and arrays!
+
+	* zsdraw editors seem to be deleted when closed, but leave
+	  empty tables. That is, weakrefs not working properly.
+
+	* "WARNING: Discarding event for dead body"...? Should
+	  that actually ever happen? Some limbo list or local
+	  variable holding on to dead bodies in the loop...?
+
+	* Structured scene graph API instead of raw OpenGL?
+		* Persistent "objects" (sprites, quads, polygons
+		  etc) with properties that can be updated as
+		  needed, instead of gathering and moving all data
+		  every frame.
+		* Layers for managing views and transforms.
+		* Groups and property inheritance?
+
+	* INDGET* --> LDIND*, maybe...
+
+	* INDGETC, PUSH  ==> PHINDC
+
+	* ADDI, SUBI, ...
+
+	* Dedicated operator instructions for the most common
+	  logic operations!
+
+	* There are a lot of 'GETARGI ARGS[x], Ry' all over the
+	  place in OO style code. Can we optimize that somehow?
+		* One option is to put some or all of the
+		  required arguments in registers.
+			* Since they're memory managed via the
+			  argument stack, there's no need to
+			  handle those regs as stack variables.
+			* VM needs to special-case these in SETARG!
+			* Compiler must not issue SETARGI for
+			  these arguments.
+		* Another option is to implement more instructions
+		  for the common cases. Probably faster, but we're
+		  getting a lot of instructions here...
+
+	* JUMPEQ, NE, ... (matching the *BOP* ops)
+		* EQ, NE, GT, GE, LT, LE
+		* AND, OR, XOR
+		* IN
+		* *I versions?
+
+	* BOPC, PHBOPC...?
+
+	* Peephole optimizations:
+		* Remove CLEAN before RETURN. (???)
+
+	* Tail calls! (TCCALL* + easy peephole optimization.)
+
+	* What about registers that are left unused after
+	  optimization? They'll usually be on the top of the
+	  register allocation stack, so no holes - but they may
+	  still impact the function frame size. Perhaps we should
+	  base that on the highest register actually USED instead.
+
+	* PUSHRC, PUSHCR, PUSHRI, PUSHIR
+
+	* TRY with no except block; ie ignore exceptions.
+
+	* Upvalues!? We should verify that functions called with
+	  CALL aren't trying to use upvalues!
+
+	* Maybe arithmetics on nil should throw an exception?
+
+	* true == (integer)1 and (real)1? (Many languages treat
+	  'true' as a non-value, but being able to multiply with
+	  a boolean is handy - and suggests that true == 1.)
+
+	* We could basically just do away with the cleantables,
+	  but then one has to deal with "object buildup" in loops
+	  and the like in some other way.
+	    One way is to give the callframe a LIFO stack of limbo
+	  list headers, but that means we need to insert
+	  instructions to deal with that.
+	    However, when does this buildup problem actually
+	  occurr? It happens in loops, where there is no naturral,
+	  safe place to clean up, such as when leaving the
+	  function. So unless there is a loop, there is no problem!
+	    Thus, we could have the compiler give each looping
+	  context that *can* generate objects, a limbo stack level,
+	  and add that to the relevant instructions, so they can
+	  add any new objects to the correct limbo list.
+	    Jumps that restart or leave limbo contexts will need
+	  to be coded with special instructions that clean the
+	  apropriate limbo lists when leaving contexts. These
+	  instructions should probably name the target context
+	  limbo level, and VM logic should clear any limbo stack
+	  levels used above that level.
+		* What about objects that are already in some limbo
+		  list? Is this guaranteed to always keep the
+		  object alive *at least* through the lifetime of
+		  our context? (Context that write objrefs to
+		  registers belonging to outer contexts will have
+		  to move the objects into the appropriate limbo
+		  list anyway.)
+
+	* Efficient solution for passing arguments directly on to
+	  a callie, and/or putting them in an array...?
+
+	* The callframe argv and argc could be derived from the
+	  return info r_sp and r_sbase. Do we actually need argv
+	  and argc?
+
+	* Add PUSHI2 (2x sint16), PUSHI3 (3x sint16) and PUSHI4
+	  (4x sint16).
+
+	* PUSHCR (Push Constant Range) instruction! There seem
+	  to be quite a lot of PUSHCing of contiguous blocks of
+	  constants...
+
+	* New C function prototype:
+		EEL_xno fn(EEL_vm *vm,
+				EEL_value *argv, unsigned argc,
+				EEL_value *resv);
+		* Allow resv == NULL for "result not desired"?
+		* Use this for constructors as well? (Only diff is
+		  that EEL_ctor_cb has a 'type' argument.)
+
+	* Qsort!!!
+
+	* EELBox etc should pre-lookup EEL strings rather than
+	  dealing with C strings when constructing SDL events and
+	  the like!
+
+	* Number of available CPUs from "sysinfo" module!
+
+	* OpenMP/GOMP!?
+
+	* Script profiler! Keep a counter for each source code
+	  line (or VM instruction) of every function.
+
+	* Unify limbo lists and clean tables somehow? Or can we
+	  deal with stray objects in some other way?
+	     Or do we just move to pure refcounting, initializing
+	  and clearing all registers, brute force? This may sound
+	  horrible, but:
+		* The cleantable adds per-INIT overhead anyway.
+		* The cleantable cleanup touches ALL used regs!
+		* Special instructions are needed for dealing with
+		  variables vs "normal" registers.
+		* Limbo lists are required for dealing with objects
+		  that may end up never being assigned to a proper
+		  variable.
+		* With static typing and/or type infering, a lot
+		  of registers can be eliminated from the init
+		  and cleanup, as they'll never hold objects!
+
+	* Command line executives: It's probably a good idea to
+	  list function headers and VM disassembly when specifying
+	  -a without -l, rather than just listing nothing...
+
+	* If available, print source code along with the line
+	  numbers in VM dumps!!!
+		* Optionally do this for -la as well!
+
+	* An EEL callable C functions that call EEL functions has
+	  to be aware that a VM heap reallocation may occur,
+	  invalidating its argv pointer! Should we just leave it
+	  at that, or keep the old vm->argv, which can be updated?
+	  Or somehow fragment the heap, and disallow reallocations
+	  altogether. (An argument stack overflow would instead
+	  start a new heap fragment and move the current stack
+	  there.)
+
+	* Simple fragmented heap memory manager:
+		* Argument stack is separated from the heap!
+		* Construct heap as a linked list (LIFO stack) of
+		  heap blocks.
+		* vm->heap points at the top (current) block.
+		* Allocate frames stack style, as we do now.
+		  (They'll be freed in reverse order, so no
+		  fragmentation issues!)
+		* When a heap block is exhastued, allocate a new
+		  one instead of reallocating!
+		* Heap blocks need to fit at least one maximum
+		  size frame, which means:
+			* 256 work registers
+			* 256 cleantable entries
+		  512 values (8192 bytes) is probably a reasonable
+		  size. Or perhaps we should use different block
+		  sizes for "main" programs and coroutines?
+		* Pros:
+			* No more heap relocation nonsense!
+			* Result registers will stay put!
+		* Cons:
+			* The argument stack can still move about!
+			* Weakrefs in container objects still need
+			  relocation.
+		* Make the argument stack semi-fragmented? That is,
+		  it can be reallocated while it's "live" (required
+		  to handle arbitrary argumen counts), being filled
+		  by a caller, but once it becomes an actual
+		  argument list, it's locked down, and the callie
+		  will need to allocate a new argument stack block
+		  if it runs out of space.
+
+	* Separate typeid types for values and objects? (That is,
+	  use EEL_classes instead of EEL_types for objects.)
+
+	* Constructors to become normal functions?
+
+	* Why are the operands swapped for object_rop() in
+	  e_operate.c? The only "reverse" thing about it is
+	  actually that only the (actual) righthand operand is
+	  guaranteed to be an object, whereas for object_op(), it's
+	  the lefthand operand that is an object. (object_op() also
+	  covers both operands being objects.)
+
+	* New module management?
+		* All module constructors must RETURN a module.
+		* No more dead/zombie modules!
+		* Shared modules are kept in 'modules'. Weakrefs!
+		* Cleaning is just scanning 'modules' for any
+		  modules that are back at their initial refcount
+		  sums.
+		* "Locked" (built-in) modules are just given an
+		  extra incref. (*After* calculating the refcount
+		  sum, obviously!) When cleaning up the state, one
+		  just scans 'modules', decrefing, and then does
+		  a final module garbage collection that *should*
+		  remove any remaining modules.
+	  Then again, the old solution *should* work. There is
+	  something fishy here...
+
+	* Merge EEL_state into EEL_vm_private?
+
+	* Swap operator?
+
+	* Add a "nothing" or "void" type/value, that cannot be
+	  generated by normal code, to mark "no return value"
+	  from vacall() and things like that?
+
+	* eel_get_current_moduledata() doesn't work for
+	  constructors! (A constructor is not a function as far as
+	  the VM is concerned.) How to deal with this...?
+
+	* EELBox:
+		* OpenGL:
+			* Custom mipmap generator?
+
+	* ZeeSpace:
+		* zs_Blit2SDL() needs a source rect and target
+		  coordinates!
+		* zs_Render3D2SDL() needs a target rect!
+		* zs_Blit():
+			* Plain copy (?) reduces intensity!
+		* Add some more drawing tools for regions:
+			* Perlin terrain
+			* Dome, beehive, cone etc.
+			* Spline surface
+			* Surface transform
+		* Implement region boolean operations!
+		* Add more region construction tools!
+		* Various filters!!!
+			* IIR and FIR smoothing
+			* Selective smoothing
+			* Distance blur (z modulation)
+		* EEL readback of all Pipe fields!
+		* EEL clone for Region and Pipe!
+	
+	* ZeeSpace Draw:
+		* Workspace should only be redrawn ONCE as a
+		  result of any number of entities or areas
+		  needing a refresh!
+		* Proper entity list!!!
+			* Selection highlight.
+			* Entity IDs?
+			* Realign after deleting entities!
+		* Maybe the background entity shouldn't be
+		  deletable? Or we just make it a normal entity,
+		  only without size and location.
+		* CLI?
+		* Numeric size/position editors!
+		* Grid + snap!
+			* Polar "grid".
+			* Grid wrapped over surface.
+		* Multiselect!
+		* Handles can end up outside the workspace,
+		  visible, but not accessible!
+		* Scroll!
+		* Zoom!
+		* Undo/redo!
+	
+	* EBGUI:
+		* Resizable windows! (SizeHandle widget?)
+		* Selection logic? Multiselect?
+		* Hook for processing widgets as they're added?
+		* Standard popup menus!!!
+		* Click() should have a button argument?
+		* Can we somehow support children that are not
+		  constricted to the client area of their parent
+		  widgets...?
+		* Mouse motion filter!!!
+			* Deliver events as arrays?
+			* Add a "further events in queue" flag?
+		* Invalidate() doesn't always work. See entity
+		  widgets in ZSDraw; tab navigation doesn't redraw
+		  the previous widget as unfocused.
+		* ListBox scrolling behaves a bit odd at the
+		  bottom end of the list.
+
+	* Calling a procedure via "reference" (ie via table)
+	  generates a result that is the function itself!!! This
+	  should obviously result in some exception instead.
+
+	* Add "read from stdin" feature to 'eel' command!
+
+	* Inheritance mechanisms:
+		* Lua style metamethod, that can be another
+		  indexable object, or a function? The function
+		  would take the object and the index as args.
+		* Access models? Every indexable object would
+		  get a field that specifies how it is to be
+		  accessed; various hardcoded rules or a custom
+		  function. Much like the metamethod approach,
+		  except this is actually defines the index
+		  operation, rather than kicking in when normal
+		  indexing fails. Also, this would allow write
+		  protecting tables and whatnot.
+	  Either sort of inheritance mechanims would eliminate
+	  the need for adding tables or something to custom
+	  classes just to be able to add fields to them. With
+	  inheritance, the "fallback" object could be anything
+	  indexable.
+
+	* The FFT module is apparently not thread safe!
+
+	* EEL_OWNER_TRACE segfaults!
+		* The whole thing is broken anyway. Removing...
+		* A better solution would be a tool that finds
+		  all objects (DBGM()...) and presents objects
+		  as a tree or similar.
+		* Normally, all objects should be possible to
+		  find by scanning the modules - but circular
+		  references may keep other objects around!
+		     Maybe container objects should register
+		  themselves somewhere whenever they receive
+		  a reference to another container?
+		     Also, a self-reference obviously needs to
+		  refcount! One just needs to handle it
+		  properly (as in ignoring it) when destructing.
+
+	* Operator for concatenating a weakref to an array,
+	  corresponding to "a.+ o". "a.(+) o"? Typecast to
+	  weakref?
+
+	* Remove *_v_own() and similar...?
+
+	* Start on some visual introspection debugging tool...
+
+	* OS threads with "friend states"?
+		* Message passing; objects copied - containers
+		  recursively so.
+		* Shared modules shared across states! (Read-
+		  only data, like code and constants only, of
+		  course.)
+			* Problem: Refcounting conflicts! One
+			  would actually have to implement
+			  module, function, ... objects that
+			  wrap shared data. The objects would
+			  need a lock protected refcount for
+			  the data, checked when objects are
+			  destroyed.
+
+-----------------------------------------------------------
+Long term:
+
+	* Static typing? (Implement in compiler only first!)
+		* Add explicit type "dynamic"
+		* Local variables are declared using type names
+		  instead of 'local'. ('dynamic' is equivalent
+		  to the current declaration behavior.)
+		* Function arguments need types!
+			* Leave out the type for "dynamic"?
+		* Functions get return types.
+		* Typed table type for structs/classes...?
+			* These would need "base classes",
+			  which get their own type IDs for
+			  typed references.
+
+	* Modules:
+		* Fix the module loading catch-22 etc...
+		* Injected modules are instantiated by
+		  EEL callable functions, or actual EEL
+		  functions, that are added to the
+		  environment.injected_modules table.
+		* Is the unload callback still needed?
+		* What happened to eel_import()?
+
+	* Build a new warning/error message handling system
+	  based on EEL types!
+		* Messages are EEL tables with fields like
+		  "type", "sourcefile", "line", "column", etc.
+		* The message log is an EEL array of tables of
+		  the aforementioned format.
+		* When dumping or otherwise aborting, error
+		  output is formatted by EEL code in the built-
+		  in library, avoiding C code to save space.
+		* The message log can be accessed by EEL code.
+
+	* Why compile 'try' and 'except' blocks as functions?
+	  Well, it seemed like the easiest way at the time...
+		* At least, 'except' blocks have no real reason
+		  being functions. They should be handled just
+		  like the 'else' blocks of 'if' statements.
+		* Now, what's so special about 'try' blocks?
+		  They may look much like "breakable" loops -
+		  except in a 'try' block, any instruction that
+		  throws an exception will be the 'break'. The
+		  hairy part is the cleanup. When coding a
+		  'break', the compiler knows which variables
+		  have been initialized, so it can code a CLEAN
+		  instruction as needed before the JUMP. At run
+		  time, this information is not available, as
+		  the VM isn't really aware of local scopes.
+		* Can we just store the current variable init
+		  state at the start of the try block? (The
+		  cleaning table keeps track of the number of
+		  total inits.) That way the VM can effectively
+		  issue a CLEAN instruction as needed, before
+		  jumping out of the 'try' block.
+
+	* Multiple quoting for strings!
+
+	* Do something about hashes for strings longer than 32
+	  bytes? (Do every N'th byte, include the length in the
+	  hash, ...)
+
+	* 'try'...'finally'.
+
+	* Special operator for concatenation? Typically, one
+	  can rely on context (lefthand and righthand types)
+	  to determine if '+' should concatenate or add
+	  arithmetically. However, adding vector operations
+	  to the mix eliminates that possibility, and one must
+	  explicitly express what's desired. (Currently, EEL
+	  does this by using a special set of operators for
+	  vector operations: #**, #%, #/, #*, #- and #+.)
+	  Concatenation operator syntax options:
+		* #	Similar to +, which makes sense.
+		* ##	(C preprocessors)
+		* ~	Conflicts with "bitwise not"!
+		* .	Conflicts with "OO style" indexing!
+
+	* With the cat/add conflict eliminated, remove the
+	  weird #+, #* etc operators.
+
+	* Concatenating a function to a table should create
+	  an item with the function name as key and the
+	  function itself as value!
+
+	* There should be an easy way for "add-on" types to
+	  provide table functionality, so one could add
+	  things to them at run time.
+		* Maybe support "private" add-on fields,
+		  that can normally be seen only from within
+		  a limited scope, such as the current module?
+		  (Unique prefixes to the field names.) This
+		  would allow independent modules to tag
+		  various objects without risk of conflicts.
+
+	* 'try' block shorthand? Trying to retrieve a value
+	  somehow, and if that fails, grabbing a default value,
+	  is a rather common operation.
+
+	* What was the idea with a return code from class
+	  unregister callbacks? Useful for what?
+
+	* "Slice reference" objects.
+		* Can this be done in a generic way, for
+		  all (integer) indexable types?
+		* What to call the type(s) and calls?
+
+	* Optimized sort()! Should take one or more
+	  indexable objects, where the first one determines
+	  the order, and the other ones, if any, are
+	  rearranged in parallell.
+
+	* Brute force search function:
+		* function find(obj)[start, end, stride];
+
+	* Smart find for sorted containers:
+		* function sfind(obj)[start, end, stride];
+
+	* Priority queue type.
+
+	* Built-in universal event/message system.
+
+	* file.sysroots() to get / or C:, D:,
+	  ... or whatever the system at hand deals in.
+
+	* Threading with inter-state "IPC". (spawn()?)
+
+	* 'in' operator/keyword, for
+		* for local x in y ...
+		* Testing if a value (key, in the case of
+		  tables) exists in an indexable object.
+
+	* DSP Generator Objects:
+		* Native EEL objects
+		* Constructors with arbitrary parameters
+		* GETINDEX metamethod generates output
+		* COPY generates a vector of the algorithm's
+		  native data type, filled with output.
+		* SETINDEX may be used for seeding and
+		  other parameters
+		* CAST metamethod generates a single value
+
+	* Self-documenting modules!
+
+	* TLSF memory manager
+		* Add void * field for mmgr pointer
+		* Extending the pool...?
+		* Make this an optional module?
+
+	* Finish the serializing/deserializing subsystem.
+
+	* io.read() and io.write() should support more
+	  types! (Should really be using the
+	  (de)serialization subsystem.)
+
+	* New type/class system:
+		* Type IDs are removed, or possibly
+		  degraded to a central unique ID registry
+		  service. (Built-in types are hardcoded
+		  and preregistered, as in EEL 0.1.x.)
+		* Every Object has a Class pointer ("VMT")
+		* Every Class has an origin module pointer
+		* Modules export Classes like any exports
+		* Inheritance...? Probably not!
+		* Metamethods should be proper functions,
+		  as in EEL callable C functions with
+		  normal argument passing.
+		* The most common metamethods should be
+		  kept in a table in the class object.
+		* Additional metamethods are registered
+		  by name, and arranged in a suitable
+		  quick look-up structure.
+
+	* Cleaner argument passing to C functions;
+		...(EEL_vm *vm, EEL_value *argv, int argc,
+				EEL_value *resv, int resc)
+		* Performance gain/impact?
+
+	* Multiple returns:
+		* Consider the cons and pros, considering
+		  that it's easy enough to "fake" it by
+		  returning an array, table or whatever;
+			* Actual usefullness
+			* Performance gain?
+			* Added complexity
+		* Declaration:
+			* function (ret1, ret2, ...)
+				funcname(arg1, arg2, ...)
+			* No return list, or an empty
+			  return list, implies a single
+			  return value.
+		* Results are considered optional!
+		* Space for the returns is allocated on
+		  the argument stack before any arguments.
+		* The function is told how many arguments
+		  are requested.
+		* Check with 'requested' in EEL functions.
+		* EEL 'return' must check that enough
+		  values are returned at run time!
+		* EEL 'return' will ditch unwanted returns.
+
+	* Fragmented arrays!
+		* Fast and deterministic insert(), delete()
+		  and similar.
+		* Indexing can become expensive,
+		  alternatively, a "quick index" must
+		  be maintained.
+		* Direct access to data from C code
+		  becomes complicated.
+
+
+General
+-----------------------------------------------------------
+* Default values for optional arguments! After switching
+  to the argument stack for calls as well (used only for
+  constructors as of 0.1.15), this is trivial. The CALL op
+  code would just grow the stack to the full size of
+  required + optional arguments, and fill in any missing
+  arguments as needed. (Obviously, tuple arguments will
+  remain the way they are, except that when specified,
+  they're pushed onto the stack.)
+     This would make required, optional arguments, and
+  specified tuple arguments writable, and it'll probably
+  make closures and coroutines easier to implement. This
+  would eliminate the current ugly manual wrapping using
+  local variables, and it would also allow C++ style
+  default argument value notation as an alternative to
+  'if specified ...' and similar constructs. (The latter
+  are still handy in many cases, though, and cannot be
+  replaced entirely.)
+
+* "Reverse" extended error/exception handling: When things
+  go wrong, *first* check what the VM wants to do about it,
+  then proceed according to that information; either just
+  give up with a simple EEL_X* code, or build an object
+  with detailed information.
+     This can be wrapped in a macro that appears to format
+  error messages printf() style and then returns a value,
+  but actually checks if anyone wants the information
+  before even looking at the formatting stuff.
+     This logic can probably be carried over to EEL code
+  as well, where it's even more desirable due to the cost
+  of formatting error messages in EEL code. Maybe a second
+  "argument" to throw, evaluated only if the information is
+  desired? It could be compiled as an anonymous function,
+  similar to how try blocks are handled.
+
+* A dynamic interface negotiation system is needed for
+  inter-module dependencies. (Modules are not necessarily
+  built and installed like proper shared libs, so it's not
+  safe, and may not even be possible on some platforms, to
+  link to modules!) The same solution should probably be
+  applied to the EEL core interface.
+
+* Remove the "if(constant == variable)" nonsense in the C
+  code.
+
+* Test the DBG() #defines and fix or remove broken or
+  irrelevant debug code.
+
+* e_register.[ch] needs splitting and cleaning!
+
+* There should probably be "table of struct" interfaces
+  for all registration calls, not just constant exports.
+
+* Use a special indexable type for command line arguments?
+  This would eliminate the argument count limitations.
+  OTOH, with the current solution, the stack should grow
+  automatically as needed, right...?
+
+
+EEL core
+-----------------------------------------------------------
+* The sed script that turns the EEL Built-In Library into a
+  C string should strip comments and whitespace.
+
+* Debug info + source listing in VM dump output.
+
+* 'break' from within 'try' and 'except' blocks! The try
+  or except block function should probably throw a special
+  exception "XBREAK" that is caught by the TRY instruction,
+  which in turn implements the 'break' operation. The
+  problem is that this requires that the TRY instruction
+  is somehow told where to jump in this situation. (Any
+  cleaning up of stuff in the try/except block is handled
+  by the exception handling system, so no problem there.)
+
+* It should be possible to disable, translate or completely
+  eliminate the compiler and VM error and warning messages.
+  It must be possible to send them to other places than
+  stdout or stderr.
+
+* Make unspecified arguments writable! While this would be
+  pretty hard with the old system (there is simply no space
+  allocated for the argument!), the new argument stack
+  might make it more feasible.
+
+* Tail calls! (Probably needs a separation of work and
+  argument passing memory; register frame + stack, or
+  something...)
+
+* Quick "ignore exceptions" CALL instruction for compiling
+  "try f();" constructs.
+
+* Some ideas for the threaded VM dispatcher:
+	* Aligned (cacheline, preferably) instruction entry
+	  points + arithmetics, instead of the current LUT
+	  of jump addresses.
+
+* Maybe the argument stack isn't all that great an idea
+  anyway...? It adds the overhead of a stack "pointer" and
+  stack checking, but what does it buy us, really?
+
+* What are we actually using VM LIST values for? They do have
+  lower overhead than any proper array object, but are they
+  actually used for anything that couldn't just be done by
+  passing a register start index and a register count instead?
+  (Remember; we have no hard limit on VM instruction size or
+  argument count...)
+
+* More efficient solution for object initialization! It would
+  be nice if we could eliminate the intermediate "list of
+  registers" step, at least in some common cases...
+
+* Move constants up to the module level, for less duplication.
+  Disadvantage: Larger contant indices in large modules... So,
+  use both module and function level constants? Use negative
+  indices for module level constants, to avoid any extra
+  logic/math beyond the sign test. However, this will require
+  some clever optimizer stage to figure out where each constant
+  should go.
+
+* Maybe analyze the constant usage and try to fit a window of
+  256 elements or so over the most frequently used constants,
+  and use special small constant access instructions for those?
+  (Mostly a size optimization, probably, as getting that window
+  base index likely costs more than a larger index operand.)
+
+
+EEL compiler
+-----------------------------------------------------------
+* Nicer peephole optimizer implementation. (A table that's
+  rendered into a 2D LUT or something at startup.)
+	* Should also deal with registers being unused as a result
+	  of substituting "shortcut" instructions!
+
+* Add more peephole optimizations! Any automatic tools
+  for finding safe or at least potential optimizations...?
+
+* The include directive should operate on the file I/O
+  level, rather on the parser level! As it is, you can't
+  really use it for "pasting" things together, as there
+  will be unterminated {...} block errors and the like.
+
+* When encountering ANY compile error that involves some
+  known symbol where a name (from the lexer POV) is
+  expected, suggest that there is a naming conflict, and
+  identify the symbol found where the name was expected!
+     As it is, EEL can give some incredibly confusing
+  error messages due to trivial mistakes like these...
+
+* The compiler event system should understand infinite
+  loops! This would probably also cover the case where an
+  infinite loop body guarantees initialization.
+
+* Make sure that all compiler API calls are wrapped to
+  prevent unhandled exceptions from terminating the
+  application. This probably means EEL internals should
+  (normally) not call API functions, because this often
+  leads to "double wrap" problems.
+
+* Go back to linked lists of compiler events. I got it
+  right the first time... The current array hack is
+  inefficient (scanning all 256 entries all the time...)
+  and too primitive to deal with some things nicely. Need
+  INIT events for static variables and stuff...
+
+* Have the compiler use EEL objects instead of various
+  private data containers. Smaller code, and the compiler
+  will benefit from optimizations of the objects.
+
+* Lazy evaluation! Note that we need to decide if this is
+  just a performance hack or a language feature. In a pure
+  functional language, there would be no difference, but
+  here, we have to consider side effects of function calls.
+
+* Implement constant expression evaluation! (Should be
+  trivial to do on the fly when adding "OP" manipulators.)
+
+* Implement common subexpression elimination. CSE should
+  *not* mess up expressions containing function calls! If
+  a CS contains a function call, elimination is not safe,
+  and cannot be done. (See also "Lazy evaluation!")
+
+* Reverse operators! /+, /-, /*, //, /** etc. (Or maybe we
+  should use \ instead of /, to avoid various conflicts...)
+  This is really about the metamethods (reverse versions are
+  needed to implement value OP object operations properly),
+  but the syntax is useful for inplace operations:
+  	a = [];
+	a.+ "add";		//Inplace
+	a += "clone+add";	//Shorthand
+	a./+ "prepend";		//Inplace reverse
+	a /+= "clone+prepend";	//Shorthand reverse
+
+
+EEL DSP
+-----------------------------------------------------------
+* Various random number generators
+
+* Perlin noise generators
+
+* Interpolators and resamplers
+
+* IIR and FIR filters
+
+* Non-linear transform tools
+
+* The FFT cache is not thread safe!
+
+* Implement abs() and other math functions for 'vector'.
+
+
+EBGUI
+-----------------------------------------------------------
+* File selector.
+
+* Nicer (internal) clipping for some widgets.
+
+* "Global" plugin exception handler for widget action callbacks.
+
+* Multiline text editor.
+
+* Support for absolute size rows and columns where appropriate
+  in aligners.
+
+
+Fragmented arrays
+-----------------------------------------------------------
+Arrays formed of fragments of a fixed maximum size (like
+256 bytes), indexed by an array of descriptors.
+
+	* Fragment buffer:
+		* Raw block of data.
+		* Fragment buffers are fixed size
+
+	* Fragment descriptor:
+		* Fragment buffer reference
+		* Start of in-use data
+		* End of in-use data (alt: size)
+
+When the total used data size of two adjacent fragments is
+less than or equal to the fragment buffer size, the
+fragments can be merged, and the index array adjusted. This
+has the side effect of ensuring that the index array
+reflects the array rather closely. Can the correct fragment
+index be calculated with known accuracy?
+
+
+Notes regarding modules for 0.4.x
+-----------------------------------------------------------
+Disk EEL module:
+	Loaded as source or precompiled from disk when
+	requested. The file name is derived from the
+	module name. Unloaded when no longer used.
+
+Disk binary module:
+	Loaded as a DLL/so/dylib when requested. The
+	DLL/so/dylib has an entry point that returns
+	an initialized module object. The file name is
+	derived from the module name. Unloaded when no
+	longer used.
+
+Injected binary module:
+	A loader callback is registered with the name
+	of the module. This callback has the same
+	prototype and functionality as an EEL binary
+	module DLL/so/dylib entry point.
+
+Injected EEL module:
+	Wrapped up as an injected binary module; the
+	initializer callback compiles/links the module
+	when requested.
+
+Fixed injected module:
+	Compiled/loaded/initialized at init time. A
+	reference keeps it in the loaded module table
+	until the application closes.

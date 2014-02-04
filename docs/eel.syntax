@@ -1,0 +1,207 @@
+context default
+#AGW operators, special variables and stuff
+    keyword whole w_format yellow/24
+    keyword whole w_blank yellow/24
+    keyword whole w_load yellow/24
+    keyword whole w_save yellow/24
+    keyword whole w_convert yellow/24
+
+    keyword whole w_free yellow/24
+    keyword whole w_reset yellow/24
+    keyword whole w_prepare yellow/24
+    keyword whole w_mod_env yellow/24
+    keyword whole w_mod_lfo yellow/24
+    keyword whole w_mod_taper yellow/24
+    keyword whole w_osc yellow/24
+    keyword whole w_filter yellow/24
+    keyword whole w_gain yellow/24
+    keyword whole w_enhance yellow/24
+    keyword whole w_gate yellow/24
+    keyword whole w_map yellow/24
+    keyword whole w_mix yellow/24
+
+    keyword whole w_env yellow/24
+    keyword whole w_mod yellow/24
+
+    keyword whole p_param yellow/24
+    keyword whole p_driver yellow/24
+
+    keyword whole target yellow/24
+
+#AGW enums
+    keyword whole NEAREST brightred/18
+    keyword whole NEAREST4X brightred/18
+    keyword whole LINEAR brightred/18
+    keyword whole LINEAR2X brightred/18
+    keyword whole LINEAR4X brightred/18
+    keyword whole LINEAR8X brightred/18
+    keyword whole LINEAR16X brightred/18
+    keyword whole CUBIC brightred/18
+    keyword whole WORST brightred/18
+    keyword whole MEDIUM brightred/18
+    keyword whole BEST brightred/18
+
+    keyword whole MONO8 brightred/18
+    keyword whole STEREO8 brightred/18
+    keyword whole MONO16 brightred/18
+    keyword whole STEREO16 brightred/18
+    keyword whole MONO32 brightred/18
+    keyword whole STEREO32 brightred/18
+
+    keyword whole AMPLITUDE brightred/18
+    keyword whole BALANCE brightred/18
+    keyword whole FREQUENCY brightred/18
+    keyword whole LIMIT brightred/18
+    keyword whole MOD1 brightred/18
+    keyword whole MOD2 brightred/18
+    keyword whole MOD3 brightred/18
+
+    keyword whole ADD brightred/18
+    keyword whole MUL brightred/18
+    keyword whole FM brightred/18
+    keyword whole FM_ADD brightred/18
+    keyword whole SYNC brightred/18
+    keyword whole SYNC_ADD brightred/18
+
+    keyword whole DC brightred/18
+    keyword whole SINE brightred/18
+    keyword whole HALFSINE brightred/18
+    keyword whole RECTSINE brightred/18
+    keyword whole SINEMORPH brightred/18
+    keyword whole BLMORPH brightred/18
+    keyword whole BLCROSS brightred/18
+    keyword whole PULSE brightred/18
+    keyword whole TRIANGLE brightred/18
+    keyword whole NOISE brightred/18
+    keyword whole SPECTRUM brightred/18
+    keyword whole ASPECTRUM brightred/18
+    keyword whole HSPECTRUM brightred/18
+    keyword whole AHSPECTRUM brightred/18
+
+    keyword whole ALLPASS brightred/18
+    keyword whole LOWPASS_6 brightred/18
+    keyword whole HIGHPASS_6 brightred/18
+    keyword whole LOWPASS_12 brightred/18
+    keyword whole HIGHPASS_12 brightred/18
+    keyword whole BANDPASS_12 brightred/18
+    keyword whole NOTCH_12 brightred/18
+    keyword whole PEAK_12 brightred/18
+
+    keyword whole DRIVER brightred/18
+    keyword whole WAVE brightred/18
+    keyword whole RANDPITCH brightred/18
+    keyword whole RANDVOL brightred/18
+
+    keyword whole ENV_SKIP brightred/18
+    keyword whole ENV_L0 brightred/18
+    keyword whole ENV_DELAY brightred/18
+    keyword whole ENV_T1 brightred/18
+    keyword whole ENV_L1 brightred/18
+    keyword whole ENV_HOLD brightred/18
+    keyword whole ENV_T2 brightred/18
+    keyword whole ENV_L2 brightred/18
+    keyword whole ENV_T3 brightred/18
+    keyword whole ENV_L3 brightred/18
+
+    keyword whole MONO brightred/18
+    keyword whole POLY brightred/18
+    keyword whole MIDI brightred/18
+    keyword whole EEL brightred/18
+
+#EEL keywords, built-in commands etc
+    keyword whole include yellow/24
+    keyword whole uses yellow/24
+    keyword whole import yellow/24
+    keyword whole end yellow/24
+
+    keyword whole return yellow/24
+    keyword whole call yellow/24
+    keyword whole if yellow/24
+    keyword whole switch yellow/24
+    keyword whole case yellow/24
+    keyword whole else yellow/24
+    keyword whole for yellow/24
+    keyword whole in yellow/24
+    keyword whole do yellow/24
+    keyword whole while yellow/24
+    keyword whole until yellow/24
+    keyword whole always yellow/24
+    keyword whole break yellow/24
+    keyword whole continue yellow/24
+    keyword whole default yellow/24
+
+    keyword whole function yellow/24
+    keyword whole procedure yellow/24
+    keyword whole shadow yellow/24
+    keyword whole integer yellow/24
+    keyword whole boolean yellow/24
+    keyword whole real yellow/24
+    keyword whole string yellow/24
+    keyword whole vector yellow/24
+    keyword whole table yellow/24
+    keyword whole dynamic yellow/24
+
+    keyword whole true yellow/24
+    keyword whole false yellow/24
+    keyword whole nil yellow/24
+
+    keyword whole arguments yellow/24
+    keyword whole tuples yellow/24
+    keyword whole specified yellow/24
+
+    keyword whole print yellow/24
+    keyword whole load yellow/24
+    keyword whole unload yellow/24
+
+    keyword /\* brown/22
+    keyword \*/ brown/22
+
+    keyword '\\\{"abtnvfr\}' brightgreen/16
+    keyword '\\\{0123\}\{01234567\}\{01234567\}' brightgreen/16
+    keyword '\\'' brightgreen/16
+    keyword '\\\\' brightgreen/16
+    keyword '\\0' brightgreen/16
+    keyword '\{\s!"#$%&()\*\+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ\}' brightgreen/16
+
+    keyword > yellow/24
+    keyword < yellow/24
+    keyword \+ yellow/24
+    keyword - yellow/24
+    keyword \* yellow/24
+#    keyword / yellow/24
+    keyword % yellow/24
+    keyword ^ yellow/24
+    keyword = yellow/24
+    keyword != yellow/24
+    keyword == yellow/24
+    keyword whole and yellow/24
+    keyword whole or yellow/24
+    keyword whole xor yellow/24
+    keyword whole not yellow/24
+    keyword { brightcyan/14
+    keyword } brightcyan/14
+    keyword ( brightcyan/15
+    keyword ) brightcyan/15
+    keyword [ brightcyan/14
+    keyword ] brightcyan/14
+    keyword , brightcyan/14
+    keyword : brightcyan/14
+    keyword ; brightmagenta/19
+    keyword #define\[\t\s\]\[ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789\]\[\t\s\]0x\[0123456789abcdefABCDEF\] brightred/18
+context exclusive /\* \*/ brown/22
+    spellcheck
+context // \n brown/22
+    spellcheck
+context linestart # \n brightred/18
+    keyword \\\n yellow/24
+    keyword /\**\*/ brown/22
+    keyword "+" red/19
+    keyword <+> red/19
+context " " green/6
+    spellcheck
+    keyword \\" brightgreen/16
+    keyword \\\n brightgreen/16
+    keyword \\\{0123\}\{01234567\}\{01234567\} brightgreen/16
+    keyword \\\\ brightgreen/16
+    keyword \\' brightgreen/16
+    keyword \\\{abtnvfr\} brightgreen/16

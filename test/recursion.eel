@@ -1,0 +1,56 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2004, 2005 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Recursion test 1:\n");
+
+	procedure recurse(arg)
+	{
+		print("arg = ", arg, "\n");
+		if(arg)
+			recurse(arg - 1);
+	}
+
+	recurse(10);
+
+
+	print("Recursion test 2; Mutual Recursion:\n");
+
+	procedure mrecurse2(arg);
+
+	procedure mrecurse1(arg)
+	{
+		print("arg = ", arg, "\n");
+		if(arg)
+			mrecurse2(arg);
+	}
+
+	procedure mrecurse2(arg)
+	{
+		mrecurse1(arg - 1);
+	};
+
+	mrecurse1(10);
+
+	print("Recursion test 2; Mutual Recursion with Function Reference:\n");
+
+	procedure mrrecurse1(arg, fn)
+	{
+		print("arg = ", arg, "\n");
+		if(arg)
+			fn(arg, fn);
+	}
+
+	local mrr2 = procedure (arg, fn)
+	{
+		mrrecurse1(arg - 1, fn);
+	};
+
+	mrrecurse1(10, mrr2);
+
+	print("Recursion tests done.\n");
+	return 0;
+}

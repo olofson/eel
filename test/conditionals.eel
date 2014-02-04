@@ -1,0 +1,70 @@
+////////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2004, 2005, 2009 David Olofson
+////////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Conditional tests:\n");
+
+	local b1 = true;
+	local b2 = true;
+
+	procedure b_test
+	{
+		print("(b1 = ", upvalue b1, ", b2 = ", upvalue b2, "): ");
+		if b1 and not b2
+			print("'b1 and not b2' is true.\n");
+		else
+			print("'b1 and not b2' is false.\n");
+	}
+
+	b_test();
+
+	b2 = not b2;
+	b_test();
+
+	b1 = not b1;
+	b_test();
+
+	b2 = not b2;
+	b_test();
+
+	if b1 or b2
+		print("b1 or b2 is true.\n");
+
+	local a = 1;
+	local b = 2;
+	if a == b
+		print("a == b\n");
+	if a != b
+		print("a != b\n");
+	if a > b
+		print("a > b\n");
+	if a < b
+		print("a < b\n");
+	print("a=", a, " b=", b, "\n");
+
+	for local i = 1, 10
+		switch i
+		  case 2
+			print("two ");
+		  case 4, 5
+		  {
+			print("f");
+			switch i
+			  case 4
+				print("our ");
+			  case 5
+				print("ive ");
+		  }
+		  case 7
+			print("seven ");
+		  default
+			print(i, " ");
+
+	print("\n");
+
+	print("Conditional tests done.\n");
+	return 0;
+}

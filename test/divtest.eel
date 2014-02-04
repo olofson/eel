@@ -1,0 +1,37 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+function maxdiv(val)
+{
+	for local i = 1, val
+		if val / i != (integer)(val / i)
+			return i - 1;
+	return val;
+}
+
+export function main<args>
+{
+	local max = 2520;
+	if specified args[1]
+		max = (integer)args[1];
+	else
+		print("Division test:\n");
+
+	local t = getms();
+	local best = 0;
+	for local i = 1, max
+	{
+		local nm = maxdiv(i);
+		if(nm <= best)
+			continue;
+		best = nm;
+		print("  ", i, ": ", nm, "\n");
+	}
+	print("      Time: ", getms() - t, " ms\n");
+
+	if not specified args[1]
+		print("Division test done.\n");
+	return 0;
+}

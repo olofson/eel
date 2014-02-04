@@ -1,0 +1,30 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+// Declare static variable x
+static x = 5;
+
+procedure p
+{
+	// Declare another static variable x
+	shadow static x;
+	if not x
+		x = 10;
+	else
+		x += 1;
+	print("another x = ", x, "\n");
+}
+
+
+export function main<args>
+{
+	print("x = ", x, "\n");
+	p();
+	p();
+	print("x = ", x, "\n");
+	p();
+	p();
+	return 0;
+}

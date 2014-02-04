@@ -1,0 +1,81 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Dynamic string tests:\n");
+
+	print("\nConcatenation:\n");
+	local s1 = (dstring)"two";
+	local s2 = (dstring)"words";
+	local s3 = s1 + (dstring)" " + s2;
+	print("   s1 = \"", s1, "\"\n");
+	print("   s2 = \"", s2, "\"\n");
+	print("   s3 = \"", s3, "\"\n");
+	if s3 != "two words"
+		throw "'s3' should equal \"two words\"!";
+
+	print("\nCasting to dstring:\n");
+	s1 = "one(" + (dstring)1 + ")";
+	print("   s1 = \"", s1, "\"\n");
+	if s1 != "one(1)"
+		throw "'s1' should equal \"one(1)\"!";
+
+	print("\nUsing the generic constructor:\n");
+	s1 = dstring [65, 66, 67, 68];
+	print("   s1 = \"", s1, "\"\n");
+	if s1 != "ABCD"
+		throw "'s1' should equal \"ABCD\"!";
+
+	print("\nIndexing:\n");
+	local v = dstring [];
+	for local c = 'a', 'z'
+		v[sizeof v] = c;
+	print("   v = \"", v, "\"\n");
+	if v != "abcdefghijklmnopqrstuvwxyz"
+		throw "'v' should equal \"abcdefghijklmnopqrstuvwxyz\"!";
+
+	print("\nInplace +:\n");
+	v = dstring [];
+	for local c = 'a', 'z'
+		v.+ c;
+	print("   v = \"", v, "\"\n");
+	if v != "abcdefghijklmnopqrstuvwxyz"
+		throw "'v' should equal \"abcdefghijklmnopqrstuvwxyz\"!";
+
+	print("\ninsert():\n");
+	for local c = 'Z', 'A', -1
+		insert(v, c - 'A', c);
+	print("   v = \"", v, "\"\n");
+	if v != "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz"
+		throw "'v' should equal \"AaBbCcDdEeFfGgHhIiJjKkLlMmNnOo"
+				"PpQqRrSsTtUuVvWwXxYyZz\"!";
+
+	print("\ndelete():\n");
+	for local c = 'A', 'Z'
+		delete(v, c - 'A' + 1);
+	print("   v = \"", v, "\"\n");
+	if v != "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		throw "'v' should equal \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"!";
+
+	print("\ndelete(..., count):\n");
+	delete(v, 'X' - 'A', 3);
+	print("   v = \"", v, "\"\n");
+	if v != "ABCDEFGHIJKLMNOPQRSTUVW"
+		throw "'v' should equal \"ABCDEFGHIJKLMNOPQRSTUVW\"!";
+	delete(v, 0, 3);
+	print("   v = \"", v, "\"\n");
+	if v != "DEFGHIJKLMNOPQRSTUVW"
+		throw "'v' should equal \"DEFGHIJKLMNOPQRSTUVW\"!";
+
+	print("\ncopy():\n");
+	local v2 = copy(v, 4, 2);
+	print("   v2 = \"", v2, "\"\n");
+	if v2 != "HI"
+		throw "'v2' should equal \"HI\"!";
+
+	print("\nDynamic string tests done.\n");
+	return 0;
+}

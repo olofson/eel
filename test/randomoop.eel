@@ -1,0 +1,65 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Based on the Lua Random Number Generator
+// test code by Roberto Ierusalimschy, for
+// The Great Computer Language Shootout.
+// EEL version by David Olofson, 2004-2005
+// OOP version by David Olofson, 2011
+/////////////////////////////////////////////
+
+function RNG
+{
+	return table [
+		.IM	139968,
+		.IA	3877,
+		.IC	29573,
+		.LAST	42,
+		.MAX	100,
+		procedure SetMax(self, max)
+		{
+			self.MAX = max;
+		}
+		function Gen(self)
+		{
+			self.LAST = (self.LAST * self.IA + self.IC) % self.IM;
+			return (self.MAX * self.LAST) / self.IM;
+		}
+	];
+}
+
+export procedure test[n, _rng]
+{
+	if specified _rng
+		local rng = _rng;
+	else
+		rng = RNG();
+	if specified n
+		local N = (integer) n;
+	else
+		N = 1;
+	print("  Trying ", N, "...\n");
+	local t = getms();
+	rng:SetMax(100);
+	for local i = N - 1, 1, -1
+		rng:Gen();
+	print("      Time: ", getms() - t, " ms\n");
+}
+
+export function main<args>
+{
+	print("Random Number Generator benchmark:\n");
+	local rng = RNG();
+	if specified args[1]
+		test(args[1], rng);
+	else
+	{
+		test(1000, rng);
+		local tv = rng:Gen();
+		print("1000'nd value: ", tv, "\n");
+		if (integer)(tv * 1000) != 8163
+			throw "1000'nd value should be
+					 approximately 8.163!";
+	}
+	print("Random Number Generator benchmark done.\n");
+	return 0;
+}

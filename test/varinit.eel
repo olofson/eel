@@ -1,0 +1,116 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005, 2010 David Olofson
+/////////////////////////////////////////////
+// This test is supposed to reveal any holes
+// in the compiler's variable initialization
+// tracking.
+//    Correct function of the compiler event
+// system, which is what drives this as well
+// as dead code generation, selection of
+// assignment operations and other things, is
+// not just a compile time error checking
+// tool! It is critical for proper VM code
+// generation.
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Variable initialization tracking tests:\n");
+
+	local a = 1;
+	a = a + 1;
+	a = "test";
+
+	local b = "test2";
+
+	// Two-way initialization
+	a = "test";
+	if a
+		local x = a;
+	else
+		x = 5;
+	if x != "test"
+		throw "Conditional two-way initialization "
+				"generated incorrect result!";
+
+	if b
+		if a
+			local y = 1;
+		else
+			y = 2;
+	else
+		y = 3;
+
+	// N-way initialization
+	a = 5;
+	switch a
+	  case 1
+		local q = "1";
+	  case 2
+		q = "2";
+	  default
+		q = "other";
+	if q != "other"
+		throw "Conditional n-way initialization"
+				"generated incorrect result!";
+
+	// Verify that "varinit2.eel" does NOT compile
+	try
+	{
+		load("varinit2.eel");
+		throw "fail";
+	}
+	except
+		if exception == "fail"
+			throw "\"varinit2.eel\" compiled, "
+					"though it should not!";
+		else
+			print("  \"varinit2.eel\" failed to compile, "
+					"as it should.\n");
+
+	// Verify that "varinit3.eel" does NOT compile
+	try
+	{
+		load("varinit3.eel");
+		throw "fail";
+	}
+	except
+		if exception == "fail"
+			throw "\"varinit3.eel\" compiled, "
+					"though it should not!";
+		else
+			print("  \"varinit3.eel\" failed to compile, "
+					"as it should.\n");
+
+	// Verify that "varinit4.eel" does NOT compile
+	try
+	{
+		load("varinit4.eel");
+		throw "fail";
+	}
+	except
+		if exception == "fail"
+			throw "\"varinit4.eel\" compiled, "
+					"though it should not!";
+		else
+			print("  \"varinit4.eel\" failed to compile, "
+					"as it should.\n");
+
+	// Verify that "varinit5.eel" does NOT compile
+	try
+	{
+		load("varinit5.eel");
+		throw "fail";
+	}
+	except
+		if exception == "fail"
+			throw "\"varinit5.eel\" compiled, "
+					"though it should not!";
+		else
+			print("  \"varinit5.eel\" failed to compile, "
+					"as it should.\n");
+
+	print("\nVariable initialization tracking tests done.\n");
+	return 0;
+}

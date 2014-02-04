@@ -1,0 +1,1603 @@
+EEL 0.3.6
+	* ChipSound:
+		* Added cs_SendGroup() call.
+		* Added TIMESTAMP flag.
+	* OpenGL:
+		* gl.ReadPixels:
+			* Fixed BytesPerPixel check.
+			* Fixed alignment and row length.
+		* Added gl.DrawCircle().
+		* CLAMP for UploadTexture() renamed HVCLAMP to
+		  avoid clash with the OpenGL [GL_]CLAMP constant!
+		* Fixed stupid texture clamping bug: It's
+		  GL_CLAMP_TO_EDGE, not just GL_CLAMP! (Stupid
+		  devsystem driver faking it...)
+		* EBGL_*CLAMP attempts to first set GL_CLAMP and
+		  then GL_CLAMP_TO_EDGE, in case we're on a driver
+		  that doesn't support the latter. (Those may still
+		  do the "right" thing as a result of implementing
+		  GL_CLAMP incorrectly.)
+	* ZeeSpace:
+		* zstest.eel fixed and working again!
+		* zstest.eel responds to SDL.QUIT events.
+	* Physics:
+		* Added support for vector_d to Distance() and
+		  Direction() calls. (Expects x, y in [0, 1].)
+		* Added FindAt() call.
+		* Added ForceAtV() methods.
+		* Test flags for FindFirst()/FindNext():
+			* INVIEW
+			* NOTINVIEW
+		* FindFirst() == FindNext(); type of first argument
+		  decides.
+		* apply_z_response() now actually using
+		  impact_return_z!
+		* apply_response() now uses the smaller mass for
+		  calculating the overlap corrective forces.
+		* Fixed crash bug if passing a non-object as the
+		  first initializer element when constructing a
+		  body.
+		* New utilities:
+			* PointDistance()
+			* CircleInertia()
+			* DiskInertia()
+		* Moved various code into C inlines:
+			* eph_Force(), eph_ForceV()
+			* eph_ForceAt(), eph_ForceAtV()
+			* eph_ForceRel(), eph_ForceAtRel()
+		* Added constraints subsystem:
+			* EPH_constraint struct + EEL type.
+			* EPH_spring
+			* Clean() now cleans constraints as well.
+			* Constructor etc for 'constraint'
+			* ApplyConstraints() also cleans, and tells
+			  Clean() not to bother. (Marking a body
+			  for deletion has Clean() do it anyway.)
+			* Removed AUTORESETFORCES and IMPULSEFORCES
+			  as they'd interfece with constraints!
+		* Run-time switchable display output modes:
+			* LATEST
+				* Positions from last logic frame
+				* Latency: 0..1 l. frames, varying
+				* No overshoot
+				* Unsmooth animation
+			* TWEEN
+				* Interpolation over last 2 frames
+				* Latency: 1 logic frame, constant
+				* No overshoot
+			* EXTRAPOLATE
+				* Last frame + velocity extrapol.
+				* Latency: 0, constant
+				* May overshoot
+			* SEMIEXTRA
+				* Average of TWEEN and EXTRAPOLATE
+				* Latency: .5 l. frames, constant
+				* Slight latency, slight overshoot
+		* Added body.killed and dropped the nasty space
+		  NULL pointer hack...
+		* space_destruct() actually uses space_kill(), so
+		  we get cleanup handlers called and stuff. DOH!
+		* Fixed a bunch of ISO C90 violations in newly
+		  ported EEL code.
+		* KillAll() now actually does return the last
+		  exception from any Cleanup method.
+	* SDL:
+		* Added DetectJoysticks(), that reinitializes the
+		  joystick subsystem to detect new devices.
+
+EEL 0.3.5
+	* Added eel_copy() (for values) to the official API.
+	* EELBox:
+		* Added rf* response force fields to bodies.
+		* Switched to velocity based extrapolation.
+		* Tween() argument changed to a more logical 0..1
+		  corresponding to T..(T + 1 frame).
+		* Added physics Dot().
+		* Interface to mass/inertia is now .m/.mi. (Still
+		  stored as inverted X/Y/A internally.)
+		* HitZ() callback got x and y arguments passing
+		  the point of contact.
+		* Added physics space .zmapscale field.
+		* Added EPH_MAX_VELOCITY to prevent math errors
+		  in case of integrator explosion.
+		* Added RESPONSE and ZRESPONSE physics body flags.
+		* Body flags now accessible!
+		* Built collision response into the physics engine.
+		* Added physics Impact() callback to handle damage
+		  from high velocity collisions and the like.
+		* Physics body methods moved to native code:
+			* Force()
+			* ForceAt()
+			* ForceRel()
+			* ForceAtRel()
+			* Velocity()
+			* TestLineZ()
+
+EEL 0.3.4
+	* Fixed getus() post-wrap scaling on Win32.
+	* '$' is no longer an operator character, but instead a
+	  valid identifier character.
+	* 'environment' renamed '$'.
+	* Uppdated the 'platform.eel' test accordingly.
+	* Added deepclone() and deepcompare() to the built-in lib.
+	* Added 'cleanup' to '$', with built-in __cleanup().
+	* Close time module garbage collection now runs until no
+	  more modules can be unloaded.
+	* eel_o_stringrep() now prints type ID instead of <unknown>
+	  when name strings are not available.
+	* EELBox:
+		* Fixed crash bug in SetVideoMode(); it should now
+		  always return a proper EEL value!
+		* Added optional Velocity Verlet integration to the
+		  physics engine. Not really that critical with
+		  fixed frame rates, but why not do it properly
+		  while at it?
+		* OpenGL library loading made a bit smarter; now
+		  reloads as needed when restarting the SDL video
+		  subsystem.
+		* Naming cleanup; eb_gl_* --> ebgl_*.
+
+EEL 0.3.3
+	* Removed bogus R[0] allocation for the (now eliminated)
+	  argument LIST.
+	* Fixed off-by-one framesize in ec_coder.c!
+	* Added 'tree.eel' test/example.
+	* Added support for .ess stripped source files:
+		* Tokenized keywords.
+		* "Automatic" .ess extension. (Tried before .eel!)
+		* Compressed newlines. (Preserves line numbering.)
+	* Added convenience API eel_setlindex().
+	* Nicked from the 0.2.x branch:
+		* EEL_platform.h.
+		* 'system' module.
+		* 'environment' table.
+		* configure script to for the 'system' module.
+		* Binary module defines. (Disabled for now.)
+		* configure report printout.
+	* When casting to string or dstring, eel_cast() (and thus
+	  CAST instructions) now tries eel_stringrep() on the
+	  value, if all else fails.
+	* eel_ds_new() and eel_ds_nnew() published in the header.
+	* 'r' (real) now supported by eel_vargf().
+	* Fixed debug line number info with peephole optimizer on.
+	* ILLEGAL/NOP fill now gets proper line number info!
+	* Removed EEL_coder pos; using f->e.codesize instead.
+	* Added eel_table_lconstants() for adding multiple integer
+	  constants to tables, using EEL_lconstexp data.
+	* Table tools moved to the public API.
+	* eel_v_own() made public. (Only used in one non-critical
+	  place internally - and the new version only calls if
+	  the value is an objref anyway.)
+	* Added system ShellExecute() on Win32.
+	* EELBox:
+		* Bumped version to 0.1.19.
+		* OpenGL binding no longer segfaults if calls are
+		  made before loading OpenGL.
+		* Removed eelbox.eel. (version() is now in the
+		  native module, now named "eelbox".)
+		* Added IIR mouse move filtering to draw.eel.
+		* SetVideoMode(false) now closes the display. (By
+		  closing and reopening the video subsystem...)
+		* Failing to set a video mode should now delete
+		  any stray old video surface object.
+		* DrawRect() now accepts an optional common z
+		  vertex coordinate.
+		* DrawRect() now handles vertices as real numbers!
+		* Added ZeeDraw. (Dummy - no code yet.)
+		* OpenGL Load() now resets the state cache!
+		* Added HCLAMP, VCLAMP and CLAMP flags for
+		  UploadTexture().
+		* Improved initialization and error handling in
+		  eelbox.c.
+		* MIDI ReadMIDI() no longer crashes when called
+		  with MIDI closed or not compiled in!
+		* Added KOBO2_BOOTSTRAP for building an executive
+		  that runs kobo2.* unless a file is specified.
+		* Added new ChipSound APIs cs_Now() and cs_Wait().
+		* Added GetGlobalProp() and SetGlobalProp().
+		* Added constants APPMOUSEFOCUS, APPACTIVE and
+		  APPINPUTFOCUS for the ACTIVEEVENT.state field.
+		* Physics:
+			* Added native Z map with interpolation.
+			* Native shadow and sprite rendering.
+			* Added [0, 1] clamping in Tween().
+			* Added native Rotate(), Cross(),
+			  Distance() and Direction(). (The latter
+			  fall back to EEL indexing for arguments
+			  that are not physics bodies, for which
+			  there is a fast path.)
+			* Native Render() loop.
+			* Some collision detection optimizations.
+			* Removed the 'dead' flag.
+			* Removed public space.first and body.next
+			  fields; iteration is "internal trickery!"
+			* Removed force decay.
+			* Added AUTORESETFORCES and IMPULSEFORCES.
+			* Using EEL tables for core field lookups.
+			* body.groups becomes 'group'; a body can
+			  now only belong to one group!
+			* Native space KillAll() method.
+			* Added FindFirst() and FindNext().
+			* Changed vx, vy, vxmin etc to 'double'.
+			* Added Cleanup() method for bodies, to
+			  allow user code to clean up regardless
+			  of whether bodies are Kill()ed directly
+			  or via space KillAll() or similar.
+
+EEL 0.3.2
+	* Added internal type EEL_hash.
+	* Made the hashing tools "public" in e_util.h.
+	* Weakref tracking in containers removed - checked only
+	  when the containers are actually reallocated!
+	* Removed the 'runlimit' logic.
+	* Streamlined the VM exception handling.
+	* The above results in a 2.9% overall speedup over 0.3.1
+	  in the benchmark!
+		Benchmark results:	0.3.1	0.1.18
+		"loops":        628 ms
+		"divtest":      420 ms	4.8%	18%
+		"random":       564 ms	3.3%	0.5%
+		"randomoop":    600 ms	5.2%	26%
+		"ackermann":    352 ms	8.3%	16%
+		"tak":          382 ms	3.5%	6.6%
+		"heapsort":     436 ms	4.2%	3.8%
+		"wordcount":    634 ms	0.5%
+		"wordcount2":   585 ms
+		Total:      4601 ms	2.9%	8.2%
+	* Table indexing no longer rounds real numbers to integer;
+	  even a real is considered different from an integer even
+	  holding the exact same value. (tables.eel test fixed.)
+   ===>	  IMPORTANT: This also affects switch() statements!
+	* Fastpath for string lookups in tables.
+	* Hash based binary search for tables! This actually
+	  slowed randomoop.eel down by a few percent, so...
+	* Linear search shortcut for tables with < 10 items.
+	* Compared to the results above, randomoop (which uses so
+	  small tables that that no algorithm can be significantly
+	  faster than a naive linear search) is now slightly
+	  faster, despite the extra check for the fast-path:
+		"randomoop":    550 ms		8.3%
+	  However, the really great news is that the 20% of the
+	  time spent in t_getindex() in the Kobo II explobench is
+	  now down to 5.5% - almost 4 times faster! The benchmark
+	  now runs at around 92 fps, compared to the ~81 with EEL
+	  0.3.1.
+
+EEL 0.3.1
+	* Slightly nicer peephole optimizer implementation.
+	* Peephole optimizer now keeps looping until no further
+	  optimizations can be found.
+	* Compiler exceptions from within the coder no longer
+	  cause an infinite loop due to re-entering the optimizer.
+	  (Finalization optimization is triggered automatically by
+	  the relevant instructions anyway!)
+	* Removed bogus jump target in ec_parser.c dostat().
+	* Added some more DEBUG sanity checks in ec_coder.c.
+	* ILLEGAL/NOP filling of dead code is now DEBUG-only.
+	* Fixed slow *CALL*, RETURN* etc! (Scheduler bug...)
+	* Fixed some remaining function call/return logic bugs.
+	* Unused 'vm' arguments removed from e_operate.c.
+	* Operators refactored as inline calls per operation.
+	* load() and compile() are now native calls - no wrappers.
+	* Member calls now ask for proper argument lists with
+	  results.
+	* Legacy resv/argv/argc fields are now restored when
+	  returning from the VM! (Nasty one..)
+	* Fixed optimizer bug in NOT; JUMP*Z ==> JUMP*Z!
+	* Test suite wordcount and wordcount2 now verify results.
+	* Optimized e_table.c find_index(). 4% in randomoop.eel!
+	* More structured bench.eel, with "singe test" feature.
+	* New instructions:
+		* PHBOP, PHBOPI, PHARGI, PHARGI2
+		* ADD, SUB, MUL, DIV, MOD, POWER
+		* PHADD, PHSUB, PHMUL, PHDIV, PHMOD, PHPOWER
+		* PUSHIC, PUSHCI
+		* INDGETC, INDSETC
+		* BOPC
+	* New peephole optimizations:
+		* PUSH; PUSH ==> PUSH2
+		* PUSH2; PUSH ==> PUSH3
+		* PUSH2; PUSH2 ==> PUSH4
+		* PUSHC; PUSHC ==> PUSHC2
+		* PUSHI; PUSHC ==> PUSHIC
+		* PUSHC; PUSHI ==> PUSHCI
+		* GETARGI; PUSH ==> PHARGI
+		* BOP; PUSH ==> PHBOP
+		* BOPI; PUSH ==> PHBOPI
+		* PHARGI; PHARGI ==> PHARGI2
+		* BOP ADD/SUB/.../POWER ==> ADD/SUB/.../POWER
+		* PHBOP ADD/SUB/... ==> PHADD/PHSUB/...
+		* LDC; INDGET ==> INDGETC
+		* LDC; INDSET ==> INDSETC
+	* Results, compared to 0.1.18:
+		"divtest":	15%
+		"random":	2.8%
+		"randomoop":	22%
+		"ackermann":	7.9%
+		"tak":		3.2%
+		Total:		5.5%
+	* Conclusions:
+		* Reducing the number of VM instructions executed
+		  pays off big time, as expected.
+		* Dedicated operator instructions are roughly
+		  TWICE as fast as the generic *BOP* instructions!
+	* EELBox:
+		* DrawRect() now uses OpenGL vertex arrays.
+
+EEL 0.3.0
+	* Removed the VM context stack.
+	* Removed the LIST type.
+	* Ignoring the result when calling a C function from EEL
+	  is now safe.
+	* Removed the call argument limbo list.
+	* argv/argc is now a part of the EEL callframe, and are
+	  used regardless of caller and callie language.
+	* Added ABCx instruction operand format.
+	* New VM instructions:
+		GETARGI, GETARG, SETARGI, SETARG:
+			Get/set required or optional argument.
+		GETTARGI, SETTARGI, GETTARG, SETTARG:
+			Get/set tuple argument.
+		GETUVARGI, SETUVARGI:
+			Get/set required or optional upvalue
+			argument.
+		GETUVTARGI, SETUVTARGI:
+			Get/set upvalue tuple argument.
+	* Removed VM instructions:
+		ARGSETI, LIST, SLIST, LRIGHTI
+	* Bonus side effect: It is now safe to use arguments as
+	  temporary storage for objects, weakrefs included.
+	* VM asm listing now uses a 12 character wide column for
+	  the instruction names.
+	* Removed eel_*argf() control characters:
+		' '	Whitespace
+		'('	Start argument list
+		')'	End argument list
+		'&'	Address of current argument
+		'@'	Set marker
+		'H'	Heapref.
+	* eel_*argf() 'R' control character now returns the result
+	  value heap index through an int *.
+	* Added 'v' control character (EEL value) to eel_*argf().
+	* Trying to get a result from a procedure (late binding
+	  calls) now throws XNORESULT.
+	* Added test case/benchmark randomoop.eel.
+	* The ADDCLEAN() VM macro now actually works with other
+	  operands than A, in case we'd use that. ;-)
+	* Added EEL_PROFn "fake" opcodes to be used for manual
+	  VM profiling hacks.
+	* Benchmark timing changed from microseconds to ns.
+	* Profiler timer overhead calibration now actually works!
+	* 'in' operator no longer tries to disown a garbage value
+	  if the tested element doesn't exist.
+	* eel_*argf() now add ownership to the argument stack, and
+	  the argument stack then releases the objects when
+	  cleared.
+	* Zombified objects are now just objects with zero
+	  refcounts, and consequently:
+		* eel_o_resurrect() has been removed.
+		* Resurrection is done with eel_o_own().
+		* Disowning a zombie object is still an error
+		  (trapped in debug mode), as a zombie should only
+		  ever have weakrefs.
+	* Detection of "double free" of sbuffers in debug builds.
+	* DBGK() debug macro now actually leaves objects around,
+	  to avoid segfaults when tracking memory management bugs.
+	  (Actually trying to use the objects may still crasch, as
+	  the destructors are executed; only the headers are left
+	  around.)
+	* e_vm.c find_function() now also disowns the (non-)
+	  function object if it turns out not to be a function.
+	* Removed the unused LCLEAN instruction.
+	* Removed limbo_clean() from CLEAN instruction.
+	* Unused register usage mode EEL_RUVARREF removed.
+	* Added opcode specific register usage checks in the
+	  eel_code*() calls.
+	* Renamed CALL and CCALL as CALLR and CCALLR.
+	* New CALL and CCALL for when no results are desired.
+	* Compiler rules that can generate calls now take hints as
+	  to whether or not results are desired.
+	* Hopefully less confusing error message for multiple
+	  assignments with fewer targets than sources.
+	* RETURNR and RETXR now discard unwanted results.
+	* EEL_VM_CHECK now fills callframes with ILLEGAL values
+	  and adds additional checks for them in e_object.h.
+	* EELBox:
+		* Fixed some new warnings with GCC 4.5.
+		* OpenGL loader no longer whines about missing
+		  glGetError() before loading the OpenGL library.
+	* The good news:
+		* The PUSH* instructions are virtually as fast as
+		  MOVE, and about 10% faster than ASSIGN.
+		* GETARGI is around 5% faster than INDGETI!
+		* RETXR appears to be over 20% faster!
+	* Problem areas (average execution times in ns)
+		opcode	0.1.18	0.3.0
+		-----------------------------------
+		CALL	27	35
+		CCALL	39	51
+		RETURN	14	25
+		RETURNR	21	32
+		TRY	22	35
+	  Also, although the LIST instructions are eliminated,
+	  the inability to directly address the argument stack as
+	  registers results in a great deal of "calculate into Rn;
+	  PUSH Rn;".
+
+*** EEL 0.2.x is an abandoned internal branch with dynamic module
+    loading and other stuff that will be merged in later. Thus,
+    the 0.2.x version numbers are skipped to avoid confusion.
+
+EEL 0.1.17
+	* Added 'in' operator that returns 'true' if indexing the
+	  righthand operand with the lefthand one is successful.
+	  NOTE: Also returns 'false' if the righthand operand is
+	  not indexable!
+	* 'switch' directly inside 'case' now throws a compile
+	  error; not just a warning.
+	* EELBox:
+		* Bumped version to 0.1.17.
+		* Physics body constructor now initializes the
+		  interpolated coordinates as well.
+
+EEL 0.1.16
+	* Fixed some initialization issues with 'has_weakrefs' in
+	  e_array.c and e_table.c.
+	* The C/EEL argument handling state is now saved when
+	  pushing the VM context.
+	* When leaving the VM, the limbo list is now cleaned
+	  BEFORE popping the VM context, to avoid cleaning out
+	  stuff that belongs to a potential VM context up the
+	  stack.
+	* EELBox:
+		* Bumped version to 0.1.16.
+		* Safe Joystick destruction after closing SDL.
+		* Added GetVideoInfo(). (Except for pixelformat!)
+	* EELBox OpenGL:
+		* Added glIsTexture().
+
+EEL 0.1.15 (used only in unofficial Kobo II tech previews)
+	* Functions defined as methods in a table ctor can no
+	  longer have bogus name conflicts with functions defined
+	  in outer scopes.
+	* Negative literals now parse as such, rather than into
+	  (unary minus, literal) expressions.
+	* 'switch' can now declare local variables in it's parent
+	  scope. It also tracks initializations properly.
+	* Lexer now treats comments *anywhere* as whitespace.
+	* Added 'default' keyword to eel.xml.
+	* Added weak references:
+		* 'weakref' value type; EEL_TWEAKREF.
+		* eel_weakref_attach() and eel_weakref_detach().
+		* Weak assignment operator: "(=)".
+		* VM typecast instruction WEAKREF, which casts an
+		  objref into an "unwired" weakref.
+		* When an unwired weakref is copied using
+		  eel_v_copy(), the result is a real weakref.
+		* When a weakref is copied (assignments, grabbing
+		  and receiveng results etc), the result is an
+		  objref (strong reference).
+		* There are ONLY three ways to actually write a
+		  weakref:
+			1. Weak assignment to a static variable.
+			2. Weak assignment via SETINDEX to a
+			   container object.
+			3. Cloning a container object with
+			   weakrefs in it.
+		  Anything else will generate a (strong) objref!
+		* When a weakref is disowned, it is detached from
+		  its target.
+		* When the target dies, a weakref becomes 'nil'.
+	* It is now always safe to call eel_sfree() on ANY string!
+	  Safety checks are now very fast and always on.
+	* Removed unused last_unique_token field from EEL_state.
+	* The shared module table is now using true weakrefs.
+	* Removed .eec nonsense. (Not implemented...)
+	* Cleaned up memory management a bit;
+		* Added eel_v_clone(), eel_v_move() and
+		  eel_v_qcopy().
+		* The above and eel_v_copy() now handle refcounts
+		  and weakref attach/detach, eliminating most of
+		  the explicit refcounting all over the place.
+	* Added EEL_DEFENSIVE_REALLOC to make eel_calcresize()
+	  more defensive about shrinking, as realloc() (of glibc
+	  2.11) seems to move blocks pretty much every time...
+	* Table clones now have their asize matching the actual
+	  table size!
+	* Table and array *_setsize(..., 0) now work as intended!
+	* Added some missing #include <stdio.h> that are normally
+	  pulled in by e_object.h "accidentally".
+	* Removed (mostly broken) EEL_OWNER_TRACE stuff.
+	* When DBGM is defined, circular references are broken by
+	  DELETEing all containers before the normal VM cleanup.
+	* Fixed <nil> exception handler bug in TRY dissasembly.
+	* Fixed nasty cleantab off-by-one allocation bug, that
+	  would strike only with sizes that were multiples of the
+	  size of EEL_value.
+	* Added warning for putting a switch directly inside a
+	  case statement of another switch.
+	* 'else' is no longer valid in switches. Use 'default'!
+	* Removed some nonsensical function inlining.
+	* Added eel_rawdata().
+	* Fixed delete() for arrays.
+	* Fixed imported functions leaking into the exports.
+	* Fixed crash bug when trying to add (that is, append)
+	  something not a table to a table.
+	* EEL_XWRONGVALUE renamed as EEL_XBADVALUE.
+	* Added EEL_XILLEGALOPERATION.
+	* Added delete(<array>, <object>) to delete the first
+	  reference to <object> in <array>.
+	* Added <type>2o() cast to EEL_MAKE_CAST() macro.
+	* Added VM context stack, for transparent recursive VM
+	  invocations.
+	* Added EEL_INITHEAP.
+	* eel_call() now cleans the limbo list upon any failure,
+	  to release any objects passed as arguments. (Parse
+	  failures in eel_*argf()/eel_callf() may still leak!)
+	* Removed limbo nonsense for objects passed via 'o' in
+	  eel_vargf().
+	* Cleaned up configure.in for clean cross compiles with
+	  current tools.
+	* Added pkg-config support; eel.pc.
+	* math module:
+		* abs() now returns an integer if given one.
+		* abs() now operate on vectors as well.
+	* EELBox:
+		* Removed all FULLSCREEN flags in the tests/demos!
+		* The Rect constructor now clamps w and h to >= 0.
+		* Added rudimentary OpenGL binding!
+		* Added ZeeSpace!
+		* eelbox executive now closes EEL before SDL and
+		  other subsystems, so wrapped objects hang around
+		  until the wrappers are destroyed.
+		* Added upside down PNG saving for OpenGL shots.
+		* Added ChipSound!
+		* Added joystick support!
+		* Initializing only audio and video; not CDROM!
+		* Bumped version to 0.1.15.
+	* EBGUI:
+		* Added GetClientRect() method to widgets.
+		* Theme constructors now take a target rather
+		  than a widget for argument.
+		* Added message passing API.
+		* Added drawing styles to Button() and Toggle().
+		* Added Popup() window and Selector() widget.
+		* Renamed 'on', 'pressed' and similar as 'state'.
+		* Toggle:Up() and :Down() replaced by :Set().
+		* Added SelectorItemStyle to Theme.
+		* Added 'childsize' feature to "ratio" aligner.
+		* Realign() now climbs as needed before recursion,
+		  to deal with childsize.
+		* New, faster dirty/refresh handling for widgets!
+		* Positional event dispatch now matches root
+		  widget drawing order! (That is, now tested in
+		  reverse order.)
+		* Dispatch() and widget:Dispatch() now return the
+		  widget that received the event, or nil if the
+		  event was ignored.
+		* Added widget:BringToFront().
+		* Added "real" lightweight windows complex region
+		  clipping.
+		* Some refactoring:
+			* Added new Open()/Close() calls for the
+			  EBGUI module itself.
+			* The implicit root widget from the old
+			  Open() is now created using Root().
+			* Target surface is now a static variable,
+			  and can be accessed using SetTarget()
+			  and GetTarget().
+			* Font and text handling moved into the
+			  themes.
+			* Added DefaultTheme() for creating
+			  default theme instances for tweaking by
+			  applications.
+			* Moved various SDL.Rect manipulation code
+			  into recttools.eel.
+			* Theme constructors are now called
+			  Create().
+		* Added weakref based font cache to text.eel.
+		* Fixed space width determination if/try chain in
+		  text.eel. (Would have failed if the first char
+		  wasn't in the font!)
+		* ProgressBar() now shows a percentage label.
+		* Fixed a remaining switch/if/else bug.
+		* Widget() "base" constructor now exported.
+		* add_widget() built into Widget().
+		* Added Control and NumEditor widgets from Delta.
+		* box(), box3d() and rbox3d() in drawtools.eel.
+		* Added DragHandle() widget.
+		* Implemented DragBar OnDrag() callback!
+		* SetPosition() now actually works for non-roots!
+		* Added SendToBack() method.
+		* Added "flat" style to DragBar.
+		* Added container expanding "stretch" aligner.
+		* Added SetSize() shorthand for (re)sizing.
+		* Alignment now driven via the invalidation logic.
+		* SetPosition() renamed SetRect().
+		* Added new SetPosition() member.
+		* SetRect(), SetPosition() and SetSize() are now
+		  functions returning the widget, as usual.
+		* Added Selector:SelectByValue().
+		* Selector now renders the panel/outline with the
+		  correct theme.
+		* Keyboard navigation moved into the dispatcher.
+		* Added OnFocus() event/method for all widgets.
+		* Added ListBox().
+		* Delete() now realigns the parent widget.
+		* Added DeleteHook().
+		* Aligner "relative" SetScrollPos() now deals in
+		  actual extents of the children.
+		* Sliders only call OnChange() if the value has
+		  actually changed.
+		* Added first-time widget::Init() method that is
+		  called once after any new/dirty widgets have
+		  been (re)aligned. Used by:
+			* VSlider
+			* HSlider
+		* Brought back negative colratio/rowratio values
+		  for the "ratio" aligner, for fixed width/height
+		  columns/rows.
+		* Added LineEditor:SilentSetText().
+		* Added NumEditor:SilentSetValue().
+		* Control now features a numeric text entry field
+		  instead of the value label.
+	* EELBox OpenGL:
+		* Added some OpenGL state caching.
+		* Added DrawRect() tool for simple quads.
+		* Added OpenGL version detection during init.
+		* Added support for OpenGL >=3.0 mipmapping via
+		  glGenerateMipmap() where available.
+		* Mipmapping is disabled on OpenGL <1.4.
+		* DrawRect() now supports 'false' for disabling
+		  texturing, and 'true' as a synonym for 'nil',
+		  which leaves the texture unit state as is.
+	* ZeeSpace:
+		* Implemented ZS_C_ADD, ZS_C_SUBTRACT and
+		  ZS_C_MULTIPLY.
+		* Implemented clamping in ZS_Z_MULTIPLY and
+		  ZS_IW_MULTIPLY.
+		* Added paths and regions.
+		* zs_Block(), zs_Cylinder() etc can now use the I
+		  channel of the 'px' argument!
+		* ZS_State.scratch now has room for two rows.
+		* The old zs_Region() renamed as zs_View().
+		* Added RGBA output support to zs_Blit2SDL().
+		* zs_3D2SDL() no longer applies I to RGB.
+		* zs_3D2SDL() uses state scratch instead of the
+		  bottom row of the source surface.
+		* zs_Blit2SDL() and zs_3D2SDL() now implement
+		  clipping to the target surface clip_rect.
+		* Added zsregions.eel ZeeSpace + EBGUI demo.
+		* zs_ShadowCast() replaced by zs_SimpleShadow().
+		* zs_BumpMap() reworked a little.
+		* Fixed issue with reallocation of 'pipebuf' after
+		  pipes have been prepared.
+		* Optimized the Perlin noise terrain generator a
+		  bit; about 45% faster with bicubic interpolation.
+	* Added EELBox Physics module:
+		* 'body' base class with the basic fields, advance
+		  and "tween" methods and a table for extension.
+		* Implemented body/body collissions, calling EEL
+		  collission response methods.
+
+EEL 0.1.14 (20091122)
+	* Removed stray argument decoding switch in eel.c.
+	* Updated copyright message printed by eelbox.c.
+	* Removed the unfinished 'enum' type, like in 0.2.x.
+	* Added COPYING.KISS_FFT.
+	* Fixed all old LGPL license headers.
+	* Added proper detection for variadic macro syntax.
+	* The threaded dispatcher now builds with EEL_VMCHECK
+	  debug code enabled.
+	* Changed threaded VM goto label naming to lab_O*, to
+	  avoid conflict with the opcode enum.
+	* Added EEL_VM_PROFILING.
+	* Concluded that io.write() with multiple data arguments
+	  is frequently used that way in various applications,
+	  and appears to work just fine. Removed from TODO/BUGS.
+	* Removed incorrect shortcut "different classes" from
+	  table look-ups.
+	* Fixed various compiler warnings in EELBox.
+	* Updated build scripts for the "eeltest" test program.
+
+EEL 0.1.13 (20091116)
+	* Added PNG saving to EELBox.SDL_image.
+	* The S key draw.eel now saves the window as a PNG.
+	* 'switch' no longer supports 'break'! This is not C,
+	  so 'break' is not really needed. The primary reason it
+	  was removed, however, is that it causes confusion when
+	  using switch inside loops.
+	* Updated ebgui.eel, which (ab)used 'break' in switches.
+	* The 'else' case in 'switch' statements replaced with
+	  'default', C style. 'else' is still supported, but
+	  will result in a warning.
+	* Updated the EEL and EELBox examples/tests as needed.
+	* Added some introspection features to 'function';
+	  results, reqargs, optargs and tupargs.
+	* VM assembly syntax cleanup; no braces for C, R and SV,
+	  and no stray 'TO' in INDGET, or wherever that was...
+	* Less stupid error message when trying to put the
+	  'default' anywhere but last in a 'switch'.
+	* Implemented "threaded dispatcher": VM instruction
+	  dispatch using computed gotos rather than switch().
+	  (Performance gains on my Q6600 development system:
+	  8% on average; up to 20% in some of the tests in the
+	  'bench' suite.)
+	* Test suite:
+		* Fixed 'loops' timing calculation overflow.
+		* Added "best of N runs" logic to 'bench'.
+		* Added 'wordcount2', without exceptions.
+		* Rebalanced the loop counts in 'bench'.
+	* eel.c and eelbox.c now support "compact" switches,
+	  ie '-cla'. (Backport from 0.2.x branch.)
+
+EEL 0.1.12 (20081113)
+	* GCC 4.2.x fixes. (Compiler bug.)
+	* Some eliminated compiler warnings.
+
+*** 20070126: Development on the 0.2.x branch started. 0.1.x
+    will be maintained as needed until obsoleted by 0.2.x.
+
+EEL 0.1.11 (20070105)
+	* Added scaling by 2 and 0.5 respectively for
+	  fft_real() and ifft_real(), to give all bins
+	  the same (unity) scale.
+	* SDL.PlayAudio():
+		* Takes mono or stereo data
+		* Supports integer samples (assumed to be
+		  32 bit signed values)
+		* Supports indexable data containers
+		* Clamps real typed data to avoid wrapping
+	* eel_vdisown() renamed eel_v_disown(). (The
+	  internal eel_v_disown() is now more appropriately
+	  named eel_v_disown_nz().)
+	* Implemented slice() for 'vector' and 'array'.
+	* Moved the EEL compiler into a separate subdir.
+	* File naming conventions changed:
+		* API header files:
+			EEL_*.h
+		* EEL core (VM, core types...) source files:
+			e_*.[ch]
+		* Standard module source files:
+			e<a>_*.[ch]
+		  where <a> is a reasonably short acronym.
+		* EEL compiler source files:
+			ec_*.[ch]
+		* "Throw in" libs and the like:
+			No prefix.
+	* e_file.[ch] renamed io.[ch]
+	* All standard modules (math, io, dir and dsp so far)
+	  are now in separate subdirectories, in preparation
+	  for some of them becoming dynamically loadable.
+	* DSP module:
+		* Added add_polynomial() optimizations for all
+		  vector types.
+		* Added FFT/complex tools:
+			* c_abs(), c_arg()
+			* c_set(), c_add()
+			* c_set_polar(), c_add_polar()
+			* c_add_i(), c_add_polar_i()
+		* polynomial_i(), add_polynomial_i()
+	* EELBox:
+		* Added quick hack MIDI module. (ALSA only.)
+		* Added fftsynth.eel
+		* Some examples fixed for less CPU hogging
+		* guiscroll.eel added to the test script
+	* Minor code cleanup, error message type fixes etc...
+	* Split the TODO up into a proper TODO (things that
+	  should actually be done), and a BRAINSTORM file,
+	  intended for all sorts of wild ideas that may or
+	  may not make it into the TODO eventually.
+	* The compiler code_fixup_*() functions now set "break
+	  target" events as needed to ensure that the dead code
+	  elimination doesn't kill their landing spots.
+	* LIST type 'modulo' field renamed 'stride'.
+	* Fixed various printouts that ignored LIST stride.
+	* Major bug fix: The LRIGHTI instruction now considers
+	  the stride of the original LIST.
+	* Major bug fix: The fake callframe created when
+	  calling a C functions is now removed whether or not
+	  the function returns with an exception.
+	* slice() and metamethod SLICE renamed copy() and COPY,
+	  to avoid confusion with the upcoming non-copying
+	  slice objects.
+	* copy() (former slice()) now accepts one (copy all),
+	  two (copy through end) and three (copy range)
+	  arguments.
+	* Win32: timeEndPeriod() when unloading the built-in
+	  module.
+	* Added built-in function sleep().
+	* Include dir "eel" renamed "EEL".
+	* Library/DLL base name changed from "eel" to "EEL".
+
+EEL 0.1.10 (never officially released)
+	* Added the DSP module;
+		* sum(), average()
+		* polynomial(), add_polynomial()
+		* fft_real(), ifft_real()
+	* Fixed various char signedness warnings.
+	* Implemented #- operator for vectors.
+
+EEL 0.1.9 (never officially released)
+	* All VM instructions that index constants now use
+	  16 bit fields for this. Four instructions had to
+	  be changed, and three new operand formats were
+	  added;
+	  	SWITCH	ABsCx ==> ABxsCx (new)
+	  	CCALL	ABCD ==> ABCDx (new)
+	  	TRY	ABC ==> ABxCx (new)
+	  	UNTRY	AB ==> ABx
+	* The '&' eel_argf() format code now returns an
+	  integer register index, rather than a pointer.
+	  (Pointers break if the heap is reallocated!)
+	* Caching eel_bio_linecount() - much faster
+	  compiles of large files with debug line number
+	  info enabled.
+	* Rudimentary VM argument stack added. (Only used
+	  by constructors right now!)
+	* Object constructor/cloning mess cleaned up;
+		* Constructors construct, period!
+		* Cloning is done through casting.
+	* More efficient buffer scaling for some types.
+	* for i=N, N-1 ... will no longer iterate once.
+	* 'for' loops are slightly faster when running.
+	* Implemented the Type Casting Matrix.
+	* Various minor optimizations and bug fixes.
+	* Apparently some minor slowdowns too - but
+	  benchmark results are weird. Some code needs
+	  more "real" time but less user time. Need to
+	  do some serious profiling later.
+	* 64 bit pointer issue in relocate_limbo() fixed.
+	* Fixed octal number escape parsing in strings.
+	* Fixed some missing internal VM initializations.
+	* Added guiscroll.eel EELBox test.
+	* EBGUI:
+		* HScale fully implemented.
+		* LineEditor:OnChange() implemented.
+		* Recursive SetCapture().
+		* SetCapture() implements cursor hiding.
+		* Widgets no longer try to grab the mouse
+		  multiple times when pressing multiple
+		  buttons.
+		* Graph curve AutoScale now stores min and
+		  max results for external calculations.
+		* ApplyTheme() now invalidates widgets.
+		* Widgets draw their dent outlines using
+		  their parent's theme where applicable.
+		* Scales scale around the grab center point.
+		* Slider knob length >= width limit.
+		* LineEditor:SetText() now calls the
+		  OnChange() callback.
+		* VScale and HScale got a vector 'ticks'
+		  that stores the coordinates of the
+		  currently visible tick marks.
+		* Added scrolling support to the
+		  "relative" aligner.
+		* All widgets clipped automatically by
+		  recursive_redraw().
+		* Widgets are clipped recursively to
+		  stay inside their parents, even if
+		  their own cliprects are outside.
+
+EEL 0.1.8 (20060116)
+	* Cleaned up the moduledata handling a little.
+	* Turned static variables in e_file.c into moduledata.
+	* Implemented the "dir" module.
+	* EELBox:
+		* Added simple soft real time audio support.
+		* Added some simple audio demos.
+
+EEL 0.1.7 (never officially released)
+	* 'return' statements in procedures will no longer
+	  allow stray return value expressions.
+	* EBGUI:
+		* Added 'childsize' to the "grid" aligner.
+		* Added functions GetModal(), GetCapture()
+		  and GetFocus().
+		* Added keyboard control to *Slider.
+		* Added LED and ProgressBar widgets.
+		* Added Panel styles through SetStyle().
+		* Removed FlatPanel. Use Panel(..., "flat").
+		* Removed Container. Use Panel(..., "none").
+		* Added Graph widget.
+		* Added VSlider widget.
+		* Added VScale and HScale widgets.
+	* EELBox:
+		* Added \t (TAB) support to text.eel.
+		* line.eel now handles non-integer start/end
+		  coordinates.
+		* Implemented SetClipRect().
+		* Implemented GrabInput() and WarpMouse().
+		* Added optional lock-free FIFO buffering
+		  to sockets, for non-blocking TCPSend().
+		* Fixed misdirected break in handle() in
+		  chat.eel and chat2.eel.
+	* Fixed memory allocation bug caused by coders having
+	  different ideas about the size of the module static
+	  variable block.
+	* Added getus(), for sub ms accurate timestamps on
+	  platforms that can provide them.
+	* Added the 'export import...' construct, to
+	  transparently forward imports as exports.
+	* Confusing "Missing ')'..." error messages after
+	  explists clarified; they now mention the ','
+	  possibility.
+	* Character literals can now contain the usual \
+	  escapes used in string literals.
+	* Trying to create a character literal that doesn't
+	  fit in the integer type generates a compile error.
+	* The shift operators ('<<', '>>') now accept real
+	  typed operands. These are truncated to integers.
+	* Added line numbers to the call stack dump.
+	* Fixed missing eel_cthrow() in expect() when using
+	  a custom message string.
+	* Implemented vector INSERT.
+	* Putting a '{' directly after the ';' following a
+	  ("forward") declaration now generates a warning, as
+	  this usually indicates an accidental ';' in what is
+	  intended to be a function definition.
+	* Fixed a bug in apply_op() that generated code for
+	  writing back the result even when doing inplace
+	  operations. (This was *probably* harmless, and just
+	  generated a "no effect" MOVE or similar.)
+	* Assigning objects to argument registers is now
+	  handled by a special instruction, that should
+	  implement correct memory management for these
+	  objects. (For now, it throws an exception if it
+	  sees an objref.)
+	* Added 'untry' blocks which "unprotect" blocks
+	  under try blocks up the stack for debugging.
+	* Added rudimentary object owner tracking for
+	  debugging memory leaks.
+
+EEL 0.1.6 (20051112)
+	* Added explicit vector operators #+, #*, #/ etc.
+	* Changed the vector types to use the new vector
+	  operators for vector ops.
+	* Implemented appending of any indexable type,
+	  except tables, to vectors.
+	* table:DELETE metamethod now throws an exception if
+	  it gets a "to" operand. (Can't do range delete() on
+	  tables!)
+	* Added some tests to vector.eel.
+	* Fixed exception handling bugs (reference leaks) in
+	  some operator metamethods. (Never add a ref before
+	  you do something that may fail!)
+	* VM dump messages now include module and file names.
+	* Added hooks for generic (de)serialization subsystem.
+	* Added scope.eel to the test suite.
+	* Fixed compile error when using 'exception' in valid
+	  sub contexts of 'except' blocks.
+	* Instantiating a string with a boolean initializer
+	  now results in "true" or "false", as expected.
+	* eel_operate() now says EEL_XNOTIMPLEMENTED instead
+	  of EEL_XINTERNAL when trying to perform undefined
+	  operations on objects.
+	* Implemented the 'and', 'or' and 'xor' operators for
+	  OBJREF left hand and/or right hand operands.
+	* Implemented concatenation (+ and .+) of tables.
+	* Added concatenation test to table.eel.
+	* The DELETE metamethod now accepts calls with two
+	  NULL operands (corresponding to only one argument
+	  to delete()), for deleting all elements of any
+	  indexable type object.
+	* Fixed some DELETE metamethod implementations that
+	  didn't check for 0/1/2 operands at all.
+	* 'array' now supports range delete().
+	* Implemented VM context save/restore, for reentrant
+	  VM calls.
+	* eel_load_from_mem_nc() now really does not compile!
+	* Module unloading changes:
+		* After a module is compiled, but before it's
+		  initializer is called, the refcounts of all
+		  owned objects are summed.
+		* Modules refuse to destruct, and instead just
+		  add themselves to the state 'deadmods' list,
+		  and then call the module garbage collector.
+		* Unused modules are garbage collected, based
+		  on refcount sums, when loading new modules
+		  and when any module destructor is called.
+	* Fixed a bug that caused the compiler not to unroll
+	  all contexts when handling a compiler exception.
+	* Added nonexist.eel test.
+	* Added a relex() at the end of the forstat rule, as
+	  'for' statemenst would otherwise "eat" INIT events
+	  under certain circumstances.
+	* Added forscope.eel test.
+	* Added read-only 'buffer' member to 'memfile'.
+	* Fixed wrap bug when read()ing reals on little
+	  endian platforms.
+	* Added call stack dump to the VM error dump.
+	* Added object member call syntax. ("auto-self")
+	* Removed the ':' from the alternative table
+	  initializer tuple syntax, to avoid conflict with
+	  the member call syntax.
+	* Added "function by name" table item initializer.
+	* A memfile can now be attached to a dstring by
+	  assigning the dstring to the memfile's .buffer
+	  field, or by passing it to the constructor.
+	* The 'local' keyword is now required when declaring
+	  variables, except in the root function.
+	* Anonymous functions and procedures.
+	* Added switch statement and SWITCH instruction.
+	* Corrected signedness of 'upvalues' and 'result' in
+	  the callframe struct.
+	* Added line number debug info to EEL functions.
+	* Added line numbers to VM code dump.
+	* Added built-in functions __caller(), __modules()
+	  and __clean_modules().
+	* Added "module" field to functions.
+	* Table indexing now has a generic index comparison
+	  shortcut for "same instance" when indexing with an
+	  OBJREF.
+	* Removed the "static by default root function
+	  variables" special case.
+	* (function) and (procedure) can now be used as a
+	  CFUNCTION type id literal.
+	* (Bonus:) The compiler knows that you cannot cast
+	  something to type 'function'.
+	* Format string EEL_REAL_FMT (default "%.12g") is
+	  used whenever converting a real to ASCII.
+	* More sensible source location printout when the
+	  start position cannot be determined.
+	* The compiler now always looks for arguments, to
+	  avoid stupid messages when passing arguments to a
+	  function that doesn't want any.
+	* Fixed some bugs that caused the TYPEOF and SIZEOF
+	  instructions to fail on in-place operations.
+	* The compiler now checks for declared but undefined
+	  functions after compiling a module.
+	* math.abs() is now implemented using C fabs() rather
+	  than the integer abs()!
+	* An implicit upvalue now generates a compile error.
+	* Fixed some error checking bugs in expression().
+	* Added GetPixel to EELBox.
+	* Added SFont compatible text rendering with demo to
+	  the EELBox test/demo suite.
+	* Added circular include detection.
+	* Added circular module import detection.
+	* Fixed some bugs that caused object leaks when
+	  aborting due to circular includes or imports.
+	* Added module instance data support for "global"
+	  stuff in C modules.
+	* EEL built-in library converted to the new module
+	  instance data system.
+	* EELBox clipping bug in Update() fixed.
+	* Implemented delete() for the vector types.
+	* Added EELBox GUI toolkit + simple test program.
+	* Fixed a bug that caused the .(<fieldlist>) rule to
+	  look in the symbol table of the current scope.
+	* Fixed explist logic bugs when indexing an explist
+	  and related operations.
+	* Implemented rudimentary peephole optimization.
+	* Added early checks for call arguments, and checks
+	  for argument expressions that generate no result.
+	* Renamed VM instruction CGET as LDC ("LoaD Constant")
+	  for concistency.
+	* Added VM instructions INITI, INITNIL, INITC, ASSIGNI,
+	  ASNNIL and ASSIGNC, with some simple peephole
+	  substitution rules to put them to use, for a
+	  remarkable speedup of 1.2 % in bench.eel! ;-)
+	* The EELBox pigs.eel example now uses a double
+	  buffered display when available.
+	* Added while <constant> optimization in whilestat().
+	* Added NOT/JUMP(N)Z substitution rules.
+	* 'continue' in do...while, do..until and while loops
+	  now skips *into* the condition test, as most people
+	  would probably expect. 'repeat' is added, and works
+	  like 'continue' used to do, and like 'repeat' works
+	  in for loops.
+	* Added 'constant' keyword and rudimentary constant
+	  declarations. (Cannot evaluate expressions!)
+	* EELBox SDL.Rect SETINDEX now clamps negative 'w'
+	  and 'h' to 0, to avoid nasty huge rects. (SDL_Rect
+	  has unsigned 16 bit w and h fields.)
+	* Added '.' NAME <expression> key syntax to table
+	  ctor. (Nicer looking, and avoids the problem with
+	  unary minus "blending" the name and the value.)
+	* Added SDL_EnableUNICODE() and SDL_SetKeyRepeat() to
+	  EELBox.
+	* Explicit casts now always create new instances of
+	  objects. Casting to the same type gives a clone.
+	* Added 'clone' unary operator, that tries to clone
+	  objects by passing the original object to the
+	  constructor.
+	* Fixed a buf in dstring INSERT that would cause a
+	  segfault when inserting starting beyond the end
+	  of the string.
+	* Modified EEL_lval so the lexer can correctly hand
+	  strings containing null bytes to the parser.
+	* Added '.' NAME <expression> key test to table.eel.
+	* Added main test script to the EELBox tests.
+	* ebtest.eel user abort (ESC, click etc) now actually
+	  works.
+	* Fixed EELBox video surface management.
+	* io.read() will now return an empty string instead
+	  of throwing an exception when 0 bytes are requested.
+	* io.read() no longer throws XEOF when reading 0 bytes
+	  at the end of a memfile.
+	* typeof nil == nil
+
+EEL 0.1.5 (never officially released)
+	* Added 'file' and 'memfile' classes.
+	* eel_ds_*new() now accept NULL initializer strings
+	  for creating empty strings with preallocation.
+	* Support for compiling EEL code from (d)strings.
+	* Added compile, memfile and diskfile test scripts.
+	* eel_vmsg() now deals with vsnprintf() leaving the
+	  value of the va_list undefined.
+	* Added wordcount test/benchmark.
+	* Fixed return types and error handling of some
+	  built-in and EELBox modules.
+	* Fixed missing CCLASS object ownerships for the
+	  symbol table.
+	* Implemented Load() in the SDL_image eelbox module.
+	* Added pigs.eel (bouncing pigs) to the eelbox demos.
+	* Fixed some memory leaks.
+	* 'eelbox' now closes subsystems *after* destroying
+	  the module, to avoid problems with object refs in
+	  static variables.
+	* VM bug fixed: C functions with no result are now
+	  handled correctly.
+	* Added built-in index() function, to index objects
+	  (specifically tables) by integer element index.
+	* Added missing jmp_buf #define for the CygWin
+	  special case. (Thanks Frank Benoit!)
+	* Added built-in key() function, to get table keys
+	  by integer element index.
+	* Fixed illegal compiler context type that broke the
+	  'include' directive.
+	* String pool now handles strings of different
+	  lengths but identical hash correctly.
+	* Added format attributes for GNU compilers to the
+	  eel_*error() functions and co.
+	* Fixed some error message format/argument bugs.
+
+EEL 0.1.4 (20050417)
+	* Added dstring (dynamic string) type. (Crossbreed
+	  of string and vector_u8.)
+	* Fixed incorrect location of object pointer in the
+	  EEL_value union, which made the union larger than
+	  16 bytes on 64 bit platforms.
+	* Fixed copy of potentially non-existant null
+	  terminator in eel_ps_new_ngrab().
+	* test.eel catches exceptions in exception_name(),
+	  so it can handle non-xno exception values.
+	* Implemented special case for NOP cast.
+	* The compiler no longer thinks you're trying to name a
+	  block, unless it actually sees a ':' after the name.
+	* Using the 'exception' keyword no longer results in
+	  the compiler freeing the exception register.
+	* Fixed "double inversion" bug in JUMP(N)Z and ifstat;
+	  now the instructions actually do what they're named.
+	* Implemented inplace operations with multiple source
+	  arguments and one target. (Actually a compiler bug
+	  fix; it was "almost" supposed to work before.)
+	* Updated chat.eel (EELBox) to use dstring.
+	* Added setjmp()/longjmp() hack for Cygwin. (It says
+	  it has _setjmp()/_longjmp(), but EEL won't compile
+	  if they're used.)
+	* Minor adjustments for 64 bit platforms in Net2.
+
+EEL 0.1.3 (20050407)
+	* Upped the pickyness level of the Extreme Pickyness
+	  Mode a notch.
+	* Fixed a bunch of unintentional C99 style variable
+	  declarations.
+	* Fixed some missing prototypes.
+	* Removed some unused functions.
+	* text2c.sed fixes:
+		* No longer relies on the \t escape
+		* Strips comments and empty lines
+	* configure.in changes. *Might* fix Cygwin...
+	* EELBox examples that can loop indefinitely handle
+	  SDL_QUIT, so you can stop them with ctrl+C.
+	* Hint added to "Reading uninitialized variable..."
+
+EEL 0.1.2 (20050403)
+	* Added the eelbox sub-project. (SDL binding.)
+	* Objects now actually *do* count as references
+	  to their respective classes! (Oops...)
+	* The EEL_object struct is now just a header, and
+	  objects are constructed by placing one of those
+	  and some other struct after it in a memory block
+	  of the right size.
+	* The EEL_vm struct is now split in a public and a
+	  private part; enough public stuff to eliminate most
+	  calls from user C function callbacks.
+	* ARRAY, VECTOR and TABLE VM instructions replaced
+	  by the NEW instruction. (Which is actually the
+	  old VECTOR instruction; it had the logic already.)
+	* Switched to a uniform object constructor syntax
+	  with three special cases:
+	  	1. 'array' is default for <nothing> [...]
+		2. 'table' keeps it's two tuple syntax
+		    variants + the "even count" test, and
+		3. 'enum' constructors allow passing new
+		   names as strings to the constructor.
+	* Fixed type checking bug in bi__xname().
+	* Fixed priority of boolean 'not' operator.
+	* Started documenting the language.
+	* Built-in classes now have their own headers.
+	* EEL_closure built-in class (dummy) removed.
+	* Added type EEL_TENUMVAL and class EEL_CENUM.
+	* EEL_TOBJECT renamed EEL_TOBJREF, which is more
+	  accurate and hopefully less confusing.
+	* vm->exception now takes ownership of objects!
+	* Implemented EEL_CSTRING + "pooling string engine."
+	  (EEL_CVECTOR is no longer abused for strings.)
+	* Fixed a missing eel_v_own() in CTABLE::setindex().
+	* Fixed the broken ##push() method of EEL_DLSTACK;
+	  it didn't set the 'prev' field of the old top!
+	* Added class unregister hook to EEL_classdef.
+	* Some of the above fixed the "__init_module" leak
+	  from 0.1.1. :-)
+	* The CAST instruction can now recast enum values.
+	* EEL_VM_CHECKING is now disabled when compiling
+	  EEL without DEBUG defined.
+	* Classes are normally registered with the compiler.
+	* Converted the VM dispatcher to use macro magic,
+	  preparing for threaded dispatching by means of
+	  computed gotos and stuff like that.
+	* Instructions that cannot throw exceptions can
+	  now optionally be compiled so that they dispatch
+	  the next instruction without the reschedule check.
+	* Added string cache to avoid creating new strings
+	  all the time. (Helps the compiler a lot.)
+	* Added eel-presentation.txt from the registration
+	  description for SourceForge.
+	* Fixed some stupid compiler event handling bugs.
+	* Dead code elimination is back in.
+	* Implemented multilevel BREAK event handling.
+	* Removed the incorrect initialization check when
+	  writing upvalues. (Compiler)
+	* Leaving a block with potentially uninitialized
+	  variables now results in a compile error rather
+	  than a cryptic "internal error".
+	* Added C style quoted string literal continuation.
+	* Added hex and character literals, and the string
+	  type name to eel.xml.
+	* Added binary operator tests to arithmetics.eel.
+	* Removed the non-optimizing version of the operator
+	  code generation machinery.
+	* Removed 'vm' argument from calls that require an
+	  object. (Objects have a 'vm' field...)
+	* Added some manipulator "shortcut" optimizations.
+	* Eliminated the CONSTVAL manipulator and merged the
+	  special cases and code generation from e_parser.c
+	  into the CONSTANT manipulator instead. Result:
+	* Unused constants are no longer added to the table.
+	* Added EEL_MCAST manipulator, with typeid support.
+	* No more piggybacking on EEL_MOP for casts to real,
+	  integer and boolean. (EEL_MCAST)
+	* Implemented generic snap-in indexable->indexable
+	  cast method. (If it works is another matter...)
+	* Lexer no longer looks for two-character tokens with
+	  a whitespace character as the second character.
+	* Replaced strtod() hack with a generic base-n number
+	  parser.
+	* Fixed a lexer bug that disregarded overflow when
+	  testing if a number can be parsed as an EEL_TINTEGER.
+	* Made the '><' (bitreverse) operator binary, using
+	  the right hand operand to specify the number of bits
+	  to reverse.
+	* Cleaned up the #include dependencies a little.
+	* Implemented one-to-many multiple assignment.
+	* The LOOP instruction will now try to cast the
+	  iterator, limit and increment operands in-place, if
+	  they're not EEL_TREAL. (Better and much faster! :-)
+	* The table *INDEX methods now accept integer/real
+	  matches if the values cast to real are equal.
+	* Fixed indirect calls and type casts inside explists.
+	  (Stupid! Assumed that stuff would always be first in
+	  'al', or be the whole 'al'. :-)
+	* Cleaned up the error/exception handling. Errors are
+	  just integer return codes, until they hit the VM
+	  dispatcher.
+	* C style string continuation w/o '\n' ==> WARNING.
+	* Cleaned up the memory management and defined strict
+	  rules for limbo and returned objects.
+	* Fixed incredibly stupid bug in the coder: It now
+	  actually calculates cleantable sizes! :-D
+	* NULL (NOP) destructors are perfectly acceptable.
+	* 'whilestat' now generates proper cleanup code.
+	* sbuffers are released nicely in some more places.
+	* An iterator variable declared in a 'for' becomes
+	  local to that 'for' statement.
+	* Changed 's/\t/\\t/g' to 's/[\t]/\\t/g' in the text2c
+	  sed script. The non-GNU sed used on Mac OS X didn't
+	  like my original version. Thanks to Russell Y. Webb!
+	* EEL_state removed from the API; only EEL_vm now!
+	* Added __exports() to mess with module export tables.
+	* Exported functions are added by *export* name; not
+	  by the name from the function object!
+	* Enum EEL_mmethods and EEL_exceptions renamed
+	  EEL_mmindex and EEL_xno, respectively.
+	* The lexer now returns a TREAL value for any number
+	  with a decimal point in it, regardless of value.
+	* Added tak.eel and heapsort.eel.
+	* Added "direct read" and [0..255] constant index
+	  optimizations for indexing operations.
+	* Added binops for static variable right hand operand.
+	  (Saves one instruction and avoids grabbing.)
+	* Added binops for constant Sint16 value right hand
+	  operands. (Eliminates a great deal of CGET and LD*.)
+	* The lexer stack is invalidated when starting with a
+	  new file, to get rid of any old garbage.
+	* Added a math module with a bunch of math functions
+	  and some constants.
+	* Error messages are now logged rather than printed
+	  directly, so they can be dumped when appropriate,
+	  or thrown away. (No more whining when looking for
+	  precompiled and source files for apps and modules.)
+	* Dedicated, cleaned up prototypes for constructor
+	  and destructor callbacks.
+	* Undefined metamethods are now wired to a dummy, to
+	  avoid checking in the main path.
+	* VM uses an inlined version of eel_o_metamethod().
+	* Constructor semantics cleaned up:
+		* Constructors are responsible for cleaning
+		  up if they fail.
+		* Constructors must generate an EEL_value
+		  result; not just a pointer.
+	* Added the "Module Injection API", for creating
+	  modules and adding exports to them properly.
+	* Added shared modules "zombie" table, to keep track
+	  of loaded modules and ask them to unload when there
+	  are no actual users left.
+	* Added INSERT and DELETE metamethods.
+	* Table uses dynamic array instead of linked list.
+	* C modules can now export constants. (EEL modules
+	  can do it by means of __exports().)
+	* 'throw' takes an expression rather than a simplexp,
+	  so you don't have to parenthesise expressions.
+	* Removed some old cruft from the symbol table code.
+	* The compiler (and module export/import) now handles
+	  types and classes by their classdef objects rather
+	  than type IDs. Thus, exported constants can now be
+	  references to classes. :-)
+	* Added autoconf checks for the setjmp stuff, along
+	  with support for _setjmp/setjmp/_longjmp/longjmp
+	  or sigsetjmp/siglongjmp, in order of preference.
+	* Tweaked eel.m4 to make automake 1.8+ happy. (?)
+	* Build scripts now work for Linux->Win32 cross
+	  compiling with gcc 3.3.x. (Here, at least. ;-)
+	* Fixed a bug that caused expression2() to do nothing
+	  when supposed to apply an operator to two terms
+	  with multiple manipulators.
+	* Conditional jumps considers any typeid true.
+	* The NOT instruction takes any OBJREF or TYPEID as
+	  true. (Generates a false result, that is.)
+
+EEL 0.1.1 (20050126)
+	* Added RETX, RETXR, XRETURN and XRETURNL.
+	* Added the 'flags' VM special register.
+	* Some minor code cleanups.
+	* The returnstat rule now issues the new
+	  RETX* instructions when inside 'try' and
+	  'except' blocks.
+	* random.eel now casts the command line
+	  argument to integer.
+	* random.eel updated to 'for' loops.
+	* Added tests for returns from within 'try'
+	  and 'except' bodies to exceptions.eel.
+	* Added function name to VM "crash" message.
+	* VM code dump is 99 chars wide instead of 59.
+	* No more (pointless) warnings about implicit
+	  upvalues in 'try' and 'except' blocks.
+	* Changed call syntax to C-style, everywhere.
+	* Just a function name now evaluates to a
+	  reference to the function.
+	* No more "Expected '=' or ';'!" when only ';'
+	  applies. (It is known whether the term is
+	  writable or not when that message is printed.)
+	* Compiler error messages now contain start and
+	  end line and column position.
+	* Exception handling bug fixed: The VM now
+	  terminates correctly when an unhandled
+	  exception occurs.
+	* No exceptions should print error messages
+	  unless they exceptions are unhandled.
+	* Fixed broken code generation for upvalue
+	  function argument write.
+	* VM error/exception handling reworked: Text
+	  messages replaced with an exception registry
+	  and integer return/error codes.
+	* Turned the 'string' class into a set of
+	  generic vector classes.
+	* Added eel_null_terminate(). EEL does *not*
+	  guarantee that strings (or other vectors)
+	  are null terminated!
+	* eel_throw() no longer loses the remaining
+	  instruction count if multiple exceptions
+	  are thrown before the scheduler gets a
+	  chance to run. Note that it's still only
+	  the last exception that's seen! The others
+	  are silently ignored. (We assume that if
+	  a single VM instruction results in multiple
+	  exceptions, they're all triggered by the
+	  same event, and the one that gets through
+	  is hopefully the most descriptive one.)
+	* Fixed backslashed quote ("\) and multiline
+	  string literal bugs in eel.xml.
+	* XRETURN* now throws XEND if it lands in the
+	  dummy top call frame, as it should.
+	* Compiler RETURN and RESULT events now propagate
+	  up from xblocks. This lets us get away without
+	  a dead 'return <value>;' when the only way out
+	  is through try and except blocks.
+	* The 'throw' statement now generates appropriate
+	  compiler events.
+	* Initialization events no longer (incorrectly)
+	  depend on the EXIT state.
+	* CGET now adds objects to limbo, so ownership
+	  is passed to callers if constants are returned.
+	* THROW hands limbo object ownership over to
+	  vm->exception.
+	* Added keyword/special variable 'exception', to
+	  access the exception value in 'except' blocks.
+	* Array constructor now accepts empty initializer
+	  list to construct empty arrays. (DOH!)
+	* Comparison operators no longer corrupt the
+	  target register before testing, so in-place
+	  should work now.
+	* Moved operator stuff into e_operate.[ch] and
+	  refactored it a little.
+	* Added CAST VM instruction, to cast to any type.
+	* CASTR, CASTI and CASTB can cast from typeid.
+	* Fixed bug when coder adds constants: Functions
+	  are now only added once. (OBJECT/WOBJECT...)
+	* Coder now actually compares objects when adding
+	  constants, to avoid identical instances.
+	* Removed some unneeded operations when entering
+	  and leaving eel_run(), and throwing exceptions.
+	* Created a bug. :-( The "__init_module" name
+	  string in load() leaks, apparently because the
+	  __load() call somehow screws up load()s limbo
+	  list. Can't seem to figure out why, and I'm in
+	  one h*ll of a hurry to get things going, so I'll
+	  have to leave it for now.
+	* Implemented the table class + constructor syntax.
+	* Fixed some bugs where empty initializer lists
+	  would screw up the register allocation.
+	* Implemented the vector class, with some
+	  "optimized" vector operations.
+	* Refactored the operator mess into one large
+	  switch() for all operations on all simple types.
+	* Implemented in-place and copy operations on
+	  objects, with <value> operator <object> support
+	  for some operators.
+	* Removed EEL_TWOBJECT. (It's no general solution
+	  to the circular reference problem, and there's a
+	  much simpler solution to the particular case of
+	  mutually recursive functions.)
+	* Removed metamethods AND, OR and XOR.
+	* Changed power operator from '^' to '**'.
+	* Reserved bitwise operators '&' (and), '|' (or),
+	  '^' (xor), '<<' (left shift), '>>' (right
+	  shift), 'rol' (rotate left), 'ror' (rotate right),
+	  '~' (not) and '><' (bit reverse).
+	* Implemented ADD and MUL operations on and between
+	  vectors. (Only vector/vector for identical classes
+	  for now.)
+	* Some warnings added to "Extreme Pickyness Mode".
+	* Some minor bugs fixed.
+
+EEL 0.1.0 (20050111)
+	* Major reorganization and partial rewrite;
+	* EEL is now virtual machine based.
+	* New type naming conventions applied.
+	* New parser/compiler.
+	* The symbol table is actually a tree.
+	* Context and symbol management simplified
+	  and cleaned up.
+	* 'set' "command" removed.
+	* Added boolean logic operators.
+	* eel_lex() supports two-character operators.
+	* eel_unlex() now actually steps back in the
+	  input, rather than setting a flag to reuse
+	  the last result. This is to make the flags
+	  affect the re-lexing.
+	* EDT_STRING removed.
+	* Added classes and objects with refcounting.
+	* Added built-in class ECT_METHODS: Class
+	  implementation.
+	* Added built-in class ECT_STRING.
+	* Added built-in class ECT_ARRAY: Integer
+	  indexed 1D array of EEL_data.
+	* Added built-in class ECT_TABLE: Group of
+	  <integer_name, string_name, EEL_data>.
+	* Added compiler register allocator.
+	* Added EEL_arglist, which collects abstract
+	  references to objects (values, variables
+	  etc) and generates access code on demand.
+	* Constants renamed EEL_xSOMENAME where x
+	  is one or two capital letters indicating
+	  where the constant belongs.
+	* SYMREF value type removed. (The VM is no
+	  longer allowed to access symbols.)
+	* EEL_data renamed as EEL_value, which is
+	  more to the point.
+	* Enum EEL_datatypes renamed EEL_types.
+	* Lexer unlex depth increased to two stages.
+	* Countless other changes. (Would be easier
+	  to mention what I *didn't* change, so not
+	  much point in writing any more log entries
+	  for this release.)
+
+*** 20031201: EEL is ripped out of the Audiality-0.1.1
+    development tree and turned into a stand-alone project.
+    ChangeLog entries below are copied from the projects of
+    which EEL used to be an integrated part; Kobo Deluxe
+    and later, Audiality.
+
+Audiality 0.1.1
+	* Added internal "long time" unique IDs to EEL
+	  scripts, to tell different scripts loaded at
+	  the same slot apart. (Only for figuring out
+	  when to print the "in file ..." line of error
+	  messages so far.)
+
+Audiality 0.1.0
+	* 'return <value>' command added.
+	* Contexts and scopes effectively merged,
+	  and can now return values. (Mostly meant
+	  for functions, but sure, a local scope
+	  could return a value through 'return'...)
+	* Fixed bio leak in context management!
+	* Cleaned up and fixed eel_get_argsv(). It's
+	  now more readable, and handles arg lists
+	  with only optional args properly.
+	* Inner interpreter loop extracted into new
+	  function run_code().
+	* Function calling is now non-recursive, and
+	  the internal enter_function() call is used
+	  from eel_call() as well as run_code().
+	* eel_call() now takes a function symbol ptr
+	  and argument count + array, and calls an
+	  EEL function!
+	* The old eel_call() has been renamed
+	  eel_call_position().
+	* eel_get_args() now requires argc and argv
+	  arguments. (This is needed for calling
+	  functions while evaluating expressions.)
+	* Changed EEL_MAX_ARGS from 128 to 256.
+	* eval() can now call functions, LISP style.
+	* eval() can now call operators that return
+	  values, as if they were functions.
+	* eel_get_argsv() now uses va_end() on the
+	  "tuple start save" va_list, as it should,
+	  and has had a whole lot of exit points
+	  removed.
+	* Running scripts, calling functions and
+	  similar operations are now fully recursion
+	  aware, meaning that functions can call
+	  functions, operators can load and run
+	  scripts and whatnot - inside the context
+	  of an expression that is being evaluated.
+	* Context stack now actually *works*.
+	* Improved the "skip function body" code used
+	  in some places. Now handles nested scopes,
+	  comments and stuff inside functions.
+
+*** The "unnamed audio engine" that was developed as a part of
+    the XKobo port "Kobo Deluxe" hereby (20020907) becomes a
+    stand-alone library, named "Audiality".
+
+Kobo Deluxe v0.4pre9
+	* Added eel_load_from_mem(). (Thanks to
+	  Florian Schulze!)
+	* Cleaned up the EEL script management
+	  code a little.
+	* Using va_copy() in e_getargs.c, since
+	  assignments are not legal on all
+	  platforms. (Thanks, Andreas Heck!)
+
+Kobo Deluxe v0.4pre7 (20020611)
+	* Separated the AGW scripting engine core from the
+	  audio engine and made it the "Extensible Embeddable
+	  Language". (a_agw.[ch] now contain only the AGW
+	  extension to EEL.)
+	* EEL now uses the same callback prototype for all
+	  extensions, whether they are commands, operators
+	  or functions.

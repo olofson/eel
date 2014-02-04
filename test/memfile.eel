@@ -1,0 +1,31 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+import "io";
+
+export function main<args>
+{
+	// Create a memory file and write some stuff into it
+	local f = memfile [];
+	for local i = 1, 64
+		write(f, "Memory file test, line #",
+				(string)i, ".\n");
+
+	// Rewind and read
+	f.position = 0;
+	local b = "";
+	while true
+	{
+		try
+			b = read(f, 32);
+		except
+			return 0;
+		for local c = 0, sizeof b - 1
+			if b[c] < ' ' or b[c] >= 127
+				b[c] = '.';
+		print("\"", b, "\"\n");
+	}
+	return 0;
+}

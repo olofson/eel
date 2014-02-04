@@ -1,0 +1,62 @@
+/////////////////////////////////////////////
+// Weak Reference Tests
+// Copyright (C) 2010 David Olofson
+/////////////////////////////////////////////
+
+static a;
+static b;
+
+procedure test_static_1
+{
+	a = table [
+		.Test	42
+	];
+	b (=) a;
+	print("  a = ", a, ", b = ", b, "\n");
+}
+
+procedure test_static_2
+{
+	a = nil;
+	print("  a = ", a, ", b = ", b, "\n");
+}
+
+procedure test_table_1(t)
+{
+	t.a = table [.Test	42];
+	t.b (=) t.a;
+	print("  t.a = ", t.a, ", t.b = ", t.b, "\n");
+}
+
+procedure test_table_2(t)
+{
+	t.a = nil;
+	print("  t.a = ", t.a, ", t.b = ", t.b, "\n");
+}
+
+export function main<args>
+{
+	// NOTE:
+	//	The reason we're doing the work - printouts
+	//	included - in procedures is that the VM would
+	//	otherwise hold on to the objects (using limbo
+	//	lists) as we handle them, preventing the
+	//	objects from being destroyed.
+
+	print("Weakref test; static variable...\n"); 
+	test_static_1();
+	test_static_2();
+	if b != nil
+		throw "Weakref was not set to nil when the target was destroyed!";
+	print("  Ok!\n");
+
+	print("Weakref test; table item...\n");
+	local t = table [];
+	test_table_1(t);
+	test_table_2(t);
+	if t.a != nil
+		throw "Weakref was not set to nil when the target was destroyed!";
+	print("  Ok!\n");
+
+	return 0;
+}

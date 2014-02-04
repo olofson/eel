@@ -1,0 +1,36 @@
+////////////////////////////////////
+// chipsound.eel - ChipSound Test
+// Copyright (C) 2011 David Olofson
+////////////////////////////////////
+
+import "SDL" as SDL;
+import "ChipSound" as cs;
+
+export function main<args>
+{
+	local screen = SDL.SetVideoMode(640, 480, 0, SDL.SWSURFACE);
+	SDL.SetCaption("ChipSound Test", args[0]);
+	cs.Open();
+	local bank = cs.Load("k2intro.csl");
+	local song = cs.Find(bank, "K2Intro");
+	cs.Start(0, 0, song);
+	while true
+	mainloop:
+	{
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYUP
+				if ev.sym == SDL.KESCAPE
+					break mainloop;
+			  case SDL.QUIT
+				break mainloop;
+		}
+		SDL.Delay(10);
+	}
+	cs.Close();
+	return 0;
+}

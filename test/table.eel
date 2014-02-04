@@ -1,0 +1,65 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005, 2011 David Olofson
+/////////////////////////////////////////////
+//
+// NOTE:
+//	As of EEL 0.3.2, real typed values
+//	holding integer numbers are no longer
+//	considered equivalent to integer
+//	typed values, which is why this test
+//	had to be updated.
+//
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Table tests:\n");
+
+	print(" <name>:<value> constructor syntax:\n");
+	local t = table [1 "one", 2 "two", 3 "three"];
+	for local i = 1, 3
+		print("  t[", i, "]: ", t[(integer)i], "\n");
+
+	print(" (<name>, <value>) constructor syntax:\n");
+	t = table [(1, 6), (2, 5), (3, 4)];
+	for local i = 1, 3
+		print("  t[", i, "]: ", t[(integer)i], "\n");
+
+	print(" Concatenation:\n");
+	local t1 = table [1 "one", 2 "two", 3 "three"];
+	local t2 = table [4 "four", 5 "five", 6 "six"];
+	local t3 = t1 + t2;
+	for local i = 1, 3
+		print("  t1[", i, "]: ", t1[(integer)i], "\n");
+	for local i = 4, 6
+		print("  t2[", i, "]: ", t2[(integer)i], "\n");
+	for local i = 1, 6
+		print("  t3[", i, "]: ", t3[(integer)i], "\n");
+
+	print(" Concatenation, inplace:\n");
+	t1.+ t2;
+	for local i = 4, 6
+		print("  t2[", i, "]: ", t2[(integer)i], "\n");
+	for local i = 1, 6
+		print("  t1[", i, "]: ", t1[(integer)i], "\n");
+
+	print(" Step by step construction:\n");
+	t = table [.cat "dog"];
+	local m = "mouse";
+	t[m] = "trap";
+	t["bat"] = "sonar";
+	t.water = "flow";
+	local s = t.cat + " " + t.mouse + " " +
+			t["bat"] + " " + t["water"];
+	print("  ", s, "\n");
+	if s != "dog trap sonar flow"
+		throw "Result should be \"dog trap sonar flow\"!";
+
+	print(" key() and index():\n");
+	for local i = 0, sizeof t - 1
+		print("  t.", key(t, i), ": ", index(t, i), "\n");
+
+	print("Table tests done.\n");
+	return 0;
+}

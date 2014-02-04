@@ -1,0 +1,283 @@
+//////////////////////////////////////////////////////
+// guitest.eel - Test of ebgui.eel
+// Copyright (C) 2005, 2007, 2009, 2011 David Olofson
+//////////////////////////////////////////////////////
+
+import "SDL" as SDL;
+import "ebgui" as ebgui;
+import "math";
+
+static do_exit = false;
+static askexit_up = false;
+static screen;
+static bcnt, static tcnt = 0;
+static work, static container;
+static ls = array [];
+
+
+procedure ask_exit
+{
+	if askexit_up
+		return;
+	local r = SDL.Rect [0, 0, 200, 100];
+	r.(x, y) = (screen.(w, h) - r.(w,h)) / 2;
+	local win = ebgui.Window(r);
+	win:SetAlign("grid", 1, 2, nil, vector [3, 1]);
+	ebgui.Label(win, "Really quit?");
+	local p = ebgui.Panel(win, "none");
+	p:SetAlign("grid", 2, 1);
+	ebgui.Button(p, "Yes", procedure(self) { do_exit = true; });
+	local b = ebgui.Button(p, "No", procedure(self)
+			{
+				self.win:Delete();
+				askexit_up = false;
+			});
+	b.win = win;
+	ebgui.SetModal(win);
+	ebgui.SetFocus(b);
+	askexit_up = true;
+}
+
+
+procedure spawn(what)
+{
+	switch what % 11
+	  case 0
+	  {
+		ebgui.Button(container, "Button " +
+				(string)(bcnt + 1),
+				procedure(self)
+				{
+					print(self.caption,
+							" clicked!\n");
+				});
+		bcnt += 1;
+	  }
+	  case 1
+	  {
+		ebgui.Toggle(container, "Toggle " +
+				(string)(tcnt + 1),
+				procedure(self)
+				{
+					if self.state
+						print(self.caption, " down!\n");
+					else
+						print(self.caption, " up!\n");
+				});
+		tcnt += 1;
+	  }
+	  case 2
+		container = ebgui.Panel(container);
+	  case 3
+		container = ebgui.Panel(container, "flat");
+	  case 4
+	  {
+		local c = ebgui.Panel(container);
+		c.colrowratio = 0;
+		c.rowratio = vector [6, 1];
+		local p = ebgui.Plotter(c, -50, 50);
+		c = ebgui.Panel(c, "none");
+		c.colrowratio = 1000;
+		c.colratio = vector [6, 1, 1];
+		local hs = ebgui.HSlider(c,
+				procedure(self, v)
+				{
+					self.plotter:Input(v);
+				},
+				function(self, v)
+				{
+					return v * 100 - 50;
+				},
+				function(self, v)
+				{
+					return (v + 50) / 100;
+				});
+		hs.plotter = p;
+		local b = ebgui.Button(c, "-",
+				procedure(self)
+				{
+					self.plotter.min *= 1.25;
+					self.plotter.max *= 1.25;
+					self.plotter:Invalidate();
+				});
+		b.plotter = p;
+		b = ebgui.Button(c, "+",
+				procedure(self)
+				{
+					self.plotter.min /= 1.25;
+					self.plotter.max /= 1.25;
+					self.plotter:Invalidate();
+				});
+		b.plotter = p;
+	  }
+	  case 5
+		ebgui.HSlider(container,
+				procedure(self, v)
+				{
+					print("value = ",
+						v, "\n");
+				},
+				function(self, v)
+				{
+					return v * 100;
+				},
+				function(self, v)
+				{
+					return v / 100;
+				});
+	  case 6
+	  {
+		local l = ebgui.Lissajous(container, 256);
+		l.time = 0;
+		ls.+ l;
+	  }
+	  case 7
+		ebgui.LineEditor(container, "Edit");
+	  case 8
+	  {
+		local tb = ebgui.TextBox(container);
+		tb:Add("This is an EBGUI TextBox.");
+		tb:Add("It is intended for scrolling message log displays,");
+		tb:Add("and similar applications, where editing is not needed.");
+		for local i = 4, 40
+			tb:Add("TextBox line #" + (string)i);
+		tb:GoToTop();
+	  }
+	  case 9
+	  {
+		local g = ebgui.Graph(container);
+		local dots = g:Curve("Dot Curve", "dot", 255, 64, 0);
+		local squares = g:Curve("Square Curve", "square", 0, 255, 0);
+		local boxes = g:Curve("Box Curve", "box", 0, 64, 255);
+		local rings = g:Curve("Ring Curve", "ring", 200, 64, 200);
+		local lines = g:Curve("Line Curve", "none", 200, 200, 200);
+		for local i = 0, 1, .01
+		{
+			dots:Add(i, .5 * sin(i * 2 * PI));
+			squares:Add(i, .5 * sin(i * 2 * PI + PI / 4));
+			boxes:Add(i, .5 * sin(i * 2 * PI + PI / 2));
+			rings:Add(i, .5 * sin(i * 2 * PI + PI * 3 / 4));
+			lines:Add(i, .25 * sin(i * 6 * PI));
+		}
+		dots:AutoScale(true, true);
+		squares:AutoScale(true, true);
+		boxes:AutoScale(true, true);
+		rings:AutoScale(true, true);
+		lines:AutoScale(true, true);
+	  }
+	  case 10
+		ebgui.VSlider(container,
+				procedure(self, v)
+				{
+					print("value = ",
+						v, "\n");
+				},
+				function(self, v)
+				{
+					return v * 100;
+				},
+				function(self, v)
+				{
+					return v / 100;
+				});
+	ebgui.Invalidate();
+}
+
+
+export function main<args>
+{
+	local bpp = 0;
+	local flags = SDL.SWSURFACE | SDL.RESIZABLE;
+	screen = SDL.SetVideoMode(640, 480, bpp, flags);
+	SDL.EnableKeyRepeat(250, 30);
+	SDL.SetCaption("EELBox GUI Test", args[0]);
+	ebgui.Open(screen);
+
+	local gui = ebgui.Root();
+	gui.colrowratio = 0;
+	gui.rowratio = vector [2, 20];
+	local sb = ebgui.Panel(gui)
+		:SetAlign("grid", 7, 2);
+	sb.colrowratio = 1000;
+	ebgui.Button(sb, "CLEAR", procedure(self)
+			{
+				delete(ls);
+				work:DeleteWidgets();
+				container = work;
+			});
+	ebgui.Button(sb, "Button", procedure(self) { spawn(0); } );
+	ebgui.Button(sb, "Toggle", procedure(self) { spawn(1); } );
+	ebgui.Button(sb, "Panel", procedure(self) { spawn(2); } );
+	ebgui.Button(sb, "FlatPanel", procedure(self) { spawn(3); } );
+	ebgui.Button(sb, "Plotter", procedure(self) { spawn(4); } );
+	ebgui.Button(sb, "EXIT", procedure(self) { ask_exit(); });
+	
+	ebgui.Button(sb, "HSlider", procedure(self) { spawn(5); } );
+	ebgui.Button(sb, "VSlider", procedure(self) { spawn(10); } );
+	ebgui.Button(sb, "Lissajous", procedure(self) { spawn(6); } );
+	ebgui.Button(sb, "LineEditor", procedure(self) { spawn(7); } );
+	ebgui.Button(sb, "TextBox", procedure(self) { spawn(8); } );
+	ebgui.Button(sb, "Graph", procedure(self) { spawn(9); } );
+	work, container = ebgui.Panel(gui, "flat");
+	local last_tick = SDL.GetTicks();
+	while not do_exit
+	{
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYDOWN
+			  {
+				switch ev.sym
+				  case SDL.KF1, SDL.KF2, SDL.KF3, SDL.KF4,
+						SDL.KF5, SDL.KF6, SDL.KF7,
+						SDL.KF8, SDL.KF9, SDL.KF10,
+						SDL.KF11
+					spawn(ev.sym - SDL.KF1);
+				  case SDL.KF12
+				  	spawn(last_tick);
+				  default
+					ebgui.Dispatch(ev);
+			  }
+			  case SDL.VIDEOEXPOSE
+				ebgui.Invalidate();
+			  case SDL.VIDEORESIZE
+			  {
+				screen = SDL.SetVideoMode(ev.w, ev.h, bpp, flags);
+				gui:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
+				ebgui.Invalidate();
+			  }
+			  case SDL.QUIT
+				ask_exit();
+			  default
+				ebgui.Dispatch(ev);
+		}
+
+		local tick = SDL.GetTicks();
+		local dt = tick - last_tick;
+		last_tick = tick;
+		if sizeof ls and dt and not askexit_up
+			for local i = 0, sizeof ls - 1
+			{
+				local t = ls[i].time;
+				for local s = 0, dt - 1
+				{
+				
+					ls[i]:Input(sin(t), cos(t * 1.1));
+					t += .02;
+				}
+				ls[i].time = t;
+			}
+
+		local dr = array [];
+		ebgui.Refresh(dr);
+		if sizeof dr
+			SDL.Update(dr);
+		SDL.Delay(10);
+	}
+
+	ebgui.Close();
+	return 0;
+}

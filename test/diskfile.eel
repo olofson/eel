@@ -1,0 +1,24 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+import "io";
+
+export function main<args>
+{
+	local f = file ["wc-input.txt", "rb"];
+	local b = "";
+	while true
+	{
+		try
+			b = read(f, 32);
+		except
+			return 0;
+		for local c = 0, sizeof b - 1
+			if b[c] < ' ' or b[c] >= 127
+				b[c] = '.';
+		print("\"", b, "\"\n");
+	}
+	return 0;
+}

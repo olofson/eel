@@ -1,0 +1,15 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2007 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	while true
+	{
+		local dt = sleep(100);
+		if(dt)
+			print(dt, "\n");
+	}
+	return 0;
+}

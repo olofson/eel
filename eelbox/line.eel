@@ -1,0 +1,39 @@
+/////////////////////////////////////////////
+// line.eel - Simple line drawing functions
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+import "SDL", "math";
+
+export procedure line(s, c, x0, y0, x1, y1)
+{
+	x0, y0, x1, y1 = (real)(x0, y0, x1, y1);
+	local dx, local dy = x1 - x0, y1 - y0;
+	Plot(s, c, x0, y0);
+	if abs(dx) > abs(dy)
+	{
+		dy /= dx;
+		if dx < 0
+			dx, dy = -1, -dy;
+		else
+			dx = 1;
+		while abs(x0 - x1) > 1
+		{
+			x0, y0 += dx, dy;
+			Plot(s, c, x0, y0);
+		}
+	}
+	else if dy
+	{
+		dx /= dy;
+		if dy < 0
+			dy, dx = -1, -dx;
+		else
+			dy = 1;
+		while abs(y0 - y1) > 1
+		{
+			x0, y0 += dx, dy;
+			Plot(s, c, x0, y0);
+		}
+	}
+}

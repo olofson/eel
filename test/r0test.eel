@@ -1,0 +1,28 @@
+// Test case for the "accidental cleaning of R[0]" bug.
+
+static v;
+
+procedure p2
+{
+	local t = [];
+	v = t;
+}
+
+procedure p
+{
+	try
+		throw "!!!!!!!";
+	except
+	{
+		print(exception, "\n");
+		p2();
+	}
+}
+
+export function main<args>
+{
+	p();
+	print(v, "\n");
+	v = nil;
+	return 0;
+}

@@ -1,0 +1,148 @@
+////////////////////////////////////////////////
+// ebtest.eel - EELBox Test
+// Copyright (C) 2005, 2007, 2010 David Olofson
+////////////////////////////////////////////////
+
+import "SDL";
+
+static IM, static IA, static IC, static LAST = 0;
+
+procedure rnd_reset
+{
+	IM = 139968;
+	IA = 3877;
+	IC = 29573;
+	LAST = 42;
+}
+
+rnd_reset();
+
+function rnd(max)
+{
+	LAST = (LAST * IA + IC) % IM;
+	return (max * LAST) / IM;
+}
+
+procedure cq
+{
+	local ev = PollEvent();
+	if not ev
+		return;
+	switch ev.type
+	  case KEYUP
+		if ev.sym == KESCAPE
+			throw "User escaped.";
+	  case MOUSEBUTTONUP
+		throw "User klicked.";
+	  case QUIT
+		throw "User escaped.";
+}
+
+export function main<args>
+{
+	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
+	SetCaption("EELBox Test", args[0]);
+	ShowCursor(0);
+
+	// Tuning in...
+	local start = GetTicks();
+	local dr = Rect[0, 0, screen.w, 1];
+	local i = 0;
+	while true
+	{
+		local t = GetTicks() - start;
+		if t > 3000
+			break;
+		for local y = 0, screen.h - 1
+		{
+			dr.y = y;
+			local c = MapColor(screen, i, i, i);
+			FillRect(nil, dr, c);
+			if rnd(3100) < t
+				continue;
+			if t > 2000
+				i = rnd(255) * (3000 - t) / 1000;
+			else
+				i = rnd(255);
+		}
+		Flip();
+		Delay(0);	// In case we don't have retrace sync...
+		cq();
+	}
+
+	// Pixel noise
+	rnd_reset();
+	dr.w = screen.w;
+	dr.h = 1;
+	for local y = 0, screen.h - 1
+	{
+		local lock = LockSurface(screen);
+		for local x = 0, screen.w - 1
+		{
+			local c = MapColor(screen, rnd(255), rnd(255), rnd(255));
+			Plot(lock, c, x, y);
+		}
+		UnlockSurface(lock);
+		dr.x = 0;
+		dr.y = y;
+		Update(dr);
+		Delay(0);
+		cq();
+	}
+	Delay(1000);
+
+	// Render some color scales - pixel by pixel
+	local x2c, local y2c = 256 / screen.(w, h);
+	start = GetTicks();
+	while true
+	{
+		local t = GetTicks() - start;
+		if t > 3000
+			break;
+		local z = 255 * t / 3000;
+		local lock = LockSurface(screen);
+		for local x = 0, screen.w - 1
+			for local y = 0, screen.h - 1
+			{
+				local c = MapColor(screen, x * x2c, y * y2c, z);
+				Plot(lock, c, x, y);
+			}
+		UnlockSurface(lock);
+		Flip();
+		Delay(0);
+		cq();
+	}
+
+	// Some screen->screen blitting
+	local sr = Rect[screen.(w, h, w, h) / 2];
+	for local z = 0, (screen.w |< screen.h) / 2
+	{
+		dr.x, dr.y = z;
+		BlitSurface(nil, sr, nil, dr);
+		Update(dr);
+		Delay(0);
+		cq();
+	}
+	Delay(1000);
+
+	// Hysterical rectangles
+	rnd_reset();
+	start = GetTicks();
+	while GetTicks() < start + 3000
+	{
+		for i = 0, 200
+		{
+			dr.w = rnd(screen.w / 5);
+			dr.h = rnd(screen.h / 5);
+			dr.x = rnd(screen.w - dr.w + 1);
+			dr.y = rnd(screen.h - dr.h + 1);
+			local c = MapColor(screen, rnd(255), rnd(255), rnd(255));
+			FillRect(nil, dr, c);
+		}
+		Flip();
+		Delay(0);
+		cq();
+	}
+
+	return 0;
+}

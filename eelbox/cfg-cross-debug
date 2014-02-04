@@ -1,0 +1,2 @@
+#!/bin/sh
+CFLAGS="-O2" cross-configure --enable-debug --enable-epm

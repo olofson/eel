@@ -1,0 +1,173 @@
+///////////////////////////////////////////////////////////////////////////
+// EEL Built-In Library v0.3.4
+///////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2005, 2009, 2011 David Olofson
+//
+// NOTE:	This file is converted into C string format and
+//		included by e_builtin.c. If changes are made to
+//		this file, EEL must be rebuilt and reinstalled!
+//
+// This library is free software;  you can redistribute it and/or modify it
+// under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation;  either version 2.1 of the License, or (at
+// your option) any later version.
+//
+// This library  is  distributed  in  the hope that it will be useful,  but
+// WITHOUT   ANY   WARRANTY;   without   even   the   implied  warranty  of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser
+// General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with this library;  if not, write to the Free Software Foundation,
+// Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+///////////////////////////////////////////////////////////////////////////
+
+module	eelbil;
+export import "eelbil_c";
+
+//////////////////////////////////////////////////////////////////////////
+// Static variables
+//
+
+// EEL Version
+static _eel_version = [__version(0), __version(1), __version(2)];
+if __version(3)
+	_eel_version[3] = __version(3);
+
+// EEL Built-In Library Version
+static _lib_version = [0, 3, 4, "beta"];
+
+
+//////////////////////////////////////////////////////////////////////////
+// These return arrays with thre or more elements;
+//	[0]: major version (major changes)
+//	[1]: minor version (additions only)
+//	[2]: micro version (bug fixes only)
+//
+// Any elements beyond index 2 are for builds and releases only, and
+// should normally not be considered when checking versions.
+//
+export function eel_version
+{
+	return _eel_version;
+}
+
+export function eelbil_version
+{
+	return _lib_version;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Returns a table containing info about exception 'x';
+//	code:		Integer exception code
+//	name:		Exception name ("XSOMETHING")
+//	description:	Human readable description
+//
+export function exception_info(x)
+{
+	local r = table [];
+	r.code = x;
+	try
+		r.name = exception_name(x);
+	except
+		r.name = "";
+//	try
+//		r.description = __xdesc(x);
+//	except
+		r.description = "(No description available.)";
+	return r;
+}
+
+try
+	for local x = 0, 99999
+		__exports()[exception_name((integer)x)] = (integer)x;
+
+
+//////////////////////////////////////////////////////////////////////////
+// Deep cloning tool
+//
+export function deepclone(src)[_level]
+{
+	if specified _level
+		local level = _level + 1;
+	else
+		level = 0;
+	if level > 100
+		throw "deepclone(): Infinite recursion aborted!";
+	switch typeof src
+	  case array
+	  {
+		local a = [];
+		for local i = 0, sizeof src - 1
+			a[i] = deepclone(src[i], level);
+		return a;
+	  }
+	  case table
+	  {
+		local t = table [];
+		for local i = 0, sizeof src - 1
+			t[key(src, i)] = deepclone(index(src, i), level);
+		return t;
+	  }
+	  default
+		return clone src;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// Deep comparison tool
+//
+export function deepcompare(l, r)
+{
+	switch typeof l
+	  case array
+	  {
+		if typeof r != array
+			return false;
+		if sizeof l != sizeof r
+			return false;
+		for local i = 0, sizeof l - 1
+			if not deepcompare(l[i], r[i])
+				return false;
+		return true;
+	  }
+	  case table
+	  {
+		if typeof r != table
+			return false;
+		if sizeof l != sizeof r
+			return false;
+		for local i = 0, sizeof l - 1
+		{
+			local k = key(l, i);
+			if not deepcompare(l[k], r[k])
+				return false;
+		}
+		return true;
+	  }
+	  default
+		return l == r;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// Cleanup logic for modules keeping/building internal state that may
+// prevent them from unloading properly.
+//
+// NOTE:
+//	__cleanup() erases the entire '$' environment! It is only intended
+//	to be used internally by EEL.
+//
+$.cleanup = [];
+
+export procedure __cleanup
+{
+//print("cleaning...\n");
+	for local i = 0, sizeof $.cleanup - 1
+{
+//print("      ", $.cleanup[i].name, "()\n");
+		$.cleanup[i]();
+}
+	delete($);
+//print("   done!\n");
+}

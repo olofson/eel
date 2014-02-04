@@ -1,0 +1,4 @@
+#!/bin/sh
+# -fno-strict-aliasing to deal with an optimization bug in GCC 4.2.2
+#CFLAGS="-O3 -fno-strict-aliasing -Wall" ./configure --prefix=/usr --disable-debug --disable-epm
+CFLAGS="-O3 -g -Wall -lrt" ./configure --prefix=/usr --disable-debug --disable-epm

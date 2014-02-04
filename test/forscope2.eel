@@ -1,0 +1,17 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+// This file should NOT compile!
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	// A 'for' loop with a local (private) iterator
+	for local i = 1, 10
+		print(i);
+
+	// This should fail, because 'i' is not declared!
+	print(i);
+	return 0;
+}

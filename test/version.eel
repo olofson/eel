@@ -1,0 +1,24 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+procedure print_version(v)
+{
+	for local i = 0, sizeof v - 2
+		print(v[i], ".");
+	print(v[sizeof v - 1]);
+}
+
+export function main<args>
+{
+	print("EEL version ");
+	print_version(eel_version());
+	print("\n");
+
+	print("EEL Built-In Library version ");
+	print_version(eelbil_version());
+	print("\n");
+
+	return 0;
+}

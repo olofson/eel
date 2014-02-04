@@ -1,0 +1,105 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2005 David Olofson
+/////////////////////////////////////////////
+
+//
+// Note:
+//	The dummy strings are just to verify that the exception
+//	handling triggers limbo and clean table cleaning properly.
+//	If any of these strings are leaked, there's most probably
+//	a bug in the VM exception handling!
+//
+
+function xreturn(x)
+{
+	local dummy = "exceptions.eel: dummy in xreturn()";
+	try
+	{
+		local dummy2 = "exceptions.eel: dummy2 in xreturn()";
+		local z = 1 / x;
+		return "  Returned from the 'try' block.";
+	}
+	except
+		return "  Returned from the 'except' block.";
+}
+
+function x2return(x)
+{
+	local dummy = "exceptions.eel: dummy in x2return()";
+	try
+	{
+		local dummy2 = "exceptions.eel: dummy2 in x2return()";
+		local z = 1 / (x + 1);
+		try
+		{
+			local dummy3 = "exceptions.eel: dummy3 in x2return()";
+			z = 1 / x;
+			return "  Returned from the inner 'try' block.";
+		}
+		except
+			return "  Returned from the inner 'except' block.";
+	}
+	except
+		return "  Returned from the outer 'except' block.";
+}
+
+export function main<args>
+{
+	print("Exception tests:\n");
+
+	local x, local y = 0, 0;
+
+	print("\nX test 1:\n");
+	print("  This won't work:\n");
+	try
+	{
+		local dummy = "exceptions.eel: dummy in main()";
+		x = x / y;
+	}
+	except
+		print("  Like I said; didn't work...\n");
+
+	print("\nX test 2:\n");
+	try
+	{
+		local dummy2 = "exceptions.eel: dummy2 in main()";
+		print("  This will work, on the second try: ", x / y, "\n");
+	}
+	except
+	{
+		print("  Oops! Fixing things and retrying...\n");
+		x, y = 42, 2;
+		retry;
+	}
+
+	print("\nX test 3:\n");
+	try
+	{
+		local dummy4 = "exceptions.eel: dummy4 in main()";
+		// Recurse deep and throw an exception from down there
+		procedure deepx(z)
+		{
+			local dummy5 = "exceptions.eel: dummy5 in deepx()";
+			z = z - 1;
+			print("  ", 1 / z);
+			deepx(z);
+		}
+		deepx(10);
+	}
+	print("\n");
+
+	print("\nX test 4:\n");
+	print(xreturn(1), "\n");
+	print(xreturn(0), "\n");
+	print("\n");
+
+	print("\nX test 5:\n");
+	print(x2return(1), "\n");
+	print(x2return(0), "\n");
+	print(x2return(-1), "\n");
+	print("\n");
+
+	print("\nException tests done.\n");
+	return 0;
+}

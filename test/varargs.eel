@@ -1,0 +1,164 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright (C) 2002-2005 David Olofson
+/////////////////////////////////////////////
+
+procedure verify(f, result, correct)
+{
+	print("  ", f.name, " returned \"", result,"\" ; should be \"", correct);
+	if result == correct
+		print("\" PASS\n");
+	else
+	{
+		print("\" FAIL\n");
+		throw "Incorrect result!";
+	}
+}
+
+procedure try_call(f, mask)
+{
+	local m = 0;
+	try
+	{
+		verify(f, f(), "");
+		m = m | 0b1;
+	}
+	except
+		print("  ", f.name, " won't accept no arguments.\n");
+	try
+	{
+		verify(f, f("a"), "a");
+		m = m | 0b10;
+	}
+	except
+		print("  ", f.name, " won't accept 1 argument.\n");
+	try
+	{
+		verify(f, f("a", "b"), "ab");
+		m = m | 0b100;
+	}
+	except
+		print("  ", f.name, " won't accept 2 arguments.\n");
+	try
+	{
+		verify(f, f("a", "b", "c"), "abc");
+		m = m | 0b1000;
+	}
+	except
+		print("  ", f.name, " won't accept 3 arguments.\n");
+	try
+	{
+		verify(f, f("a", "b", "c", "A"), "abcA");
+		m = m | 0b10000;
+	}
+	except
+		print("  ", f.name, " won't accept 4 arguments.\n");
+	try
+	{
+		verify(f, f("a", "b", "c", "A", "B"), "abcAB");
+		m = m | 0b100000;
+	}
+	except
+		print("  ", f.name, " won't accept 5 arguments.\n");
+	try
+	{
+		verify(f, f("a", "b", "c", "A", "B", "C"), "abcABC");
+		m = m | 0b1000000;
+	}
+	except
+		print("  ", f.name, " won't accept 6 arguments.\n");
+	if m == mask
+		print("    PASS\n");
+	else
+	{
+		print("    FAIL\n");
+		throw "Incorrect result!";
+	}
+}
+
+function fixed(a, b, c)
+{
+	return a + b + c;
+}
+
+function optional[a, b, c]
+{
+	local r = "";
+	if specified a
+		r = r + a;
+	if specified b
+		r = r + b;
+	if specified c
+		r = r + c;
+	return r;
+}
+
+function tuple<a, b, c>
+{
+	local r = "";
+	for local t = 0, tuples - 1
+		r = r + a[t] + b[t] + c[t];
+	return r;
+}
+
+function fixed_optional(a)[b, c]
+{
+	local r = a;
+	if specified b
+		r = r + b;
+	if specified c
+		r = r + c;
+	return r;
+}
+
+function fixed_tuple(a)<b, c>
+{
+	local r = a;
+	for local t = 0, tuples - 1
+		r = r + b[t] + c[t];
+	return r;
+}
+
+export function main<args>
+{
+	print("Varargs tests:\n");
+
+	print("\nEarly binding (compile time checking):\n");
+	print("------------------------------------------\n");
+	verify(fixed, fixed("a", "b", "c"), "abc");
+	print("------------------------------------------\n");
+	verify(optional, optional(), "");
+	verify(optional, optional("a"), "a");
+	verify(optional, optional("a", "b"), "ab");
+	verify(optional, optional("a", "b", "c"), "abc");
+	print("------------------------------------------\n");
+	verify(tuple, tuple(), "");
+	verify(tuple, tuple("a", "b", "c"), "abc");
+	verify(tuple, tuple("a", "b", "c", "A", "B", "C"), "abcABC");
+	print("------------------------------------------\n");
+	verify(fixed_optional, fixed_optional("a"), "a");
+	verify(fixed_optional, fixed_optional("a", "b"), "ab");
+	verify(fixed_optional, fixed_optional("a", "b", "c"), "abc");
+	print("------------------------------------------\n");
+	verify(fixed_tuple, fixed_tuple("a"), "a");
+	verify(fixed_tuple, fixed_tuple("a", "b", "c"), "abc");
+	verify(fixed_tuple, fixed_tuple("a", "b", "c", "B", "C"), "abcBC");
+	print("------------------------------------------\n");
+
+	print("\nLate binding (run time checking):\n");
+	print("------------------------------------------\n");
+	try_call(fixed, 0b0001000);
+	print("------------------------------------------\n");
+	try_call(optional, 0b0001111);
+	print("------------------------------------------\n");
+
+	try_call(tuple, 0b1001001);
+	print("------------------------------------------\n");
+	try_call(fixed_optional, 0b0001110);
+	print("------------------------------------------\n");
+	try_call(fixed_tuple, 0b0101010);
+	print("------------------------------------------\n");
+
+	print("Varargs tests done.\n");
+	return 0;
+}
