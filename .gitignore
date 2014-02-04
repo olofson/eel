@@ -1,3 +1,9 @@
+
+docs/Makefile
+include/Makefile
+include/EEL_platform.h
+include/EEL_version.h
+
 # http://www.gnu.org/software/automake
 
 Makefile.in
