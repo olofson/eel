@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_io.c - EEL File and Memory File Classes
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2006, 2009 David Olofson
+ * Copyright (C) 2005-2006, 2009, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -190,7 +190,7 @@ static EEL_xno mf_construct(EEL_vm *vm, EEL_types type,
 	}
 	else
 	{
-		if((initc != 1) || (EEL_TYPE(initv) != EEL_CDSTRING))
+		if((initc != 1) || ((EEL_classes)EEL_TYPE(initv) != EEL_CDSTRING))
 		{
 			eel_o_free(eo);
 			return EEL_XARGUMENTS;
@@ -287,7 +287,7 @@ static EEL_xno mf_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	}
 	else if(strcmp(is, "buffer") == 0)
 	{
-		if(EEL_TYPE(op2) != EEL_CDSTRING)
+		if((EEL_classes)EEL_TYPE(op2) != EEL_CDSTRING)
 			return EEL_XNEEDDSTRING;
 		if(mf->buffer)
 			eel_disown(mf->buffer);
@@ -375,14 +375,14 @@ static EEL_xno read_type(EEL_vm *vm)
 		memcpy(buf, fb->buffer + mf->position, count);
 		mf->position += count;
 	}
-	else if(EEL_TYPE(args) == EEL_CSTRING)
+	else if((EEL_classes)EEL_TYPE(args) == EEL_CSTRING)
 	{
 		EEL_string *fb = o2EEL_string(args->objref.v);
 		if(count > fb->length)
 			return EEL_XEOF;
 		memcpy(buf, fb->buffer, count);
 	}
-	else if(EEL_TYPE(args) == EEL_CDSTRING)
+	else if((EEL_classes)EEL_TYPE(args) == EEL_CDSTRING)
 	{
 		EEL_dstring *fb = o2EEL_dstring(args->objref.v);
 		if(count > fb->length)
@@ -397,30 +397,36 @@ static EEL_xno read_type(EEL_vm *vm)
 	{
 	  case EEL_TREAL:
 	  {
+		union {
+			char		c[sizeof(EEL_real)];
+			EEL_real	r;
+		} cvt;
 #if EEL_BYTEORDER == EEL_BIG_ENDIAN
-		r->real.v = *((EEL_real *)&buf);
+		memcpy(&cvt.c, buf, sizeof(EEL_real));
 #else
-		char cvt[sizeof(EEL_real)];
 		int n;
 		for(n = 0; n < sizeof(EEL_real); ++n)
-			cvt[sizeof(EEL_real) - 1 - n] = buf[n];
-		r->real.v = *((EEL_real *)&cvt);
+			cvt.c[sizeof(EEL_real) - 1 - n] = buf[n];
 #endif
+		r->real.v = cvt.r;
 		r->type = EEL_TREAL;
 		return 0;
 	  }
 	  case EEL_TINTEGER:
 	  {
+		union {
+			char		c[4];
+			EEL_int32	i;
+		} cvt;
 #if EEL_BYTEORDER == EEL_BIG_ENDIAN
-		r->integer.v = *((int *)&buf);
+		memcpy(&cvt.c, buf, sizeof(cvt.i));
 #else
-		char cvt[4];
-		cvt[3] = buf[0];
-		cvt[2] = buf[1];
-		cvt[1] = buf[2];
-		cvt[0] = buf[3];
-		r->integer.v = *((int *)&cvt);
+		cvt.c[3] = buf[0];
+		cvt.c[2] = buf[1];
+		cvt.c[1] = buf[2];
+		cvt.c[0] = buf[3];
 #endif
+		r->integer.v = cvt.i;
 		r->type = EEL_TINTEGER;
 		return 0;
 	  }
@@ -595,41 +601,47 @@ static EEL_xno io_write(EEL_vm *vm)
 	{
 		EEL_value *v = args + i;
 		EEL_xno x;
-		switch(EEL_TYPE(v))
+		switch((EEL_classes)EEL_TYPE(v))
 		{
 		  case EEL_TREAL:
 		  {
+			union {
+				char		c[sizeof(EEL_real)];
+				EEL_real	r;
+			} cvt;
 #if EEL_BYTEORDER == EEL_BIG_ENDIAN
-			char lb[sizeof(EEL_real)];
-			*((EEL_real *)&lb) = v->real.v;
+			cvt.r = v->real.v;
+			x = wrd.write(vm, &wrd, cvt.c, sizeof(EEL_real));
 #else
-			char cvt[sizeof(EEL_real)];
 			char lb[sizeof(EEL_real)];
 			int n;
-			*((EEL_real *)&cvt) = v->real.v;
+			cvt.r = v->real.v;
 			for(n = 0; n < sizeof(EEL_real); ++n)
-				lb[n] = cvt[sizeof(EEL_real) - 1 - n];
-#endif
+				lb[n] = cvt.c[sizeof(EEL_real) - 1 - n];
 			x = wrd.write(vm, &wrd, lb, sizeof(EEL_real));
+#endif
 			if(x)
 				return x;
 			break;
 		  }
 		  case EEL_TINTEGER:
 		  {
+			union {
+				char		c[4];
+				EEL_int32	i;
+			} cvt;
 #if EEL_BYTEORDER == EEL_BIG_ENDIAN
-			char lb[4];
-			*((int *)&lb) = v->integer.v;
+			cvt.i = v->integer.v;
+			x = wrd.write(vm, &wrd, cvt.c, 4);
 #else
-			char cvt[4];
 			char lb[4];
-			*((int *)&cvt) = v->integer.v;
-			lb[0] = cvt[3];
-			lb[1] = cvt[2];
-			lb[2] = cvt[1];
-			lb[3] = cvt[0];
-#endif
+			cvt.i = v->integer.v;
+			lb[0] = cvt.c[3];
+			lb[1] = cvt.c[2];
+			lb[2] = cvt.c[1];
+			lb[3] = cvt.c[0];
 			x = wrd.write(vm, &wrd, lb, 4);
+#endif
 			if(x)
 				return x;
 			break;

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_math.c - EEL standard math module
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2006, 2009-2010 David Olofson
+ * Copyright (C) 2005-2006, 2009-2010, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -61,7 +61,7 @@ static EEL_xno m_abs(EEL_vm *vm)
 	EEL_vector *v, *r;
 	EEL_value *arg = vm->heap + vm->argv;
 	int i, size;
-	switch(EEL_TYPE(arg))
+	switch((EEL_classes)EEL_TYPE(arg))
 	{
 	  case EEL_TNIL:
 	  case EEL_TBOOLEAN:
@@ -95,7 +95,7 @@ static EEL_xno m_abs(EEL_vm *vm)
 	  default:
 		return EEL_XWRONGTYPE;
 	}
-	switch(EEL_TYPE(arg))
+	switch((EEL_classes)EEL_TYPE(arg))
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_U16:

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_register.c - EEL operator registry
 ---------------------------------------------------------------------------
- * Copyright (C) 2002, 2005-2006, 2009-2011 David Olofson
+ * Copyright (C) 2002, 2005-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -32,7 +32,7 @@
 
 void eel_register_essx(EEL_vm *vm, EEL_types t, EEL_symbol *s)
 {
-	switch(t)
+	switch((EEL_classes)t)
 	{
 	  case EEL_TREAL:	VMP->state->tokentab[ESSX_REAL] = s; break;
 	  case EEL_TINTEGER:	VMP->state->tokentab[ESSX_INTEGER] = s; break;
@@ -47,6 +47,8 @@ void eel_register_essx(EEL_vm *vm, EEL_types t, EEL_symbol *s)
 	  case EEL_CVECTOR_D:	VMP->state->tokentab[ESSX_VECTOR_D] = s; break;
 	  case EEL_CVECTOR_F:	VMP->state->tokentab[ESSX_VECTOR_F] = s; break;
 	  case EEL_CDSTRING:	VMP->state->tokentab[ESSX_DSTRING] = s; break;
+	  default:
+		break;
 	}
 }
 
@@ -74,7 +76,7 @@ static inline EEL_object *eel_cid2c(EEL_vm *vm, int cid)
 static inline int eel_c2cid(EEL_object *c)
 {
 	EEL_classdef *cd;
-	if(c->type != EEL_CCLASS)
+	if((EEL_classes)c->type != EEL_CCLASS)
 		return -1;
 	cd = o2EEL_classdef(c);
 	return cd->typeid;
@@ -401,7 +403,7 @@ void eel_set_unregister(EEL_object *classdef, EEL_unregister_cb ur)
 {
 	EEL_vm *vm = classdef->vm;
 	EEL_state *es = VMP->state;
-	if(classdef->type != EEL_CCLASS)
+	if((EEL_classes)classdef->type != EEL_CCLASS)
 		eel_ierror(es, "Object %s passed to eel_set_unregister() "
 				"is not a classdef!", eel_o_stringrep(classdef));
 	o2EEL_classdef(classdef)->unregister = ur;
@@ -413,7 +415,7 @@ void eel_set_classdata(EEL_object *classdef, void *classdata)
 {
 	EEL_vm *vm = classdef->vm;
 	EEL_state *es = VMP->state;
-	if(classdef->type != EEL_CCLASS)
+	if((EEL_classes)classdef->type != EEL_CCLASS)
 		eel_ierror(es, "Object %s passed to eel_set_unregister() "
 				"is not a classdef!", eel_o_stringrep(classdef));
 	o2EEL_classdef(classdef)->classdata = classdata;

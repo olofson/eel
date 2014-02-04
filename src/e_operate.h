@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_operate.h - Operations on values and objects
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2007, 2009-2011 David Olofson
+ * Copyright (C) 2005-2007, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -1438,7 +1438,7 @@ static inline EEL_xno eel_operate(EEL_value *left, int binop, EEL_value *right,
 		x = eel__operate(left, binop, right, &rv);
 		if(x)
 			return x;
-		if(EEL_TILLEGAL == rv.type)
+		if((EEL_nontypes)rv.type == EEL_TILLEGAL)
 		{
 			eel_vmdump(NULL, "Operator generated no result! "
 					"Metamethod bug?");
@@ -1456,7 +1456,7 @@ static inline EEL_xno eel_ipoperate(EEL_value *left, int binop, EEL_value *right
 		x = eel__ipoperate(left, binop, right, &rv);
 		if(x)
 			return x;
-		if(EEL_TILLEGAL == rv.type)
+		if((EEL_nontypes)rv.type == EEL_TILLEGAL)
 		{
 			eel_vmdump(NULL, "Operator generated no result! "
 					"Metamethod bug?");

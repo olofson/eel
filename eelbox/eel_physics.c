@@ -20,8 +20,6 @@
  */
 
 #include <stdio.h>
-
-
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +42,8 @@ typedef struct
 	EEL_value	cx;
 	EEL_value	cy;
 	EEL_value	ca;
+
+	uint32_t	rngstate;	/* Global RNG state */
 } EPH_moduledata;
 
 /*FIXME: Can't get moduledata from within constructors... */
@@ -104,6 +104,7 @@ static EEL_xno space_construct(EEL_vm *vm, EEL_types type,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EPH_space *space;
+	EPH_zmap *zmap;
 	EEL_value v;
 	EEL_xno xno;
 	EEL_object *eo = eel_o_alloc(vm, sizeof(EPH_space), type);
@@ -119,6 +120,16 @@ static EEL_xno space_construct(EEL_vm *vm, EEL_types type,
 	space->vxmax = space->vymax = 1e10f;
 	space->integration = EPH_VERLET;
 	space->outputmode = EPH_SEMIEXTRA;
+	space->rngstate = EPH_DEFAULTRNGSEED;
+	zmap = &space->zmap;
+	zmap->w = zmap->h = 10;
+	zmap->data = calloc(zmap->w, zmap->h);
+	if(!zmap->data)
+	{
+		eel_disown(eo);
+		return EEL_XMEMORY;
+	}
+	zmap->scale = 1.0f;
 	eel_o2v(result, eo);
 	return 0;
 }
@@ -198,6 +209,8 @@ static EEL_xno space_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 			eel_d2v(op2, space->impact_damage_z);	return 0;
 	  case EPH_SOVERLAP_CORRECT_Z:
 			eel_d2v(op2, space->overlap_correct_z);	return 0;
+
+	  case EPH_SRNGSEED:	eel_l2v(op2, space->rngstate);	return 0;
 	}
 	return EEL_XWRONGINDEX;
 }
@@ -246,6 +259,8 @@ static EEL_xno space_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 			space->impact_damage_z = eel_v2d(op2);	return 0;
 	  case EPH_SOVERLAP_CORRECT_Z:
 			space->overlap_correct_z = eel_v2d(op2); return 0;
+
+	  case EPH_SRNGSEED:	space->rngstate = eel_v2l(op2);	return 0;
 	}
 	return EEL_XWRONGINDEX;
 }
@@ -1330,7 +1345,7 @@ static EEL_xno eph_force(EEL_vm *vm)
 	EPH_f f = eel_v2d(args + 2);
 	if(EEL_TYPE(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
-	eph_Force(o2EPH_body(args->objref.v), f, a);
+	eph_Force(o2EPH_body(args->objref.v), a, f);
 	return 0;
 }
 
@@ -1428,7 +1443,7 @@ static EEL_xno constraint_construct(EEL_vm *vm, EEL_types type,
 	if(!eo)
 		return EEL_XMEMORY;
 	c = o2EPH_constraint(eo);
-	c->kind = (EPH_constraints)eel_v2l(initv + 1);
+	c->kind = /*(EPH_constraints)*/eel_v2l(initv + 1);
 	if(EEL_TYPE(initv + 3) != eph_md.body_cid)
 	{
 		eel_o_free(eo);
@@ -1760,7 +1775,7 @@ static inline EEL_xno grab_xy(EEL_value *arg, EPH_f *cx, EPH_f *cy)
 		*cx = b->c[EPH_X];
 		*cy = b->c[EPH_Y];
 	}
-	else if(EEL_TYPE(arg) == EEL_CVECTOR_D)
+	else if((EEL_classes)EEL_TYPE(arg) == EEL_CVECTOR_D)
 	{
 		EEL_vector *v = o2EEL_vector(arg->objref.v);
 		if(v->length < 2)
@@ -1796,7 +1811,7 @@ static inline EEL_xno grab_xya(EEL_value *arg, EPH_f *cx, EPH_f *cy, EPH_f *ca)
 		*cy = b->c[EPH_Y];
 		*ca = b->c[EPH_A];
 	}
-	else if(EEL_TYPE(arg) == EEL_CVECTOR_D)
+	else if((EEL_classes)EEL_TYPE(arg) == EEL_CVECTOR_D)
 	{
 		EEL_vector *v = o2EEL_vector(arg->objref.v);
 		if(v->length < 3)
@@ -1919,6 +1934,8 @@ static inline EEL_xno find_body(EEL_vm *vm, EPH_space *space, EPH_body *b,
 		xmax = space->vx + space->vxmax;
 		ymax = space->vy + space->vymax;
 	}
+	else
+		xmin = ymin = xmax = ymax = 0;	/* Warning eliminator */
 	for( ; b; b = b->next)
 	{
 		if(b->killed || !(b->group & mask))
@@ -2036,6 +2053,37 @@ static EEL_xno eph_diskinertia(EEL_vm *vm)
 }
 
 
+/* Set and/or get global RNG state */
+static EEL_xno eph_seed(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	eel_l2v(vm->heap + vm->resv, eph_md.rngstate);
+	if(vm->argc == 1)
+		eph_md.rngstate = eel_v2l(args);
+	return 0;
+}
+
+
+/* Get scaled pseudo-random number from global or specified state RNG */
+static EEL_xno eph_rand(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	double r;
+	if(vm->argc == 1)
+		r = eph_Randomf(&eph_md.rngstate, eel_v2d(args));
+	else
+	{
+		EPH_space *space;
+		if(EEL_TYPE(args) != eph_md.space_cid)
+			return EEL_XWRONGTYPE;
+		space = o2EPH_space(eel_v2o(args));
+		r = eph_Randomf(&space->rngstate, eel_v2d(args + 1));
+	}
+	eel_d2v(vm->heap + vm->resv, r);
+	return 0;
+}
+
+
 /*----------------------------------------------------------
 	Constants and fields
 ----------------------------------------------------------*/
@@ -2087,6 +2135,8 @@ static const EEL_lconstexp eph_spacefields[] =
 	{"impact_return_z",	EPH_SIMPACT_RETURN_Z	},
 	{"impact_damage_z",	EPH_SIMPACT_DAMAGE_Z	},
 	{"overlap_correct_z",	EPH_SOVERLAP_CORRECT_Z	},
+
+	{"rngseed",		EPH_SRNGSEED		},
 
 	{NULL, 0}
 };
@@ -2213,6 +2263,8 @@ EEL_xno eph_init(EEL_vm *vm)
 		return EEL_XMEMORY;
 	}
 
+	eph_md.rngstate = EPH_DEFAULTRNGSEED;
+
 	/* Register class 'space' */
 	c = eel_export_class(m, "physspace", -1, space_construct, space_destruct,
 			NULL);
@@ -2277,6 +2329,8 @@ EEL_xno eph_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "FindAt", 3, 1, 0, eph_findat);
 	eel_export_cfunction(m, 1, "CircleInertia", 3, 0, 0, eph_circleinertia);
 	eel_export_cfunction(m, 1, "DiskInertia", 2, 0, 0, eph_diskinertia);
+	eel_export_cfunction(m, 1, "Seed", 0, 1, 0, eph_seed);
+	eel_export_cfunction(m, 1, "Rand", 1, 1, 0, eph_rand);
 
 	/* Constants and enums */
 	eel_export_lconstants(m, eph_constants);

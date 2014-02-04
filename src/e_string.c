@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_string.c - EEL String Class + string pool
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2006, 2008, 2010-2011 David Olofson
+ * Copyright (C) 2005-2006, 2008, 2010-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -467,7 +467,7 @@ static EEL_xno s_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		return EEL_XWRONGTYPE;
 	op2->type = EEL_TINTEGER;
 
-	switch(op1->objref.v->type)
+	switch((EEL_classes)op1->objref.v->type)
 	{
 	  case EEL_CSTRING:
 	  {
@@ -527,13 +527,13 @@ static EEL_xno s_eq(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	  case EEL_TWEAKREF:
 	  {
 		EEL_object *o = op1->objref.v;
-		if(o->type == EEL_CSTRING)
+		if((EEL_classes)o->type == EEL_CSTRING)
 		{
 			op2->type = EEL_TBOOLEAN;
 			op2->integer.v = (eo == o);
 			return 0;
 		}
-		else if(o->type == EEL_CDSTRING)
+		else if((EEL_classes)o->type == EEL_CDSTRING)
 		{
 			s_compare(eo, op1, op2);
 			op2->type = EEL_TBOOLEAN;
@@ -687,7 +687,7 @@ static EEL_xno s_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	char *buf;
 
 	/* Operand */
-	switch(EEL_TYPE(op1))
+	switch((EEL_classes)EEL_TYPE(op1))
 	{
 	  case EEL_CSTRING:
 	  {

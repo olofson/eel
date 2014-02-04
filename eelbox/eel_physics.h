@@ -22,6 +22,7 @@
 #ifndef EEL_PHYSICS_H
 #define EEL_PHYSICS_H
 
+#include <stdint.h>
 #include "EEL.h"
 
 /*
@@ -36,7 +37,7 @@
 ----------------------------------------------------------*/
 
 /* Set to 1 to enable domain checks that throw EEL exceptions */
-#define	EPH_DOMAIN_CHECKS	0
+#define	EPH_DOMAIN_CHECKS	1
 
 /* HACK: Body bounding circle scale factor for culling. */
 #define	EPH_CULLSCALE		1.5f
@@ -67,6 +68,23 @@ typedef enum
 #define	EPH_DEFAULT_BODY_FLAGS	\
 		(EPH_RESPONSE | EPH_ZRESPONSE)
 #endif
+
+/* Default RNG seed */
+#define	EPH_DEFAULTRNGSEED	16576
+
+/* Returns a pseudo random number in the range [0, 65535] */
+static inline int eph_Random(uint32_t *nstate)
+{
+	*nstate *= 1566083941UL;
+	(*nstate)++;
+	return *nstate * (*nstate >> 16) >> 16;
+}
+
+static inline double eph_Randomf(uint32_t *nstate, double max)
+{
+	return eph_Random(nstate) * max / 65536.0f;
+}
+
 
 /* Physics integrator modes */
 typedef enum
@@ -272,6 +290,9 @@ struct EPH_space
 	/* Accounting */
 	unsigned	active;		/* Currently active bodies */
 	unsigned	constraints;	/* Currently active constraints */
+
+	/* Random numbers */
+	uint32_t	rngstate;	/* Local RNG state */
 };
 EEL_MAKE_CAST(EPH_space)
 typedef enum
@@ -300,7 +321,9 @@ typedef enum
 	EPH_SIMPACT_ABSORB_Z,
 	EPH_SIMPACT_RETURN_Z,
 	EPH_SIMPACT_DAMAGE_Z,
-	EPH_SOVERLAP_CORRECT_Z
+	EPH_SOVERLAP_CORRECT_Z,
+
+	EPH_SRNGSEED
 } EPH_spacefields;
 
 

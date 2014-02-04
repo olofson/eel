@@ -290,7 +290,7 @@ int eel_relex(EEL_state *es, int flags);
  * back up the stack to older items.
  *
  * Returns the bio position of the requested lexer
- * item, or -1 if the item is uninitialize, or -2
+ * item, or -1 if the item is uninitialized, or -2
  * if 'item' has fallen out the bottom of the stack.
  */
 int eel_lex_getpos(EEL_state *es, int item);

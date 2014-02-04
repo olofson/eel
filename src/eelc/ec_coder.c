@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_coder.c - EEL VM Code Generation Tools
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2011 David Olofson
+ * Copyright (C) 2004-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -216,7 +216,7 @@ const char *eel_ol_name(EEL_operands oprs)
 
 #define	BS		(EEL_SBUFSIZE - 12)
 #define	MAXWIDTH	99
-const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
+static const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 		unsigned char *code)
 {
 	EEL_function *f;
@@ -224,7 +224,7 @@ const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 	const char *tmp = NULL;
 	const char *tmp2 = NULL;
 	char *rbuf, *buf;
-	if(fo->type != EEL_CFUNCTION)
+	if((EEL_classes)fo->type != EEL_CFUNCTION)
 		return "INTERNAL ERROR";
 	f = o2EEL_function(fo);
 	rbuf = eel_salloc(es);
@@ -314,6 +314,8 @@ const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 		snprintf(buf, BS, "SV%d", A);
 	  EEL_IPHUVAL
 		snprintf(buf, BS, "R%d^%d", A, B);
+	  EEL_IPHARGS
+	  EEL_IPUSHTUP
 
 	  /* Function calls */
 	  EEL_ICALL
@@ -603,7 +605,7 @@ const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc)
 {
 	EEL_function *f;
-	if(fo->type != EEL_CFUNCTION)
+	if((EEL_classes)fo->type != EEL_CFUNCTION)
 		return "INTERNAL ERROR";
 	f = o2EEL_function(fo);
 	if((pc < 0) || (pc >= f->e.codesize))
@@ -615,16 +617,14 @@ const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc)
 EEL_coder *eel_coder_open(EEL_state *es, EEL_object *fo)
 {
 	EEL_function *f;
-	EEL_module *m;
 	EEL_coder *cdr;
-	if(fo->type != EEL_CFUNCTION)
+	if((EEL_classes)fo->type != EEL_CFUNCTION)
 		eel_ierror(es, "Object is not a function!");
 	f = o2EEL_function(fo);
 	if(f->common.flags & EEL_FF_CFUNC)
 		eel_ierror(es, "Function is not an EEL function!");
 	if(!f->e.module)
 		eel_ierror(es, "Function does not belong to a module!");
-	m = o2EEL_module(f->e.module);
 	cdr = (EEL_coder *)calloc(1, sizeof(EEL_coder));
 	if(!cdr)
 		eel_serror(es, "Could not create EEL_coder!");
@@ -762,7 +762,7 @@ int eel_coder_add_constant(EEL_coder *cdr, EEL_value *value)
 	if(!value)
 		eel_ierror(cdr->state, "Constant needs initializer!");
 
-	if(value->type > EEL_TLASTTYPE)
+	if((EEL_nontypes)value->type > EEL_TLASTTYPE)
 		eel_cerror(cdr->state, "Illegal constant type!");
 
 	/* First check if we have one with this value already! */
@@ -806,7 +806,7 @@ int eel_coder_add_constant(EEL_coder *cdr, EEL_value *value)
 	 * objects, except functions in the same module!
 	 */
 	if(EEL_IS_OBJREF(value->type) &&
-			((EEL_CFUNCTION != value->objref.v->type) ||
+			(((EEL_classes)value->objref.v->type != EEL_CFUNCTION) ||
 			(o2EEL_function(value->objref.v)->common.module !=
 					f->common.module)))
 		eel_v_own(&c[f->e.nconstants]);
@@ -852,7 +852,7 @@ int eel_coder_add_variable(EEL_coder *cdr, EEL_value *value)
 
 	if(value)
 	{
-		if(value->type > EEL_TLASTTYPE)
+		if((EEL_nontypes)value->type > EEL_TLASTTYPE)
 			eel_cerror(cdr->state, "Illegal variable"
 					" initializer type!");
 		eel_v_copy(v, value);

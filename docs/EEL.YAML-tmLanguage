@@ -1,0 +1,59 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+---
+name: EEL
+scopeName: source.eel
+fileTypes: [eel]
+uuid: 66d307fc-a2c5-47cf-84fe-30e936cc2633
+
+patterns:
+- comment: Compiler directives
+  name: storage.type
+  match: \b(include|module|import|as|end)\b
+
+- comment: Keywords and instructions
+  name: keyword.control
+  match: \b(return|if|else|switch|case|default|for|in|do|while|until|break|continue|repeat|try|untry|except|throw|retry|local|static|upvalue|export|shadow|constant|function|procedure|true|false|nil|arguments|tuples|specified|exception|#arguments|#tuples|not|typeof|sizeof|clone|and|or|xor)\b
+
+- comment: Builtin types
+  name: storage.type
+  match: \b(class|value|object|real|integer|boolean|typeid|enumval|enum|string|dstring|array|table|file|directory|memfile|vector|vector_u8|vector_s8|vector_u16|vector_s16|vector_u32|vector_s32|vector_f|vector_d)\b
+
+- comment: Numeric literal
+  match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(n|f)?\b
+  name: constant.numeric
+
+- comment: Operator
+  match: ([-*=+!;:%|^#$])
+  name: keyword.operator
+
+- comment: Braces, brackets, parentheses...
+  match: ([\{\}\(\)])
+  name: punctuation.separator.parameters.c
+
+- comment: String literal
+  begin: \"
+  beginCaptures:
+    '0': {name: punctuation.definition.string.begin}
+  end: \"
+  endCaptures:
+    '0': {name: punctuation.definition.string.end}
+  name: string.quoted.double
+  patterns:
+  - include: '#string_escaped_char'
+
+  string_escaped_char:
+  patterns:
+  - match: \\(\\|[abefnprtv'"?]|[0-3]\d{,2}|[4-7]\d?|x[a-fA-F0-9]{,2}|u[a-fA-F0-9]{,4}|U[a-fA-F0-9]{,8})
+    name: constant.character.escape
+
+- comment: C style comment
+  begin: /\*
+  end: \*/
+  name: comment.block
+
+- comment: C++ style one-line comment
+  begin: //
+  end: $\n?
+  name: comment.block
+
+...

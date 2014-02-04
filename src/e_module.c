@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_module.c - EEL code module management
 ---------------------------------------------------------------------------
- * Copyright (C) 2002, 2004-2006, 2009-2011 David Olofson
+ * Copyright (C) 2002, 2004-2006, 2009-2013 David Olofson
  * Copyright (C) 2002 Florian Schulze <fs@crowproductions.de>
  *
  * This library is free software;  you can redistribute it and/or modify it
@@ -159,7 +159,7 @@ static EEL_object *try_load(EEL_state *es, const char *filename,
 							eel_table_getss(
 							o2EEL_module(m)->exports,
 							"__modname"),
-							eel_x_name(es->vm->lasterror));
+							eel_x_name(es->vm, es->vm->lasterror));
 			}
 		}
 	}
@@ -340,7 +340,7 @@ EEL_object *eel_load_from_mem(EEL_vm *vm,
 		if(x)
 			eel_cerror(es, "Could not initialize module '%s'! (%s)",
 					eel_table_getss(o2EEL_module(m)->exports,
-					"__modname"), eel_x_name(x));
+					"__modname"), eel_x_name(vm, x));
 	}
 	eel_except
 	{
@@ -480,7 +480,7 @@ static EEL_xno m_real_destruct(EEL_object *eo)
 	/* Release functions and other objects */
 	DBG1(printf("  Objects... (%d)\n", o->size);)
 	for(i = 0; i < o->size; ++i)
-		if(o->array[i]->type == EEL_CFUNCTION)
+		if((EEL_classes)o->array[i]->type == EEL_CFUNCTION)
 			eel_function_detach(o2EEL_function(o->array[i]));
 	while(o->size)
 	{
@@ -664,7 +664,7 @@ const char *eel_module_modname(EEL_object *m)
 {
 	if(!m)
 		return "<nil module pointer>";
-	if(m->type != EEL_CMODULE)
+	if((EEL_classes)m->type != EEL_CMODULE)
 		return "<not a module>";
 	return eel_table_getss(o2EEL_module(m)->exports, "__modname");
 }
@@ -674,7 +674,7 @@ const char *eel_module_filename(EEL_object *m)
 {
 	if(!m)
 		return "<nil module pointer>";
-	if(m->type != EEL_CMODULE)
+	if((EEL_classes)m->type != EEL_CMODULE)
 		return "<not a module>";
 	return eel_table_getss(o2EEL_module(m)->exports, "__filename");
 }
@@ -689,7 +689,7 @@ void *eel_get_moduledata(EEL_object *mo)
 	EEL_module *m;
 	if(!mo)
 		return NULL;
-	if(mo->type != EEL_CMODULE)
+	if((EEL_classes)mo->type != EEL_CMODULE)
 		return NULL;
 	m = o2EEL_module(mo);
 	return m->moduledata;

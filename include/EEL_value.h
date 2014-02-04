@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_value.h - EEL Data Element (For VM stack, symbol values etc.)
 ---------------------------------------------------------------------------
- * Copyright (C) 2000, 2002, 2004-2007, 2009-2011 David Olofson
+ * Copyright (C) 2000, 2002, 2004-2007, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -72,6 +72,16 @@ typedef enum
  */
 typedef enum
 {
+	/* Class IDs for value types (to avoid C type checking issues) */
+	EEL_CNIL =	EEL_TNIL,
+	EEL_CREAL =	EEL_TREAL,
+	EEL_CINTEGER =	EEL_TINTEGER,
+	EEL_CBOOLEAN =	EEL_TBOOLEAN,
+	EEL_CTYPEID =	EEL_TTYPEID,
+	EEL_COBJREF =	EEL_TOBJREF,
+	EEL_CWEAKREF =	EEL_TWEAKREF,
+
+	/* Built-in classes */
 	EEL_CVALUE = EEL__CFIRST,/* Base class of all value types */
 	EEL_COBJECT,		/* Base class of all objects */
 

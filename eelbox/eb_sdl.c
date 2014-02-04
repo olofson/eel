@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eb_sdl.c - EELBox SDL Binding
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2007, 2009-2011 David Olofson
+ * Copyright (C) 2005-2007, 2009-2011, 2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -347,6 +347,7 @@ static EEL_xno s_destruct(EEL_object *eo)
 		{
 			SDL_SetVideoMode(0, 0, 0, 0);
 			eb_md.video_surface = NULL;
+			ebgl_dummy_calls();
 		}
 		else
 			SDL_FreeSurface(s->surface);
@@ -475,8 +476,19 @@ static EEL_xno eb_UnlockSurface(EEL_vm *vm)
 	Joystick input
 ----------------------------------------------------------*/
 
+static void eb_detach_joysticks(void)
+{
+	EB_joystick *j = eb_md.joysticks;
+	while(j)
+	{
+		j->joystick = NULL;
+		j = j->next;
+	}
+}
+
 static EEL_xno eb_DetectJoysticks(EEL_vm *vm)
 {
+	eb_detach_joysticks();
 	if(SDL_WasInit(SDL_INIT_JOYSTICK))
 		SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 	SDL_InitSubSystem(SDL_INIT_JOYSTICK);
@@ -534,6 +546,8 @@ static EEL_xno j_construct(EEL_vm *vm, EEL_types type,
 	j = o2EB_joystick(eo);
 	j->index = ind;
 	j->joystick = SDL_JoystickOpen(j->index);
+	j->next = eb_md.joysticks;
+	eb_md.joysticks = j;
 	if(!j->joystick)
 	{
 		eel_o_free(eo);
@@ -548,6 +562,21 @@ static EEL_xno j_construct(EEL_vm *vm, EEL_types type,
 static EEL_xno j_destruct(EEL_object *eo)
 {
 	EB_joystick *j = o2EB_joystick(eo);
+	EB_joystick *js = eb_md.joysticks;
+	while(js)
+	{
+		EB_joystick *jp;
+		if(js == j)
+		{
+			if(js == eb_md.joysticks)
+				eb_md.joysticks = js->next;
+			else
+				jp->next = js->next;
+			break;
+		}
+		jp = js;
+		js = js->next;
+	}
 	if(j->joystick && SDL_WasInit(SDL_INIT_JOYSTICK))
 		SDL_JoystickClose(j->joystick);
 	eel_disown(j->name);
@@ -1635,6 +1664,7 @@ static EEL_xno eb_sdl_unload(EEL_object *m, int closing)
 	/* Stick around until we explicitly close EELBox */
 	if(closing)
 	{
+		eb_detach_joysticks();
 		if(eb_md.video_surface)
 			eel_disown(eb_md.video_surface);
 		if(eb_md.audio_open)

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_manip.c - Argument Manipulator
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2011 David Olofson
+ * Copyright (C) 2004-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -180,6 +180,18 @@ void eel_m_index(EEL_mlist *ml, EEL_manipulator *object, EEL_manipulator *i)
 }
 
 
+void eel_m_args(EEL_mlist *ml)
+{
+	m_open(ml, EEL_MARGS);
+}
+
+
+void eel_m_tupargs(EEL_mlist *ml)
+{
+	m_open(ml, EEL_MTUPARGS);
+}
+
+
 /*
  * Detach manipulator from any list it's in.
  * The refcount is either taken over from the list,
@@ -241,6 +253,9 @@ void eel_m_delete(EEL_manipulator *m)
 		m_release(m->v.index.object);
 		m_release(m->v.index.index);
 		break;
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
+		break;
 	}
 	free(m);
 }
@@ -284,6 +299,8 @@ int eel_m_writable(EEL_manipulator *m)
 	  case EEL_MTUPARG:
 #endif
 	  case EEL_MINDEX:	/* Can't know at compile time, actually... */
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		return 1;
 	}
 	return 0;
@@ -331,6 +348,8 @@ int eel_m_direct_read(EEL_manipulator *m)
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		return -1;
 	}
 	return -1;
@@ -360,6 +379,8 @@ FIXME: Initializing variables with simple values is ok as well.
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		return -1;
 	}
 	return -1;
@@ -389,6 +410,8 @@ int eel_m_direct_uint8(EEL_manipulator *m)
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		break;
 	}
 	return -1;
@@ -418,6 +441,8 @@ int eel_m_direct_short(EEL_manipulator *m)
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		break;
 	}
 	return -100000;
@@ -457,6 +482,8 @@ int eel_m_direct_bool(EEL_manipulator *m)
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		break;
 	}
 	return -1;
@@ -480,6 +507,8 @@ int eel_m_is_constant(EEL_manipulator *m)
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		break;
 	}
 	return 0;
@@ -505,6 +534,8 @@ void eel_m_get_constant(EEL_manipulator *m, EEL_value *v)
 	  case EEL_MOP:
 	  case EEL_MCAST:
 	  case EEL_MINDEX:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
 		break;
 	}
 	eel_ierror(cdr->state, "eel_m_get_constant() used on something"
@@ -652,7 +683,7 @@ static void do_cast(EEL_manipulator *m, int r)
 		dr = r;
 		eel_m_read(m->v.cast.object, dr);
 	}
-	switch(m->v.cast.type)
+	switch((EEL_types)m->v.cast.type)
 	{
 	  case EEL_TREAL:
 		eel_codeAB(cdr, EEL_OCASTR_AB, r, dr);
@@ -724,7 +755,6 @@ static void do_read_index_tuparg(EEL_manipulator *m, int r)
 	EEL_manipulator *tam = m->v.index.object;
 	EEL_manipulator *im = m->v.index.index;
 	int ir = eel_m_direct_read(im);
-	int iv = eel_m_direct_uint8(im);
 	if(tam->v.argument.level)
 	{
 		if(ir >= 0)
@@ -1041,6 +1071,12 @@ void eel_m_read(EEL_manipulator *m, int r)
 	  case EEL_MINDEX:
 		do_read_index(m, r);
 		break;
+	  case EEL_MARGS:
+		eel_ierror(cdr->state, "Tried to read argument list into "
+				"register!");
+	  case EEL_MTUPARGS:
+		eel_ierror(cdr->state, "Tried to read tuple argument list into "
+				"register!");
 	}
 }
 
@@ -1109,6 +1145,12 @@ FIXME: peephole optimizer make use of the shortcut instructions?
 		eel_r_free(cdr, r, 1);
 		break;
 	  }
+	  case EEL_MARGS:
+		eel_code0(cdr, EEL_OPHARGS_0);
+		break;
+	  case EEL_MTUPARGS:
+		eel_code0(cdr, EEL_OPUSHTUP_0);
+		break;
 	}
 }
 
@@ -1196,6 +1238,10 @@ FIXME: Is this actually an internal error now...?
 	  case EEL_MINDEX:
 		do_write_index(m, r);
 		break;
+	  case EEL_MARGS:
+		eel_ierror(cdr->state, "Tried to write to argument list!");
+	  case EEL_MTUPARGS:
+		eel_ierror(cdr->state, "Tried to write to tuple argument list!");
 	}
 }
 
@@ -1220,6 +1266,9 @@ static int can_write_weakref(EEL_manipulator *m)
 		return 0;
 	  case EEL_MINDEX:
 		return 1;
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
+		return 0;
 	}
 	return 0;
 }

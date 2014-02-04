@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_parser.c - The EEL Parser/Compiler
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2006, 2009-2011 David Olofson
+ * Copyright (C) 2002-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -20,6 +20,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "ec_parser.h"
 #include "ec_symtab.h"
 #include "ec_mlist.h"
@@ -407,7 +408,7 @@ static void forward_exports(EEL_object *from, EEL_object *to, int symcheck)
 				eel_v2s(k), eel_v_stringrep(vm, v));)
 
 		/* Key must be string! */
-		if(EEL_TYPE(k) != EEL_CSTRING)
+		if((EEL_classes)EEL_TYPE(k) != EEL_CSTRING)
 			eel_ierror(es, "forward_exports() got a table "
 					"item with a non-string name!");
 
@@ -530,7 +531,7 @@ static int declare_func(EEL_state *es, const char *name, EEL_mlist *al,
 		x = eel_o_construct(es->vm, EEL_CFUNCTION, NULL, 0, &fov);
 		if(x)
 			return -1;
-		if(EEL_TYPE(&fov) != EEL_CFUNCTION)
+		if((EEL_classes)EEL_TYPE(&fov) != EEL_CFUNCTION)
 			eel_ierror(es, "FUNCTION constructor returned %s "
 					"instance!", eel_typename(es->vm,
 					fov.type));
@@ -1111,7 +1112,7 @@ static int call(EEL_state *es, EEL_mlist *al)
 	/* Get function */
 	s = es->lval.v.symbol;
 	fo = s->v.object;
-	if(fo->type != EEL_CFUNCTION)
+	if((EEL_classes)fo->type != EEL_CFUNCTION)
 		eel_ierror(es, "Function symbol has an object that"
 				" is not a function!");
 	f = o2EEL_function(fo);
@@ -1271,8 +1272,6 @@ static int funcargs_check(EEL_state *es)
 */
 static int funcargs(EEL_state *es)
 {
-	int res;
-
 	eel_unlex(es);
 	eel_lex(es, ELF_NO_OPERATORS);
 
@@ -1284,7 +1283,7 @@ static int funcargs(EEL_state *es)
 		break;
 	  case '[':	/* optional */
 	  case '<':	/* tuple */
-		res = getargs(es);
+		getargs(es);
 		switch(es->token)
 		{
 		  case '(':	/* required */
@@ -1361,7 +1360,7 @@ static int funcdef2(EEL_state *es, EEL_mlist *al, int is_func, int local)
 		fname = eel_o2s(f->common.name);
 		if(local)
 			break;	/* We don't care if the name is "taken"! */
-		if(fo->type != EEL_CFUNCTION)
+		if((EEL_classes)fo->type != EEL_CFUNCTION)
 			eel_ierror(es, "Function symbol has an object that"
 					" is not a function!");
 		if(f->common.flags & EEL_FF_DECLARATION)
@@ -1505,7 +1504,7 @@ static int funcdef(EEL_state *es, EEL_mlist *al, int local)
 		 * This "hack" is needed because 'function' is
 		 * actually a type name, rather than a keyword.
 		 */
-		if(eel_class_typeid(es->lval.v.symbol->v.object) !=
+		if((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) !=
 				EEL_CFUNCTION)
 			return TK(WRONG);
 		is_func = 1;
@@ -1647,7 +1646,6 @@ static void check_specified(EEL_state *es, EEL_symbol *s, EEL_mlist *al)
 		| KW_TUPLES
 		| KW_SPECIFIED VARIABLE
 		| KW_SPECIFIED VARIABLE '[' expression ']'
-TODO:		| KW_SPECIFIED explist
 		;
 */
 static int arginfo(EEL_state *es, EEL_mlist *al)
@@ -1799,7 +1797,7 @@ static int vardecl(EEL_state *es, EEL_mlist *al)
 	  case TK_NAME:
 		break;
 	  case TK_SYM_CLASS:
-		switch(eel_class_typeid(es->lval.v.symbol->v.object))
+		switch((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object))
 		{
 			/*
 			 * These have special uses, so we need
@@ -2061,6 +2059,8 @@ static int ctor(EEL_state *es, EEL_mlist *al)
 		| CONSTANT
 		| VARIABLE
 		| KW_EXCEPTION
+		| '#' KW_ARGUMENTS
+		| '#' KW_TUPLES
 		| '(' explist ')'
 		| '(' TYPENAME ')' simplexp
 		| call
@@ -2189,6 +2189,28 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 		eel_m_register(al, 0);
 		eel_lex(es, 0);
 		return TK(SIMPLEXP);
+	  }
+
+	  /*
+	   * Argument expansion expressions
+	   */
+	  case '#':
+	  {
+		no_qualifiers(es);
+		eel_lex(es, 0);
+		switch(es->token)
+		{
+		  case TK_KW_ARGUMENTS:
+			eel_m_args(al);
+			eel_lex(es, 0);
+			return TK(SIMPLEXP);
+		  case TK_KW_TUPLES:
+			eel_m_tupargs(al);
+			eel_lex(es, 0);
+			return TK(SIMPLEXP);
+		  default:
+			eel_cerror(es, "Invalid argument expansion expression!");
+		}
 	  }
 
 	  /*
@@ -2516,7 +2538,7 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 	/* Loop or recurse until we're done */
 	while(1)
 	{
-		int i, li, ri, linc, rinc, count = 0;
+		int i, ri, linc, rinc, count = 0;
 		EEL_operator *op;
 		EEL_mlist *right;
 		const char *opname;
@@ -2548,7 +2570,6 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 		 * left hand terms with result.
 		 */
 		linc = rinc = 1;
-		li = 0;
 		ri = 0;
 		if(left->length == 1)
 		{
@@ -3867,7 +3888,8 @@ static int statement2(EEL_state *es)
 		return TK(STATEMENT);
 	  /* Some nice error checking */
 	  case TK_SYM_CLASS:
-	  	if(eel_class_typeid(es->lval.v.symbol->v.object) != EEL_CMODULE)
+	  	if((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) !=
+				EEL_CMODULE)
 			break;
 		eel_cerror(es, "Cannot declare a module within a module!");
 	  /* throwstat */
@@ -4069,7 +4091,7 @@ static void check_declarations(EEL_state *es, EEL_object *mo)
 	{
 		EEL_object *o = a->array[i];
 		EEL_function *f;
-		if(o->type != EEL_CFUNCTION)
+		if((EEL_classes)o->type != EEL_CFUNCTION)
 			continue;
 		f = o2EEL_function(o);
 		if(f->common.flags & EEL_FF_DECLARATION)
@@ -4117,7 +4139,7 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 
 	/* Named module? */
 	if((es->token == TK_SYM_CLASS) &&
-			(eel_class_typeid(es->lval.v.symbol->v.object) ==
+			((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) ==
 					EEL_CMODULE))
 	{
 		eel_lex(es, 0);
@@ -4196,7 +4218,7 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	EEL_module *m;
 	int include_depth_save = es->include_depth;
 
-	if(mo->type != EEL_CMODULE)
+	if((EEL_classes)mo->type != EEL_CMODULE)
 		eel_cerror(es, "Object is not a module!");
 	m = o2EEL_module(mo);
 

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vector.c - EEL Vector Class implementation
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2010 David Olofson
+ * Copyright (C) 2004-2006, 2009-2010, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -51,7 +51,7 @@ static inline EEL_xno write_index(EEL_object *eo, int i, EEL_value *v)
 	switch(v->type)
 	{
 	  case EEL_TNIL:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  /*
 		   * No sign extension needed as long as all vector types
@@ -83,7 +83,7 @@ static inline EEL_xno write_index(EEL_object *eo, int i, EEL_value *v)
 	  case EEL_TBOOLEAN:
 	  case EEL_TINTEGER:
 	  case EEL_TTYPEID:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  /*
 		   * No sign extension needed as long as all vector types
@@ -113,7 +113,7 @@ static inline EEL_xno write_index(EEL_object *eo, int i, EEL_value *v)
 		}
 		break;
 	  case EEL_TREAL:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -149,7 +149,7 @@ static inline EEL_integer get_ivalue(EEL_object *o, int i)
 	EEL_vector *vec = o2EEL_vector(o);
 	if(i >= vec->length)
 		return 0;
-	switch(o->type)
+	switch((EEL_classes)o->type)
 	{
 	  case EEL_CVECTOR_U8:
 		return vec->buffer.u8[i];
@@ -178,7 +178,7 @@ static inline EEL_real get_rvalue(EEL_object *o, int i)
 	EEL_vector *vec = o2EEL_vector(o);
 	if(i >= vec->length)
 		return 0.0;
-	switch(o->type)
+	switch((EEL_classes)o->type)
 	{
 	  case EEL_CVECTOR_U8:
 		return vec->buffer.u8[i];
@@ -204,7 +204,7 @@ static inline EEL_real get_rvalue(EEL_object *o, int i)
 
 static inline int item_size(EEL_types vt)
 {
-	switch(vt)
+	switch((EEL_classes)vt)
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -388,7 +388,7 @@ static EEL_xno v_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		return EEL_XHIGHINDEX;
 
 	/* Read value */
-	switch(eo->type)
+	switch((EEL_classes)eo->type)
 	{
 	  case EEL_CVECTOR_U8:
 		op2->type = EEL_TINTEGER;
@@ -579,7 +579,7 @@ static EEL_xno v_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	EEL_vector *v, *ov;
 	if(!EEL_IS_OBJREF(op1->type))
 		return EEL_XWRONGTYPE;
-	if(op1->type > EEL_TLASTTYPE)
+	if((EEL_nontypes)op1->type > EEL_TLASTTYPE)
 		return EEL_XBADTYPE;
 
 	if(op1->objref.v->type != eo->type)
@@ -598,7 +598,7 @@ static EEL_xno v_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		op2->integer.v = -1;
 		return 0;
 	}
-	switch(eo->type)
+	switch((EEL_classes)eo->type)
 	{
 	  case EEL_CVECTOR_U8:
 		op2->integer.v = vcmp_u8_u8(v->buffer.u8, ov->buffer.u8, v->length);
@@ -671,7 +671,7 @@ static inline EEL_xno do_vadd(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	  case EEL_TBOOLEAN:
 	  case EEL_TINTEGER:
 	  case EEL_TTYPEID:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  /*
 		   * Sign is irrelevant to addition, so we group u* and s*.
@@ -708,7 +708,7 @@ static inline EEL_xno do_vadd(EEL_object *eo, EEL_value *op1, EEL_object *to)
 			return EEL_XINTERNAL;
 		}
 	  case EEL_TREAL:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -744,7 +744,7 @@ static inline EEL_xno do_vadd(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
 	  {
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -830,7 +830,7 @@ static inline EEL_xno do_vsub(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	  case EEL_TBOOLEAN:
 	  case EEL_TINTEGER:
 	  case EEL_TTYPEID:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  /*
 		   * Sign is irrelevant to addition, so we group u* and s*.
@@ -867,7 +867,7 @@ static inline EEL_xno do_vsub(EEL_object *eo, EEL_value *op1, EEL_object *to)
 			return EEL_XINTERNAL;
 		}
 	  case EEL_TREAL:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -903,7 +903,7 @@ static inline EEL_xno do_vsub(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
 	  {
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -988,7 +988,7 @@ static inline EEL_xno do_vmul(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	  case EEL_TBOOLEAN:
 	  case EEL_TINTEGER:
 	  case EEL_TTYPEID:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  /*
 		   * Sign is irrelevant to addition, so we group u* and s*.
@@ -1025,7 +1025,7 @@ static inline EEL_xno do_vmul(EEL_object *eo, EEL_value *op1, EEL_object *to)
 			return EEL_XINTERNAL;
 		}
 	  case EEL_TREAL:
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -1061,7 +1061,7 @@ static inline EEL_xno do_vmul(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
 	  {
-		switch(eo->type)
+		switch((EEL_classes)eo->type)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -1144,7 +1144,7 @@ static inline EEL_xno v__append(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		/* Append items from indexable type. */
 		if(v_setsize(eo, start + len) < 0)
 			return EEL_XMEMORY;
-		if(EEL_TYPE(op1) == EEL_CTABLE)
+		if((EEL_classes)EEL_TYPE(op1) == EEL_CTABLE)
 			return EEL_XWRONGTYPE;
 		for(i = 0; i < len; ++i)
 		{

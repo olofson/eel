@@ -25,10 +25,10 @@ dnl----------------------------------------------------------
 
 EEL_MAJOR_VERSION=0
 EEL_MINOR_VERSION=3
-EEL_MICRO_VERSION=6
+EEL_MICRO_VERSION=7
 EEL_SNAPSHOT=0
-EEL_INTERFACE_AGE=3
-EEL_BINARY_AGE=3
+EEL_INTERFACE_AGE=4
+EEL_BINARY_AGE=4
 EEL_VERSION=$EEL_MAJOR_VERSION.$EEL_MINOR_VERSION.$EEL_MICRO_VERSION
 
 AC_SUBST(EEL_MAJOR_VERSION)
@@ -309,7 +309,7 @@ AC_ARG_ENABLE(epm,
                   , enable_epm=no)
 AC_MSG_CHECKING(for Extreme Pickyness Mode)
 if test x$enable_epm = xyes; then
-	LOCALCFLAGS="$LOCALCFLAGS -Wall -Werror -Wwrite-strings -Wcast-align -Wbad-function-cast"
+	LOCALCFLAGS="$LOCALCFLAGS -Wall -Werror -Wcast-align -Wbad-function-cast"
 	LOCALCFLAGS="$LOCALCFLAGS -Waggregate-return -Wstrict-prototypes -fno-builtin"
 	LOCALCFLAGS="$LOCALCFLAGS -Wdeclaration-after-statement -Wmissing-prototypes"
 	LOCALCFLAGS="$LOCALCFLAGS -Wmissing-declarations -Wdisabled-optimization"

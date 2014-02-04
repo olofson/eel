@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eb_sdl.h - EEL SDL Binding
 ---------------------------------------------------------------------------
- * Copyright (C) 2005, 2007, 2009, 2011 David Olofson
+ * Copyright (C) 2005, 2007, 2009, 2011, 2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -46,12 +46,14 @@ EEL_MAKE_CAST(EB_surfacelock)
 
 
 /* Joystick */
-typedef struct
+typedef struct EB_joystick EB_joystick;
+struct EB_joystick
 {
+	EB_joystick	*next;
 	int		index;
 	EEL_object	*name;
 	SDL_Joystick	*joystick;
-} EB_joystick;
+};
 EEL_MAKE_CAST(EB_joystick)
 
 
@@ -66,6 +68,9 @@ typedef struct
 
 	/* Current video surface, if any */
 	EEL_object	*video_surface;
+
+	/* Linked list of joysticks */
+	EB_joystick	*joysticks;
 
 	/* Audio interface */
 	int		audio_open;

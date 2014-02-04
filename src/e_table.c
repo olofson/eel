@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_table.c - EEL Table Class implementation
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2006, 2009-2011 David Olofson
+ * Copyright (C) 2005-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -202,7 +202,7 @@ static inline int t__find(EEL_object *eo, EEL_value *key, EEL_hash h)
 	}
 	
 	/* Fast-path for string lookups */
-	if(EEL_IS_OBJREF(key->type) && (key->objref.v->type == EEL_CSTRING))
+	if(EEL_IS_OBJREF(key->type) && ((EEL_classes)key->objref.v->type == EEL_CSTRING))
 	{
 		for(i = first; (i < t->length) && (ti[i].hash == h); ++i)
 			/* NOTE: Nasty backwards testing here...! */
@@ -485,7 +485,6 @@ static EEL_xno t_delete(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		return EEL_XWRONGINDEX;	/* Can't do ranges with tables! */
 	if(!op1)
 	{
-		int i;
 		for(i = 0; i < t->length; ++i)
 		{
 			eel_v_disown_nz(&ti[i].key);
@@ -542,7 +541,7 @@ static EEL_xno t_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno t_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_xno x;
-	if(EEL_TYPE(op1) != EEL_CTABLE)
+	if((EEL_classes)EEL_TYPE(op1) != EEL_CTABLE)
 		return EEL_XWRONGTYPE;
 	eo = t__clone(eo);
 	if(!eo)
@@ -561,7 +560,7 @@ static EEL_xno t_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno t_ipadd(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_xno x;
-	if(EEL_TYPE(op1) != EEL_CTABLE)
+	if((EEL_classes)EEL_TYPE(op1) != EEL_CTABLE)
 		return EEL_XWRONGTYPE;
 	x = insert_items(eo, op1->objref.v);
 	if(x)
@@ -591,7 +590,7 @@ void eel_ctable_register(EEL_vm *vm)
 EEL_tableitem *eel_table_get_item(EEL_object *to, int i)
 {
 #ifdef EEL_VM_CHECKING
-	if(to->type != EEL_CTABLE)
+	if((EEL_classes)to->type != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_get_item() used on "
 				"non-table object %s!\n",
@@ -610,7 +609,7 @@ EEL_xno eel_table_get(EEL_object *to, EEL_value *key, EEL_value *value)
 	EEL_table *t = o2EEL_table(to);
 	EEL_hash h = eel_v2hash(key);
 #ifdef EEL_VM_CHECKING
-	if(to->type != EEL_CTABLE)
+	if((EEL_classes)to->type != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_get() used on "
 				"non-table object %s!\n",
@@ -652,7 +651,7 @@ const char *eel_table_getss(EEL_object *to, const char *key)
 EEL_xno eel_table_set(EEL_object *to, EEL_value *key, EEL_value *value)
 {
 #ifdef EEL_VM_CHECKING
-	if(to->type != EEL_CTABLE)
+	if((EEL_classes)to->type != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_set() used on "
 				"non-table object %s!\n",
@@ -705,7 +704,7 @@ EEL_value *eel_table_get_value(EEL_tableitem *ti)
 EEL_xno eel_table_delete(EEL_object *to, EEL_value *key)
 {
 #ifdef EEL_VM_CHECKING
-	if(to->type != EEL_CTABLE)
+	if((EEL_classes)to->type != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_delete() used on "
 				"non-table object %s!\n",

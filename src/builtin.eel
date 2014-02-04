@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////
-// EEL Built-In Library v0.3.4
+// EEL Built-In Library v0.3.5
 ///////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2005, 2009, 2011 David Olofson
+// Copyright (C) 2005, 2009, 2011-2012 David Olofson
 //
 // NOTE:	This file is converted into C string format and
 //		included by e_builtin.c. If changes are made to
@@ -35,7 +35,7 @@ if __version(3)
 	_eel_version[3] = __version(3);
 
 // EEL Built-In Library Version
-static _lib_version = [0, 3, 4, "beta"];
+static _lib_version = [0, 3, 5];
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -162,12 +162,7 @@ $.cleanup = [];
 
 export procedure __cleanup
 {
-//print("cleaning...\n");
 	for local i = 0, sizeof $.cleanup - 1
-{
-//print("      ", $.cleanup[i].name, "()\n");
 		$.cleanup[i]();
-}
 	delete($);
-//print("   done!\n");
 }

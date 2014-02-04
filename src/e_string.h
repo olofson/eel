@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_string.h - EEL String Class + string pool
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2006, 2008, 2009, 2011 David Olofson
+ * Copyright (C) 2005-2006, 2008, 2009, 2011-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -49,7 +49,7 @@ void eel_ps_close(EEL_vm *vm);
 static inline const char *eel_o2s(EEL_object *o)
 {
 #ifdef EEL_VM_CHECKING
-	if(o->type != EEL_CSTRING)
+	if((EEL_classes)o->type != EEL_CSTRING)
 		o = NULL;
 #endif
 	return o2EEL_string(o)->buffer;

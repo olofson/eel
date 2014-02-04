@@ -3,6 +3,7 @@ docs/Makefile
 include/Makefile
 include/EEL_platform.h
 include/EEL_version.h
+eelbox/configure
 
 # http://www.gnu.org/software/automake
 

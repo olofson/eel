@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vm.c - EEL Virtual Machine
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2011 David Olofson
+ * Copyright (C) 2004-2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -315,7 +315,7 @@ static inline EEL_xno get_function(EEL_vm *vm, EEL_value *ref, EEL_object **o)
 	if(!EEL_IS_OBJREF(ref->type))
 		return EEL_XNEEDOBJECT;
 	*o = ref->objref.v;
-	if(EEL_CFUNCTION != (*o)->type)
+	if((EEL_classes)(*o)->type != EEL_CFUNCTION)
 		return EEL_XNEEDCALLABLE;
 	return 0;
 }
@@ -615,7 +615,7 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 	if(f->common.flags & EEL_FF_RESULTS)
 	{
 #ifdef EEL_VM_CHECKING
-		if(vm->heap[cf->result].type == EEL_TILLEGAL)
+		if((EEL_nontypes)vm->heap[cf->result].type == EEL_TILLEGAL)
 		{
 			eel_vmdump(vm, "C function forgot to return a result!");
 			return EEL_XVMCHECK;
@@ -846,7 +846,8 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 					DBGK4(printf("Expecting result in heap[%d].\n",
 							result);)
 #ifdef EEL_VM_CHECKING
-					if(vm->heap[result].type == EEL_TILLEGAL)
+					if((EEL_nontypes)vm->heap[result].type ==
+							EEL_TILLEGAL)
 					{
 						eel_vmdump(vm, "Exception block "
 							"forgot to return a result!");
@@ -953,9 +954,9 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 
 #define	XCHECK(fn)			\
 	({				\
-		EEL_xno x = (fn);	\
-		if(x)			\
-			THROW(x);	\
+		EEL_xno xxx = (fn);	\
+		if(xxx)			\
+			THROW(xxx);	\
 	})
 
 #define	PC		(vm->pc)
@@ -1003,7 +1004,7 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 			if(!vms.cf->f)					\
 				DUMP(EEL_XINTERNAL, "Bad context! "	\
 						"No function.");	\
-			if(vms.cf->f->type != EEL_CFUNCTION)		\
+			if((EEL_classes)vms.cf->f->type != EEL_CFUNCTION)	\
 				DUMP(EEL_XINTERNAL, "Bad context! "	\
 						"Object is not a "	\
 						"function.");		\
@@ -1014,7 +1015,6 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 		DBG4E(check_callframe(vm, CALLFRAME);)			\
 		DBG6B(++VMP->instructions;)				\
 	} while(0)
-
 
 EEL_xno eel_run(EEL_vm *vm)
 {
@@ -1144,9 +1144,9 @@ EEL_xno eel_run(EEL_vm *vm)
 /*--- Reschedule and continue execution, or leave the VM -------------*/
 #define	RESCHEDULE					\
 	({						\
-		EEL_xno x = eel__scheduler(vm, &vms);	\
-		if(x)					\
-			RETURN(x);			\
+		EEL_xno xx = eel__scheduler(vm, &vms);	\
+		if(xx)					\
+			RETURN(xx);			\
 		else					\
 			NEXT;				\
 	})
@@ -1401,10 +1401,49 @@ EEL_xno eel_run(EEL_vm *vm)
 		++vm->sp;
 
 	  EEL_IPHUVAL
+		EEL_value *rf;
 		CHECK_STACK(1);
-		EEL_value *rf = vm->heap + get_uv_base(vm, B);
+		rf = vm->heap + get_uv_base(vm, B);
 		eel_v_copy(S, rf + A);
 		++vm->sp;
+
+	  EEL_IPHARGS
+		if(CALLFRAME->argc)
+		{
+			int i;
+			EEL_value *args = vm->heap + CALLFRAME->argv;
+			CHECK_STACK(CALLFRAME->argc);
+			for(i = 0; i < CALLFRAME->argc; ++i)
+				eel_v_copy(S + i, args + i);
+			vm->sp += CALLFRAME->argc;
+		}
+
+	  EEL_IPUSHTUP
+		EEL_function *f = o2EEL_function(CALLFRAME->f);
+		int argc = CALLFRAME->argc - f->common.reqargs;
+#ifdef EEL_VM_CHECKING
+		if(!f->common.tupargs)
+			DUMP(EEL_XVMCHECK, "PUSHTUP in function with no tuple args!");
+#  if 0
+		/*
+		 * This is actually ok - but the compiler should only allow it
+		 * when using the 'tuples' keyword, or when there tuple size is
+		 * one, as anything else would be most confusing!
+		 */
+		if(f->common.tupargs > 1)
+			DUMP(EEL_XVMCHECK, "PUSHTUP in function with more than one tuple arg!");
+#  endif
+#endif
+		if(argc)
+		{
+			int i;
+			EEL_value *args = vm->heap + CALLFRAME->argv +
+					f->common.reqargs;
+			CHECK_STACK(argc);
+			for(i = 0; i < argc; ++i)
+				eel_v_copy(S + i, args + i);
+			vm->sp += argc;
+		}
 
 	  /* Function calls */
 	  EEL_ICALL
@@ -1432,7 +1471,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		if(!EEL_IS_OBJREF(f->e.constants[B].type))
 			DUMP(EEL_XARGUMENTS, "CCALL: Constant is not an object "
 					"reference!");
-		if(f->e.constants[B].objref.v->type != EEL_CFUNCTION)
+		if((EEL_classes)f->e.constants[B].objref.v->type != EEL_CFUNCTION)
 			DUMP(EEL_XARGUMENTS, "CCALL: Object is not a function!");
 #endif
 		XCHECK(call_f(vm, f->e.constants[B].objref.v, -1, A));
@@ -1446,7 +1485,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		if(!EEL_IS_OBJREF(f->e.constants[C].type))
 			DUMP(EEL_XARGUMENTS, "CCALL: Constant is not an object "
 					"reference!");
-		if(f->e.constants[C].objref.v->type != EEL_CFUNCTION)
+		if((EEL_classes)f->e.constants[C].objref.v->type != EEL_CFUNCTION)
 			DUMP(EEL_XARGUMENTS, "CCALL: Object is not a function!");
 #endif
 		XCHECK(call_f(vm, f->e.constants[C].objref.v, vm->base + B, A));
@@ -2312,11 +2351,11 @@ EEL_xno eel_run(EEL_vm *vm)
 #ifdef EEL_VM_CHECKING
 		if(!EEL_IS_OBJREF(f->e.constants[B].type))
 			DUMP(EEL_XINTERNAL, "TRY: Try block is not an object!");
-		if(f->e.constants[B].objref.v->type != EEL_CFUNCTION)
+		if((EEL_classes)f->e.constants[B].objref.v->type != EEL_CFUNCTION)
 			DUMP(EEL_XINTERNAL, "TRY: Try block is not a function!");
 		if(!EEL_IS_OBJREF(f->e.constants[A].type))
 			DUMP(EEL_XINTERNAL, "TRY: Catcher is not an object!");
-		if(f->e.constants[A].objref.v->type != EEL_CFUNCTION)
+		if((EEL_classes)f->e.constants[A].objref.v->type != EEL_CFUNCTION)
 			DUMP(EEL_XINTERNAL, "TRY: Catcher is not a function!");
 #endif
 		DBGK4(printf("TRY passing on result index heap[%d].\n",
@@ -2332,7 +2371,7 @@ EEL_xno eel_run(EEL_vm *vm)
 #ifdef EEL_VM_CHECKING
 		if(!EEL_IS_OBJREF(f->e.constants[A].type))
 			DUMP(EEL_XINTERNAL, "UNTRY: Try block is not an object!");
-		if(f->e.constants[A].objref.v->type != EEL_CFUNCTION)
+		if((EEL_classes)f->e.constants[A].objref.v->type != EEL_CFUNCTION)
 			DUMP(EEL_XINTERNAL, "UNTRY: Try block is not a function!");
 #endif
 		DBGK4(printf("UNTRY passing on result index heap[%d].\n",
@@ -2630,7 +2669,7 @@ static EEL_object *find_function(EEL_vm *vm, EEL_object *module, const char *nam
 {
 	EEL_xno x;
 	EEL_value n, f;
-	if(module->type != EEL_CMODULE)
+	if((EEL_classes)module->type != EEL_CMODULE)
 		return NULL;
 
 	n.type = EEL_TOBJREF;
@@ -2647,7 +2686,7 @@ static EEL_object *find_function(EEL_vm *vm, EEL_object *module, const char *nam
 /*
 FIXME: If modules ever use weakrefs for functions, we need to handle that here!
 */
-	if(f.objref.v->type != EEL_CFUNCTION)
+	if((EEL_classes)f.objref.v->type != EEL_CFUNCTION)
 	{
 		eel_v_disown_nz(&f);
 		eel_v_disown_nz(&n);
@@ -2658,7 +2697,7 @@ FIXME: If modules ever use weakrefs for functions, we need to handle that here!
 }
 
 
-inline void reset_args(EEL_vm *vm)
+static inline void reset_args(EEL_vm *vm)
 {
 	stack_clear(vm);
 	eel_v_disown_nz(vm->heap + vm->base);
@@ -2786,7 +2825,7 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 	int save_argc = vm->argc;
 /*FIXME:*/
 	eel_clear_errors(VMP->state);
-	if(fo->type != EEL_CFUNCTION)
+	if((EEL_classes)fo->type != EEL_CFUNCTION)
 	{
 		call_msg(fo, EEL_EM_VMERROR, "  Object is not callable!");
 		return EEL_XNEEDCALLABLE;
@@ -2838,12 +2877,12 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 			if(x)
 				call_msg(fo, EEL_EM_VMERROR, "  Function "
 						"aborted with exception %s",
-						eel_x_name(x));
+						eel_x_name(vm, x));
 		}
 	}
 	else
 		call_msg(fo, EEL_EM_VMERROR, "  Exception %s was thrown.",
-				eel_x_name(x));
+				eel_x_name(vm, x));
 /*FIXME:*/
 	vm->resv = save_resv;
 	vm->argv = save_argv;

@@ -1,0 +1,39 @@
+/////////////////////////////////////////
+// audiality.eel - Audiality 2 Test
+// Copyright (C) 2011-2012 David Olofson
+/////////////////////////////////////////
+
+import "SDL" as SDL;
+import "Audiality2" as A2;
+
+export constant MUSIC = 1;	// MUSIC group
+
+export function main<args>
+{
+	local screen = SDL.SetVideoMode(640, 480, 0, SDL.SWSURFACE);
+	SDL.SetCaption("Audiality 2 Test", args[0]);
+	local a2 = A2.Open();
+	local bank = a2:Load("k2intro.a2s");
+	local song = a2:Find(bank, "K2TitleFullSong");
+	a2:NewGroup(0, MUSIC);
+	a2:Start(MUSIC, 0, song);
+	while true
+	mainloop:
+	{
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYUP
+				if ev.sym == SDL.KESCAPE
+					break mainloop;
+			  case SDL.QUIT
+				break mainloop;
+		}
+		SDL.Delay(10);
+	}
+	a2:Close();
+	return 0;
+}

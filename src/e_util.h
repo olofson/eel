@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_util.h - EEL engine utilities
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2006, 2009, 2011 David Olofson
+ * Copyright (C) 2002-2006, 2009, 2011-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -292,7 +292,7 @@ static inline EEL_hash eel_v2hash(EEL_value *v)
 		return (1315423911 << v->type) ^ v->integer.v;
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
-		if(v->objref.v->type == EEL_CSTRING)
+		if((EEL_classes)v->objref.v->type == EEL_CSTRING)
 			return o2EEL_string(v->objref.v)->hash;
 		else
 		{
@@ -311,17 +311,11 @@ static inline EEL_hash eel_v2hash(EEL_value *v)
 /*----------------------------------------------------------
 	Handy string representation generators
 ----------------------------------------------------------*/
-/*
- * Generate an ASCII representation of 'value'.
- *
- * NOTE: The result string has limited life time!
- */
-const char *eel_v_stringrep(EEL_vm *vm, EEL_value *value);
 
 /*
  * As eel_symbol_is(), but for data containers.
  */
-const char *eel_data_is(EEL_value *d);
+const char *eel_data_is(const EEL_value *d);
 
 /* Returns a string with the name of type 'type'. */
 const char *eel_typename(EEL_vm *vm, EEL_types type);

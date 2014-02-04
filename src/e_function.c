@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_function.c - EEL Function Class implementation
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2005, 2009, 2011 David Olofson
+ * Copyright (C) 2004-2005, 2009, 2011-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -199,7 +199,7 @@ void eel_function_detach(EEL_function *f)
 		if(!EEL_IS_OBJREF(f->e.constants[i].type))
 			continue;
 		o = f->e.constants[i].objref.v;
-		if((EEL_CFUNCTION == o->type) &&
+		if(((EEL_classes)o->type == EEL_CFUNCTION) &&
 				(o2EEL_function(o)->common.module ==
 						f->common.module))
 			f->e.constants[i].type = EEL_TNIL;

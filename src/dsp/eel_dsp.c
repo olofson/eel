@@ -1,7 +1,7 @@
 /*
  * DSP Module - KISS FFT library binding + other DSP tools
  *
- * Copyright (C) 2006-2007, 2010 David Olofson
+ * Copyright (C) 2006-2007, 2010, 2012 David Olofson
  */
 
 #include <math.h>
@@ -28,7 +28,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 {
 	double vvals[2];
 	EEL_vector *vec = NULL;
-	switch(o->type)
+	switch((EEL_classes)o->type)
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -49,7 +49,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 	}
 	if(op != OP_SET)
 	{
-		switch(o->type)
+		switch((EEL_classes)o->type)
 		{
 		  case EEL_CVECTOR_U8:
 			vvals[0] = vec->buffer.u8[ind];
@@ -126,7 +126,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 		vvals[1] *= avals[1];
 		break;
 	}
-	switch(o->type)
+	switch((EEL_classes)o->type)
 	{
 	  case EEL_CVECTOR_U8:
 		vec->buffer.u8[ind] = vvals[0];
@@ -190,7 +190,7 @@ static EEL_xno do_sum(EEL_vm *vm, int *count)
 	double sum = 0.0f;
 	*count = 0;
 
-	switch(EEL_TYPE(args))
+	switch((EEL_classes)EEL_TYPE(args))
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -241,7 +241,7 @@ static EEL_xno do_sum(EEL_vm *vm, int *count)
 	if(last < first)
 		return EEL_XWRONGINDEX;
 
-	switch(EEL_TYPE(args))
+	switch((EEL_classes)EEL_TYPE(args))
 	{
 	  case EEL_CVECTOR_U8:
 		for(i = first; i <= last; i += stride)
@@ -371,7 +371,7 @@ static EEL_xno do_polynomial(EEL_vm *vm, int add, int inclusive)
 		dfx = 1.0f / (double)count;
 	vec = o2EEL_vector(o);
 	if(add)
-		switch(o->type)
+		switch((EEL_classes)o->type)
 		{
 		  case EEL_CVECTOR_U8:	path = 1; break;
 		  case EEL_CVECTOR_S8:	path = 2; break;
@@ -506,7 +506,7 @@ static EEL_xno dsp_fft_real(EEL_vm *vm)
 	int i;
 	double scale;
 /*TODO: Use an intermediate buffer for other types! */
-	if(EEL_TYPE(arg) != EEL_CVECTOR_D)
+	if((EEL_classes)EEL_TYPE(arg) != EEL_CVECTOR_D)
 		return EEL_XWRONGTYPE;
 	to = eel_v2o(arg);
 	tv = o2EEL_vector(to);
@@ -541,7 +541,7 @@ static EEL_xno dsp_ifft_real(EEL_vm *vm)
 	int i;
 	double save[3];
 /*TODO: Use an intermediate buffer for other types! */
-	if(EEL_TYPE(arg) != EEL_CVECTOR_D)
+	if((EEL_classes)EEL_TYPE(arg) != EEL_CVECTOR_D)
 		return EEL_XWRONGTYPE;
 	fo = eel_v2o(arg);
 	fv = o2EEL_vector(fo);
@@ -729,7 +729,7 @@ static EEL_xno dsp_c_add_polar_i(EEL_vm *vm)
 /*-------------------------------------------------------------------
 	Generators
 -------------------------------------------------------------------*/
-
+#if 0
 static EEL_xno gen_construct(EEL_vm *vm, EEL_types type,
 		EEL_value *initv, int initc, EEL_value *result)
 {
@@ -773,7 +773,7 @@ static EEL_xno gen_cast(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	return EEL_XNOTIMPLEMENTED;
 }
-
+#endif
 
 /*-------------------------------------------------------------------
 	Loading/unloading
@@ -793,7 +793,9 @@ static EEL_xno dsp_unload(EEL_object *m, int closing)
 EEL_xno eel_dsp_init(EEL_vm *vm)
 {
 	EEL_object *m;
+#if 0
 	EEL_object *c;
+#endif
 
 	/* Create module */
 	m = eel_create_module(vm, "dsp", dsp_unload, NULL);
@@ -830,10 +832,12 @@ EEL_xno eel_dsp_init(EEL_vm *vm)
 	eel_export_cfunction(m, 0, "c_add_i", 4, 0, 0, dsp_c_add_i);
 	eel_export_cfunction(m, 0, "c_add_polar_i", 4, 0, 0, dsp_c_add_polar_i);
 
+#if 0
 	/* Register class 'generator' */
 	c = eel_export_class(m, "generator", -1, gen_construct, gen_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, gen_getindex);
 	eel_set_metamethod(c, EEL_MM_CAST, gen_cast);
+#endif
 
 	eel_disown(m);
 	return 0;

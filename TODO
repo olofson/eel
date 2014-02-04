@@ -1,10 +1,165 @@
 
+* EEL probably has the same bug that I reinvented in Audiality 2: If the
+  last token is invalid (after Unlex() usually), the start position is
+  bogus, and should not be used!
+
+* var bestValue = points?.FirstOrDefault()?.X ?? -1;
+
+* OS threads!
+	* To avoid complexity and runtime performance impact, handle
+	  threads like isolated processes. One VM state per thread!
+	* Inter-thread communication:
+		* Streams
+			* Raw FIFO buffers of one sort or another.
+			* Since these will all be single-reader/single-
+			  writer, we could implement them using lock-free
+			  FIFOs, but we should probably provide a few
+			  options here, for different use cases.
+				* Lock-free FIFOs with busy-waiting
+				  polling are really efficient when buffers
+				  are never expected to be full, and both
+				  parties block on other things.
+				* For worker threads and the like, we're
+				  typically better off with something that
+				  we can block on properly.
+				* Maybe we can come up with a hybrid that
+				  uses OS locks of some sort for blocking,
+				  but with lock-free checks before touching
+				  those?
+		Message passing
+			* Objects are cloned when sent via - containers
+			  recursively so.
+			* Special case allowing objects to be transferred?
+			  Simple in theory (refcount == 1), but:
+				* In actual code, you'd probably have
+				  extra refs due to argument handling etc.
+				* We need to recursively check and handle
+				  any children.
+		* Shared objects
+			* Hide the actual objects from the VMs!
+			* Access through thread safe proxy objects.
+
+* Accessing parent function arguments (upvalues) from within
+  'try' handlers seems broken in strange ways, at least when the
+  arguments are optional. Arguments come out of order or
+  something...
+	* Probably shouldn't bother with this. The whole idea of
+	  implementing exceptions as actual function calls is
+	  fucked up anyway.
+
+
+Also Kobo II - uninitialized hashes in tables...?
+
+==28430== Conditional jump or move depends on uninitialised value(s)
+==28430==    at 0x4E5DD53: t_getindex (e_table.c:185)
+==28430==    by 0x4E466A9: eel_run (e_operate.h:146)
+==28430==    by 0x4E501BA: eel_call (e_vm.c:2802)
+==28430==    by 0x4E502DF: eel_calln (e_vm.c:2905)
+==28430==    by 0x40536C: main (eelbox.c:306)
+==28430== 
+==28430== Conditional jump or move depends on uninitialised value(s)
+==28430==    at 0x4E5DF95: t_getindex (e_table.c:185)
+==28430==    by 0x4E466A9: eel_run (e_operate.h:146)
+==28430==    by 0x4E501BA: eel_call (e_vm.c:2802)
+==28430==    by 0x4E502DF: eel_calln (e_vm.c:2905)
+==28430==    by 0x40536C: main (eelbox.c:306)
+==28430== 
+
+
+
+* Finish the Audiality 2 binding!
+	* Waveform upload...?
+	* Error handling! (Script errors, most importantly.)
+
+* Error code registry!
+	* Per-module error code ranges
+	* Error code is registered with:
+		Source module (object)
+		Name (string)
+		Description (string)
+
+* a2_BufferedTap() and a2_Read()?
+
+* Should we just treat Audiality handles like plain integers, as in the C
+  API, or should we wrap them and wire them to EEL memory management?
+
+* Use macros for EEL_xno, like the Audiality 2 error codes!
+
+* Implement vacall()!
+
+* PUSHA instruction for pushing items of an indexable object as
+  arguments + language syntax for using that in argument and
+  initializer lists?
+  	* Syntax:
+		local args = [...stuff...];
+		SomeFunc(#args);
+	* PUSHAS and PUSHASR for specifying slices via immediate
+	  operands and registers?
+
+* Limbo lists revisited:
+	* When and why are they still needed?
+	* What's the deal with temporary objects created when evaluating
+	  expressions? The current problem is that these objects will
+	  leak unless someone keeps track of them, since normal VM
+	  register access bypasses refcounting. Maybe we should just
+	  treat work registers like any reference owners and be done with
+	  it...? There is overhead and complexity SOMEWHERE no matter
+	  what, and limbo lists are looking like a bad deal now - and
+	  ever more so on 64 bit platforms, where they add 16 bytes to
+	  every single object! Also, an object only being able to be in
+	  one limbo list at a time further reduces the usefulness.
+
+* Out-of-band destructor field for tables? Other classes?
+	if(table->destructor)
+	{
+		EEL_object *to = EEL_table2o(table);
+		++to->refcount;	/* Prevent infinite recursion! */
+		eel_callf(to->vm, table->destructor, "o", to);
+	}
+
+* What about the new argument expansion feature in explist(); are
+  there cases where we can't allow run-time variable length of
+  the the resulting lists? Most cases will be trapped when the
+  compiler tries to do things that aren't allowed by the manipulators,
+  but we need to make sure we don't have odd cases that generate bad
+  code.
+
+* Texture filtering flags not working...!? (Kobo II gfxmanager.eel.)
+
+* Add some flag or something to UploadTexture() to keep it from
+  changing the min/mag filtering settings on existing textures!!!
+
+* Add support for uploading from plain EEL vectors and similar to
+  OpenGL...?
+
+* No-normal-case-cost exception handling:
+	* No TRY instructions or similar!
+	* Compiler builds a list of "exception trap zones" for each
+	  function, each zone specifying VM code start/end and
+	  what to do in case of an exception.
+	* Normally, the VM does nothing, and doesn't even look at
+	  this info.
+	* In case of an exception, the VM checks the PC and looks
+	  up the corresponding zone. The simplest implemantation
+	  would probably be to just compile the "except" block as
+	  a function as we do now, and wire the exception trap
+	  zone to that.
+
+* snfprintf() wrapper!!!
+
 * Might be an idea for eel_export_lconstants() to fail if an
   existing constant is redefined...!
 
 * Add miniz...?
 
 * Physics:
+	* Simple "sticky" constraint that generates friction
+	  between two bodies as long as they overlap.
+
+	* "Attach" constraint...? (A bit like "sticky", but also
+	  includes a spring factor and desired position and
+	  orientation.)
+
 	* Use the constraints system for applying "long time"
 	  forces...? (Constraints operate via forces now anyway;
 	  that might change, though.)
@@ -29,6 +184,12 @@
 
 	* Body 'e' field not implemented!
 
+* Native compiler! (Based on the LuaJIT code generator, but no actual JIT.)
+
+* LuaJIT style FFI?
+
+
+---------------------------
 * Exception handling segfaults:
 	* There *should* be garbage in the argument stack if
 	  there's an exception thrown while constructing arguments,
@@ -44,6 +205,7 @@
 	* Exceptions trigger a VM dump whenever we transition from
 	  a native function back into the VM, but that shouldn't
 	  be more than a bandwidth issue...?
+---------------------------
 
 
 	* EEL 'clean' function for cleaning out nil refs (as in, dead
@@ -158,8 +320,6 @@
 
 	* Various examples broken!
 		* ZeeSpace demos using removed APIs!
-
-	* Implement vacall()!
 
 	* Owner trace debug call!!! Figuring out why objects are
 	  unintentionally kept around is hopeless as it is.
@@ -518,20 +678,6 @@
 	* Remove *_v_own() and similar...?
 
 	* Start on some visual introspection debugging tool...
-
-	* OS threads with "friend states"?
-		* Message passing; objects copied - containers
-		  recursively so.
-		* Shared modules shared across states! (Read-
-		  only data, like code and constants only, of
-		  course.)
-			* Problem: Refcounting conflicts! One
-			  would actually have to implement
-			  module, function, ... objects that
-			  wrap shared data. The objects would
-			  need a lock protected refcount for
-			  the data, checked when objects are
-			  destroyed.
 
 -----------------------------------------------------------
 Long term:

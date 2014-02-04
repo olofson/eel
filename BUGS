@@ -204,6 +204,15 @@ exception" error message.
 ================================================================================
 	MEMORY LEAKS
 ================================================================================
+This will not clean up the temporary vectors on its own! The code needs to be in
+a function or other outer context that cleans limbo objects.
+	for local y = 1, fireh - 3
+	{
+		work[y].#+ work[y - 1] #* .03;
+		work[y].#+ work[y + 1] #* .05;
+		work[y].#+ work[y + 2] #* .07;
+	}
+--------------------------------------------------------------------------------
 Circular references aren't handled automatically, so cycles will cause leaks if
 not broken explicitly. Container types should perhaps register themselves with
 some kind of garbage collector, so they can at least be collected properly when
@@ -242,6 +251,9 @@ get going.
 ================================================================================
 	ANNOYING MISFEATURES
 ================================================================================
+The compiler should probably issue a warning if a module name doesn't match the
+name of the file it's being compiled from...
+--------------------------------------------------------------------------------
 It is not possible for an anonymous function to call itself by name, obviously!
 But it should be sufficient to just give it a name, right...?
 --------------------------------------------------------------------------------

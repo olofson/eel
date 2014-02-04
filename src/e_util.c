@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_util.c - EEL engine utilities
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2007, 2009-2011 David Olofson
+ * Copyright (C) 2002-2007, 2009-2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -140,7 +140,7 @@ void eel_sfree(EEL_state *es, const char *s)
 
 
 #define	XN(n)	case EEL_##n:	return #n;
-const char *eel_x_name(EEL_xno x)
+const char *eel_x_name(EEL_vm *vm, EEL_xno x)
 {
 	switch(x)
 	{
@@ -360,7 +360,7 @@ const char *eel_v2s(EEL_value *v)
 		return NULL;
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
-		switch(v->objref.v->type)
+		switch((EEL_classes)v->objref.v->type)
 		{
 		  case EEL_CSTRING:
 			return eel_o2s(v->objref.v);
@@ -382,7 +382,7 @@ EEL_object *eel_new_indexable(EEL_vm *vm, EEL_types itype, int length)
 {
 	EEL_value v, iv;
 	EEL_object *o;
-	switch(itype)
+	switch((EEL_classes)itype)
 	{
 	  case EEL_CVECTOR:
 	  case EEL_CVECTOR_U8:
@@ -636,6 +636,7 @@ const char *eel_o_stringrep(EEL_object *o)
 				o2EEL_table(o)->length, o, o->refcount);
 		return buf;
 	  case EEL__CUSER:
+	  default:
 		break;
 	}
 	if(es->classes)
@@ -652,7 +653,7 @@ const char *eel_o_stringrep(EEL_object *o)
 
 
 /* NOTE: Uses eel_salloc()! */
-const char *eel_v_stringrep(EEL_vm *vm, EEL_value *value)
+const char *eel_v_stringrep(EEL_vm *vm, const EEL_value *value)
 {
 	char *buf;
 	switch(value->type)
@@ -768,6 +769,7 @@ const char *eel_typename(EEL_vm *vm, EEL_types type)
 	  case EEL_CVECTOR_F:	return "vector_f";
 	  case EEL_CVECTOR_D:	return "vector_d";
 	  case EEL__CUSER:
+	  default:
 		break;
 	}
   	if((type < 0) || (type >= VMP->state->nclasses))
@@ -936,7 +938,6 @@ static void st_dump(EEL_state *es, EEL_symbol *st, int code, int indent)
 	  }
 	  case EEL_SMODULE:
 	  {
-		EEL_module *m;
 		if(!st->v.object)
 		{
 			printf("%s module %s\n", inds,
@@ -944,7 +945,6 @@ static void st_dump(EEL_state *es, EEL_symbol *st, int code, int indent)
 			printf("%s Object missing!\n", inds);
 			break;
 		}
-		m = o2EEL_module(st->v.object);
 		tmp = symstring(es, st, 16);
 		printf("%s %s\n", inds, tmp);
 		eel_sfree(es, tmp);
@@ -1096,7 +1096,7 @@ EEL_uint32 eel_lib_version(void)
 
 void *eel_rawdata(EEL_object *o)
 {
-	switch(o->type)
+	switch((EEL_classes)o->type)
 	{
 	  case EEL_CSTRING:
 		return o2EEL_string(o)->buffer;

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_object.c - EEL Object
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2010 David Olofson
+ * Copyright (C) 2004-2006, 2009-2010, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -93,7 +93,7 @@ EEL_object *eel_o_alloc(EEL_vm *vm, int size, EEL_types type)
 	eeld_o_link(vm, o);
 	DBGM2(o2dbg(o)->dname = NULL;)
 #endif
-	if(o->type != EEL_CCLASS)
+	if((EEL_classes)o->type != EEL_CCLASS)
 	{
 		EEL_object *c = VMP->state->classes[o->type];
 		eel_o_own(c);	/* o->type is a reference! */
@@ -197,7 +197,7 @@ EEL_xno eel_o_construct(EEL_vm *vm, EEL_types type,
 		result->type = EEL_TILLEGAL;
 		return x;
 	}
-	if(type == EEL_CVECTOR)	/* Does this all the time... */
+	if((EEL_classes)type == EEL_CVECTOR)	/* Does this all the time... */
 		return 0;
 	if(EEL_TYPE(result) != type)
 		eel_msg(VMP->state, EEL_EM_VMWARNING,

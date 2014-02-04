@@ -999,21 +999,21 @@ static EEL_xno gl_drawrect(EEL_vm *vm)
 
 static EEL_xno gl_drawcircle(EEL_vm *vm)
 {
-	int i, div;
+	int i, d;
 	float da, a;
 	EEL_value *args = vm->heap + vm->argv;
 	float x = eel_v2d(args);
 	float y = eel_v2d(args + 1);
 	float r = eel_v2d(args + 2);
 	if(r <= 10)
-		div = 12;
+		d = 12;
 	else if(r >= 500)
-		div = 135;
+		d = 135;
 	else
-		div = 16 + r * .25;
-	da = 2.0f * M_PI / div;
+		d = 16 + r * .25;
+	da = 2.0f * M_PI / d;
 	ebgl_md.Begin(GL_LINE_LOOP);
-	for(i = 0, a = 0.0f; i < div; ++i, a += da)
+	for(i = 0, a = 0.0f; i < d; ++i, a += da)
 		ebgl_md.Vertex2d(x + r * cosf(a), y + r * sinf(a));
 	ebgl_md.End();
 	return 0;
@@ -1262,6 +1262,15 @@ static const EEL_lconstexp ebgl_constants[] =
 	{"DST_COLOR",			GL_DST_COLOR			},
 	{"ONE_MINUS_DST_COLOR",		GL_ONE_MINUS_DST_COLOR		},
 	{"SRC_ALPHA_SATURATE",		GL_SRC_ALPHA_SATURATE		},
+
+	/* Blend Equation */
+	{"BLEND_EQUATION",		GL_BLEND_EQUATION		},
+	{"MIN",				GL_MIN				},
+	{"MAX",				GL_MAX				},
+	{"FUNC_ADD",			GL_FUNC_ADD			},
+	{"FUNC_SUBTRACT",		GL_FUNC_SUBTRACT		},
+	{"FUNC_REVERSE_SUBTRACT",	GL_FUNC_REVERSE_SUBTRACT	},
+	{"BLEND_COLOR",			GL_BLEND_COLOR 			},
 
 	/* Render Mode */
 	{"FEEDBACK",			GL_FEEDBACK			},
@@ -1667,7 +1676,7 @@ EEL_xno ebgl_init(EEL_vm *vm)
 	eel_export_cfunction(m, 0, "Disable", 1, 0, 0, gl_disable);
 	eel_export_cfunction(m, 0, "Enable", 1, 0, 0, gl_enable);
 	eel_export_cfunction(m, 0, "BlendFunc", 2, 0, 0, gl_blendfunc);
-	eel_export_cfunction(m, 0, "BlendEquation", 2, 0, 0, gl_blendequation);
+	eel_export_cfunction(m, 0, "BlendEquation", 1, 0, 0, gl_blendequation);
 	eel_export_cfunction(m, 0, "ClearColor", 4, 0, 0, gl_clearcolor);
 	eel_export_cfunction(m, 0, "Clear", 1, 0, 0, gl_clear);
 	eel_export_cfunction(m, 0, "Hint", 2, 0, 0, gl_hint);

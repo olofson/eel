@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_object.h - EEL Object
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2011 David Olofson
+ * Copyright (C) 2004-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -413,7 +413,7 @@ static inline void eel_v_own(EEL_value *value)
 	if(value->type == EEL_TOBJREF)
 		eel_own(value->objref.v);
 #ifdef DEBUG
-	else if(value->type == EEL_TILLEGAL)
+	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
 		fprintf(stderr, "INTERNAL ERROR: eel_v_own(): ILLEGAL value!\n");
 #endif
 }
@@ -455,6 +455,13 @@ EELAPI(EEL_xno)eel_insert(EEL_object *io, EEL_value *key, EEL_value *value);
  * NOTE: Uses eel_salloc()!
  */
 EELAPI(const char *)eel_o_stringrep(EEL_object *o);
+
+/*
+ * Generate an ASCII representation of 'value'.
+ *
+ * NOTE: Uses eel_salloc()!
+ */
+EELAPI(const char *)eel_v_stringrep(EEL_vm *vm, const EEL_value *value);
 
 
 /*---------------------------------------------------------

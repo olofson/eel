@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vm.h - EEL Virtual Machine
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2007, 2009-2011 David Olofson
+ * Copyright (C) 2004-2007, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -90,6 +90,8 @@
 #define	EEL_IPUSHCI	EEL_I(PUSHCI, AxsBx)	/* push c[Ax], sBx; */
 #define	EEL_IPHVAR	EEL_I(PHVAR, Ax)	/* push sv[Ax]; */
 #define	EEL_IPHUVAL	EEL_I(PHUVAL, AB)	/* push R[A] B levels up; */
+#define	EEL_IPHARGS	EEL_I(PHARGS, 0)	/* push args[]; */
+#define	EEL_IPUSHTUP	EEL_I(PUSHTUP, 0)	/* push tupargs[]; */
 
 /* Function calls */
 #define	EEL_ICALL	EEL_I(CALL, A)
@@ -266,7 +268,7 @@
 	EEL_IPUSH	EEL_IPUSH2	EEL_IPUSH3	EEL_IPUSH4	\
 	EEL_IPUSHI	EEL_IPHTRUE	EEL_IPHFALSE	EEL_IPUSHNIL	\
 	EEL_IPUSHC	EEL_IPUSHC2	EEL_IPUSHIC	EEL_IPUSHCI	\
-	EEL_IPHVAR	EEL_IPHUVAL					\
+	EEL_IPHVAR	EEL_IPHUVAL	EEL_IPUSHTUP	EEL_IPHARGS	\
 	EEL_ICALL	EEL_ICALLR	EEL_ICCALL	EEL_ICCALLR	\
 	EEL_IRETURN	EEL_IRETURNR					\
 	EEL_ICLEAN							\
@@ -708,9 +710,10 @@ static inline EEL_object *eel__current_function(EEL_vm *vm)
  *	This structure is used as a LIFO stack node for pushing and
  *	popping VM execution contexts; ie the parts of EEL_vm and
  *	EEL_vm_private that need one instance per VM "thread".
- *	   Currently, this mechanism is used only when dynamic loading
- *	of scripts results in the compiler reentering the VM to execute
- *	__init_module() procedures.
+ *	   This mechanism was originally used when dynamic loading
+ *	of scripts results in the compiler reentering the VM to
+ *	execute __init_module() procedures, but there's no need for
+ *	that with the current call mechanism.
  * TEMPORARY HACK
  */
 struct EEL_vm_context

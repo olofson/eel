@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_error.c - EEL Compiler and VM Error Handling
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2006, 2008, 2010 David Olofson
+ * Copyright (C) 2002-2006, 2008, 2010, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -228,14 +228,19 @@ TODO: store the values somewhere, together with the current ones,
 TODO: and consider the hint invalid if the stored position doesn't
 TODO: match the current.
 */
-	spos = eel_lex_getpos(es, 2);
-	if(spos < 0)
-		spos = 0;
 	epos = eel_lex_getpos(es, 0);
 	if(epos < 0)
 		epos = 0;
-	eel_bio_linecount(ctx->bio, spos, EEL_TAB_SIZE, &sline, &scol);
 	eel_bio_linecount(ctx->bio, epos, EEL_TAB_SIZE, &eline, &ecol);
+
+	spos = eel_lex_getpos(es, 2);
+	if(spos >= 0)
+		eel_bio_linecount(ctx->bio, spos, EEL_TAB_SIZE, &sline, &scol);
+	else
+	{
+		sline = eline;
+		scol = ecol;
+	}
 
 	/* Position */
 	if(ctx->module)
@@ -334,11 +339,11 @@ static void vm_msg(EEL_vm *vm, EEL_emtype t,
 		eel_msg(es, -1, "module \"%s\", file \"%s\":\n",
 				eel_module_modname(f->common.module),
 				eel_module_filename(f->common.module));
-		switch(EEL_TYPE(&VMP->exception))
+		switch((EEL_classes)EEL_TYPE(&VMP->exception))
 		{
 		  case EEL_TINTEGER:
 			eel_msg(es, -1, "Unhandled exception '%s'\n",
-					eel_x_name(VMP->exception.integer.v));
+					eel_x_name(vm, VMP->exception.integer.v));
 			break;
 		  case EEL_CSTRING:
 			eel_msg(es, -1, "Unhandled exception \"%s\"\n",
@@ -413,7 +418,7 @@ static void vm_msg(EEL_vm *vm, EEL_emtype t,
 			eel_msg(es, t, "In some place not a function:\n");
 		eel_msg(es, -1, "Unhandled exception '%s'\n",
 				(EEL_TINTEGER == VMP->exception.type) ?
-				eel_x_name(VMP->exception.integer.v) :
+				eel_x_name(vm, VMP->exception.integer.v) :
 				"<object>");
 		eel_vmsg(es, -1, format, args);
 		if(!statedump)

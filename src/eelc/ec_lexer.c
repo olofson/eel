@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_lexer.c - EEL lexer
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2006, 2010 David Olofson
+ * Copyright (C) 2002-2006, 2010, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -489,8 +489,8 @@ int eel_lex(EEL_state *es, int flags)
 		 */
 		if(flags & ELF_LOCALS_ONLY)
 		{
-			eel_lval_copy_string(&es->lval, sym->name,
-					strlen(sym->name));
+			const char *n = eel_o2s(sym->name);
+			eel_lval_copy_string(&es->lval, n, strlen(n));
 			return token(es, TK_NAME, 2);
 		}
 		es->lval.type = ELVT_SYMREF;
@@ -741,7 +741,7 @@ void eel_lexer_cleanup(EEL_state *es)
 int eel_lexer_start(EEL_state *es, EEL_object *mo)
 {
 	EEL_module *m;
-	if(mo->type != EEL_CMODULE)
+	if((EEL_classes)mo->type != EEL_CMODULE)
 		eel_ierror(es, "Object is not a module!");
 	m = o2EEL_module(mo);
 

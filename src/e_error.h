@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_error.h - EEL Compiler and VM Error Handling
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2005, 2009 David Olofson
+ * Copyright (C) 2002-2005, 2009, 2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -137,9 +137,6 @@ void eel_clear_warnings(EEL_state *es);
 
 /* Clear info messages */
 void eel_clear_info(EEL_state *es);
-
-/* Get exception description for 'x' */
-const char *eel_x_stringrep(EEL_state *es, EEL_value *x);
 
 /* Get name of metamethod 'mm' */
 const char *eel_mm_name(EEL_mmindex mm);

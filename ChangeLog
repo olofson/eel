@@ -1,3 +1,59 @@
+
+20140204: Moved to GitHub!
+	This log will continue in the git log.
+
+Changes for 0.3.7
+	* Updated chipsound.eel with the latest k2intro.csl.
+	* OpenGL:
+		* Added BLEND_EQUATION, MIN, MAX, FUNC_ADD etc
+		  for gl.BlendEquation().
+		* Correct argument count for gl.BlendEquation()!
+	* Physics:
+		* Z-map initialized to a proper flat 0 world by
+		  default.
+		* Fixed swapped arguments in Force().
+	* Removed CS_MIDI from the ChipSound wrapper.
+	* Added ChipSound driver selection API. (Simple driver
+	  name based wrapper.)
+	* ChipSound module updated to the ChipSound 0.2.0 with
+	  explicit (and potentially multiple) engine contexts.
+		* EEL style OOP wrapper with user extension table.
+	* Physics engine got native RNGs of its own; one global,
+	  and one for each physics engine instance.
+	* Updated the EPM config flags and fixed various warnings
+	  with GCC 4.6.3.
+	* Fixed a bug in the .ess detokenizer.
+	* Cleaned up the endian handling in eel_io.c.
+	* Disabled unfinished generator class in eel_dsp.c.
+	* eel_v_stringrep() is now properly exported.
+	* Fixed configure so that it actually pulls in the libPNG
+	  that was detected!
+	* Added tryindex() builtin that returns 'nil' or an
+	  optionally specified value if the element is not found.
+	* Added PUSHTUP VM instruction for forwarding all tuple
+	  arguments to a called function.
+	* Added PHARGS VM instruction to forward all arguments to
+	  a called function.
+	* Added compiler support for expanding function argument
+	  lists inside expression lists via #arguments and #tuples.
+	* eel_x_name() now takes a 'vm' argument.
+	* eel_vmsg_src() no longer prints nonsense start position
+	  if eel_lex_getpos(es, 2) is unavailable.
+	* ChipSound/Audiality:
+		* Upgraded from ChipSound to Audiality 2.
+	* EELBox:
+		* Now detaches SDL joysticks as needed. (SDL
+		  deletes them behind our back when closing the
+		  joystick subsystem!)
+		* Audiality 2 state constructor no longer tries to
+		  close the config object if a2_Open() fails. (The
+		  A2_STATECLOSE flag means a2_Open() is supposed to
+		  do that, even if it fails!)
+		* Removed the A2_WRAP flag. (Removed in A2.)
+		* eelbox.c now calls close_subsystems() LAST when
+		  cleaning up after a fatal exception, to avoid
+		  destructors calling into unloaded libraries.
+
 EEL 0.3.6
 	* ChipSound:
 		* Added cs_SendGroup() call.
@@ -253,7 +309,7 @@ EEL 0.3.2
 	  slowed randomoop.eel down by a few percent, so...
 	* Linear search shortcut for tables with < 10 items.
 	* Compared to the results above, randomoop (which uses so
-	  small tables that that no algorithm can be significantly
+	  small tables that no algorithm can be significantly
 	  faster than a naive linear search) is now slightly
 	  faster, despite the extra check for the fast-path:
 		"randomoop":    550 ms		8.3%

@@ -20,6 +20,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include "eel_midi.h"
 
 #ifdef HAVE_ALSA
@@ -77,6 +78,7 @@ static inline void em_seti(EEL_object *msg, const char *n, long val)
 	eel_setsindex(msg, n, &v);
 }
 
+#ifdef HAVE_ALSA
 
 /*--------------------------------------------------------------------
 	EEL message generator
@@ -165,8 +167,6 @@ static void ev_bend(EEL_object *t,
 /*--------------------------------------------------------------------
 	alsaseq: ALSA Sequencer I/O driver
 --------------------------------------------------------------------*/
-
-#ifdef HAVE_ALSA
 
 static void alsaseq_close(EELMIDI_data *d)
 {

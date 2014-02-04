@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_cast.c - EEL Typecasting Utilities
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2010 David Olofson
+ * Copyright (C) 2004-2006, 2009-2010, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -123,7 +123,7 @@ static EEL_xno set_multiple_casts(EEL_vm *vm,
 	int x, y;
 	for(y = 0; y < es->castersdim; ++y)
 	{
-		switch(from)
+		switch((EEL_nontypes)from)
 		{
 		  case EEL_TANYTYPE:
 			break;
@@ -136,7 +136,7 @@ static EEL_xno set_multiple_casts(EEL_vm *vm,
 		}
 		for(x = 0; x < es->castersdim; ++x)
 		{
-			switch(to)
+			switch((EEL_nontypes)to)
 			{
 			  case EEL_TANYTYPE:
 				break;

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_xno.h - EEL Exception/Error codes (API)
 ---------------------------------------------------------------------------
- * Copyright (C) 2005-2006, 2009 David Olofson
+ * Copyright (C) 2005-2006, 2009, 2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -146,10 +146,25 @@ typedef enum
 	EEL__XCOUNT
 } EEL_xno;
 
+
 /*
  * Exception name strings.
  */
-EELAPI(const char *)eel_x_name(EEL_xno x);
+
+#if 0
+/*TODO*/
+/*
+ * User exception registry
+ */
+
+/* Allocate a range of 'count' exception codes for module 'mo' */
+EELAPI(unsigned)eel_x_alloc_range(EEL_object *mo, unsigned count);
+
+/* Get exception description for 'x' */
+EELAPI(const char *)eel_x_description(EEL_vm *vm, EEL_xno x);
+#endif
+/* Get the name of exception 'x' */
+EELAPI(const char *)eel_x_name(EEL_vm *vm, EEL_xno x);
 
 #ifdef __cplusplus
 };

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_class.c - EEL Class Definition
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009 David Olofson
+ * Copyright (C) 2004-2006, 2009, 2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -99,7 +99,7 @@ static EEL_xno c_destruct(EEL_object *eo)
 	if(es->classes)
 		es->classes[cd->typeid] = NULL;
 
-	if(cd->typeid == EEL_CCLASS)
+	if((EEL_classes)cd->typeid == EEL_CCLASS)
 	{
 		/*
 		 * CCLASS is the last one to be destroyed when

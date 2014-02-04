@@ -35,7 +35,7 @@
 #include "eb_opengl.h"
 #include "eel_midi.h"
 #include "eel_zeespace.h"
-#include "eel_chipsound.h"
+#include "eel_audiality2.h"
 #include "eel_physics.h"
 
 
@@ -96,7 +96,7 @@ static EEL_xno eb_init(EEL_vm *vm)
 	main() with helpers
 ----------------------------------------------------------*/
 static int args2args(EEL_vm *vm, const char *sname,
-		int argc, char *argv[], int *resv)
+		int argc, const char *argv[], int *resv)
 {
 	EEL_xno x;
 	int i;
@@ -188,13 +188,13 @@ static struct
 	{"OpenGL",	ebgl_init},
 	{"midi",	eel_midi_init},
 	{"ZeeSpace",	eel_zeespace_init},
-	{"ChipSound",	eel_chipsound_init},
+	{"Audiality2",	eel_audiality2_init},
 	{"physicsbase",	eph_init},
 	{NULL, NULL}
 };
 
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
 	EEL_xno x;
 	int result, i;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 	const char *name = NULL;
 #endif
 	int eelargc;
-	char **eelargv;
+	const char **eelargv;
 
 	for(i = 1; i < argc; ++i)
 	{
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 		{
 			eel_perror(vm, 1);
 			fprintf(stderr, "Could not pass arguments! (%s)\n",
-					eel_x_name(x));
+					eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
 			return 5;
@@ -308,10 +308,10 @@ int main(int argc, char *argv[])
 		{
 			eel_perror(vm, 1);
 			fprintf(stderr, "Failure in main function! (%s)\n",
-					eel_x_name(x));
-			close_subsystems();
+					eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
+			close_subsystems();
 			return 7;
 		}
 

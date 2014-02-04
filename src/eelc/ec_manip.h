@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_manip.h - Argument Manipulator
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009, 2011 David Olofson
+ * Copyright (C) 2004-2006, 2009, 2011-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -38,7 +38,9 @@ typedef enum
 	EEL_MTUPARG,		/* Local or upvalue tuple argument. (R/W) */
  	EEL_MOP,		/* Operator. (RO) */
  	EEL_MCAST,		/* Cast operator. (RO) */
- 	EEL_MINDEX		/* Indexed object. (R/W) */
+ 	EEL_MINDEX,		/* Indexed object. (R/W) */
+ 	EEL_MARGS,		/* Full argument list of current func (R/W) */
+ 	EEL_MTUPARGS		/* Tuple argument list of current func (R/W) */
 } EEL_manipkinds;
 
 struct EEL_manipulator
@@ -157,6 +159,10 @@ void eel_m_detach(EEL_manipulator *m);
 
 /* Transfer 'm' from it's argument list to 'ml'. */
 void eel_m_transfer(EEL_manipulator *m, EEL_mlist *ml);
+
+/* Add full or tuple argument list of current function. */
+void eel_m_args(EEL_mlist *ml);
+void eel_m_tupargs(EEL_mlist *ml);
 
 
 /*----------------------------------------------------------

@@ -409,9 +409,9 @@ static EEL_xno n2_tcp_send(EEL_vm *vm)
 		void *buf;
 		int bsize;
 		EEL_value *v = args + i;
-		switch(EEL_TYPE(v))
+		switch((EEL_classes)EEL_TYPE(v))
 		{
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 		  {
 			int n;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -432,7 +432,7 @@ static EEL_xno n2_tcp_send(EEL_vm *vm)
 			bsize = sizeof(EEL_real);
 			break;
 		  }
-		  case EEL_TINTEGER:
+		  case EEL_CINTEGER:
 		  {
 			EEL_uint32 cvt;
 			SDLNet_Write32(eel_v2l(v), &cvt);

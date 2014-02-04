@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE language SYSTEM "language.dtd">
-<language name="EEL" version="1.02" kateversion="2.3" section="Scripts" extensions="*.eel;*.EEL" mimetype="text/x-eel">
+<language name="EEL" version="1.03" kateversion="2.3" section="Scripts" extensions="*.eel;*.EEL" mimetype="text/x-eel">
 	<highlighting>
 		<list name="keywords">
 			<item> include </item>
@@ -23,32 +23,28 @@
 			<item> break </item>
 			<item> continue </item>
 			<item> repeat </item>
-
 			<item> try </item>
 			<item> untry </item>
 			<item> except </item>
 			<item> throw </item>
 			<item> retry </item>
-
 			<item> local </item>
 			<item> static </item>
 			<item> upvalue </item>
 			<item> export </item>
 			<item> shadow </item>
 			<item> constant </item>
-
 			<item> function </item>
 			<item> procedure </item>
-
 			<item> true </item>
 			<item> false </item>
 			<item> nil </item>
-
 			<item> arguments </item>
 			<item> tuples </item>
 			<item> specified </item>
 			<item> exception </item>
-
+			<item> #arguments </item>
+			<item> #tuples </item>
 			<item> not </item>
 			<item> typeof </item>
 			<item> sizeof </item>
@@ -106,7 +102,7 @@
 				<DetectChar attribute="String" context="String" char="&quot;" />
 				<Detect2Chars attribute="Comment" context="Comment1" char="/" char1="*"/>
 				<Detect2Chars attribute="Comment" context="Comment2" char="/" char1="/"/>
-			        <AnyChar attribute="Symbol" context="#stay" String=":!%()[]{}+,-/.*&lt;=&gt;^"/>
+			        <AnyChar attribute="Symbol" context="#stay" String=":!%()[]{}+,-/.*&lt;=&gt;^#$"/>
 			</context>
 			<context attribute="String" lineEndContext="#stay" name="String">
 				<LineContinue attribute="String" context="#stay"/>

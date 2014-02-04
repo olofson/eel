@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_cast.h - EEL Typecasting Utilities
 ---------------------------------------------------------------------------
- * Copyright (C) 2006, 2009, 2011 David Olofson
+ * Copyright (C) 2006, 2009, 2011-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -38,12 +38,12 @@ static inline EEL_xno eel_cast(EEL_vm *vm,
 	EEL_state *st = VMP->state;
 	EEL_cast_cb *cbs = st->casters;
 	EEL_xno x = cbs[EEL_TYPE(src) * st->castersdim + t](vm, src, dst, t);
-	if(x && (t == EEL_CSTRING || t == EEL_CDSTRING))
+	if(x && ((EEL_classes)t == EEL_CSTRING || (EEL_classes)t == EEL_CDSTRING))
 	{
 		const char *s = eel_v_stringrep(vm, src);
 		if(!s)
 			return EEL_XWRONGTYPE;	/* Giving up! */
-		if(t == EEL_CSTRING)
+		if((EEL_classes)t == EEL_CSTRING)
 			dst->objref.v = eel_ps_new(vm, s);
 		else/* if(t == EEL_CDSTRING)*/
 			dst->objref.v = eel_ds_new(vm, s);

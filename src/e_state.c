@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_state.c - EEL State (Compiler, VM, symbols etc)
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2006, 2009-2011 David Olofson
+ * Copyright (C) 2004-2006, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -31,6 +31,7 @@
 #include "e_table.h"
 #include "e_vector.h"
 #include "e_dstring.h"
+#include "eel_system.h"
 #include "eel_io.h"
 #include "eel_dir.h"
 #include "eel_math.h"
@@ -86,7 +87,9 @@ static EEL_xno init_env_table(EEL_state *es)
 
 EEL_vm *eel_open(int argc, const char *argv[])
 {
+#ifdef DEBUG
 	int i;
+#endif
 	EEL_xno x;
 	EEL_value v;
 	EEL_vm *vm;

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_object.h - EEL Object (Internal)
 ---------------------------------------------------------------------------
- * Copyright (C) 2004-2007, 2009-2011 David Olofson
+ * Copyright (C) 2004-2007, 2009-2012 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -451,7 +451,7 @@ static inline void eel_v_disown_nz(EEL_value *value)
 	else if(value->type == EEL_TWEAKREF)
 		eel__weakref_detach(value);
 #ifdef EEL_VM_CHECKING
-	else if(value->type == EEL_TILLEGAL)
+	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_disown_nz(): ILLEGAL value!\n");
 		DBGZ2(abort();)
@@ -517,7 +517,7 @@ static inline void eel_v_limbo(EEL_value *v)
 		eel_limbo_push(&cf->limbo, v->objref.v);
 	}
 #ifdef EEL_VM_CHECKING
-	if(v->type == EEL_TILLEGAL)
+	if((EEL_nontypes)v->type == EEL_TILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_limbo(): ILLEGAL value!\n");
 		DBGZ2(abort();)
@@ -582,7 +582,7 @@ static inline void eel_v_receive(EEL_value *v)
 		DBGK4(eel_sfree(es, s);)
 	}
 #ifdef EEL_VM_CHECKING
-	if(v->type == EEL_TILLEGAL)
+	if((EEL_nontypes)v->type == EEL_TILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_receive(): ILLEGAL value!\n");
 		DBGZ2(abort();)
@@ -610,7 +610,7 @@ static inline void eel_v_grab(EEL_value *v)
 			eel_o_limbo(v->objref.v);
 		}
 #ifdef EEL_VM_CHECKING
-	if(v->type == EEL_TILLEGAL)
+	if((EEL_nontypes)v->type == EEL_TILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_grab(): ILLEGAL value!\n");
 		DBGZ2(abort();)

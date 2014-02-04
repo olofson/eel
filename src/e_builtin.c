@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_builtin.c - EEL built-in functions
 ---------------------------------------------------------------------------
- * Copyright (C) 2002-2011 David Olofson
+ * Copyright (C) 2002-2013 David Olofson
  *
  * This library is free software;  you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -29,6 +29,7 @@
 #include <sys/wait.h>
 #endif
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include "e_builtin.h"
@@ -99,7 +100,7 @@ static EEL_xno bi__xname(EEL_vm *vm)
 	if(arg->integer.v < 0)
 		return EEL_XLOWINDEX;
 
-	n = eel_x_name(arg->integer.v);
+	n = eel_x_name(vm, arg->integer.v);
 	s = eel_ps_new(vm, n);
 	if(!s)
 		return EEL_XCONSTRUCTOR;
@@ -113,6 +114,14 @@ static EEL_xno print_object(EEL_vm *vm, EEL_object *o)
 {
 	switch((EEL_classes)o->type)
 	{
+	  case EEL_CNIL:
+	  case EEL_CREAL:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CTYPEID:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
+		return EEL_XNEEDOBJECT;
 	  case EEL_CVALUE:
 	  case EEL_COBJECT:
 	  case EEL_CCLASS:
@@ -182,7 +191,7 @@ static EEL_xno bi_print(EEL_vm *vm)
 			count += print_object(vm, v->objref.v);
 			break;
 		}
-		if(v->type > EEL_TLASTTYPE)
+		if((EEL_nontypes)v->type > EEL_TLASTTYPE)
 			count += printf("<illegal value; type %d>", v->type);
 	}
 	eel_l2v(vm->heap + vm->resv, count);
@@ -192,7 +201,9 @@ static EEL_xno bi_print(EEL_vm *vm)
 
 static EEL_xno bi_load(EEL_vm *vm)
 {
+#if 0
 	EEL_xno x;
+#endif
 	EEL_object *m;
 	const char *s = eel_v2s(&vm->heap[vm->argv]);
 	if(!s)
@@ -234,7 +245,7 @@ static EEL_xno bi_compile(EEL_vm *vm)
 	EEL_object *m;
 	const char *buf;
 	int len;
-	switch(EEL_TYPE(arg))
+	switch((EEL_classes)EEL_TYPE(arg))
 	{
 	  case EEL_CSTRING:
 	  {
@@ -279,7 +290,7 @@ static EEL_xno bi__exports(EEL_vm *vm)
 	if(vm->argc >= 1)
 	{
 		EEL_function *f;
-		if(EEL_TYPE(arg) != EEL_CFUNCTION)
+		if((EEL_classes)EEL_TYPE(arg) != EEL_CFUNCTION)
 			return EEL_XWRONGTYPE;
 		f = o2EEL_function(arg->objref.v);
 		m = f->common.module;
@@ -567,7 +578,7 @@ static EEL_xno bi_index(EEL_vm *vm)
 	EEL_value *res = vm->heap + vm->resv;
 	if(!EEL_IS_OBJREF(args->type))
 		return EEL_XNEEDOBJECT;
-	switch(EEL_TYPE(args))
+	switch((EEL_classes)EEL_TYPE(args))
 	{
 	  case EEL_CTABLE:
 	  {
@@ -596,7 +607,7 @@ static EEL_xno bi_key(EEL_vm *vm)
 	int i;
 	if(!EEL_IS_OBJREF(args->type))
 		return EEL_XNEEDOBJECT;
-	if(EEL_TYPE(args) != EEL_CTABLE)
+	if((EEL_classes)EEL_TYPE(args) != EEL_CTABLE)
 		return EEL_XNEEDTABLE;
 	i = eel_v2l(args + 1);
 	if(i < 0)
@@ -605,6 +616,23 @@ static EEL_xno bi_key(EEL_vm *vm)
 	if(!ti)
 		return EEL_XHIGHINDEX;
 	eel_v_copy(res, eel_table_get_key(ti));
+	return 0;
+}
+
+
+static EEL_xno bi_tryindex(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	EEL_value *res = vm->heap + vm->resv;
+	if(!EEL_IS_OBJREF(args->type))
+		return EEL_XNEEDOBJECT;
+	if(eel_o__metamethod(args->objref.v, EEL_MM_GETINDEX, args + 1, res))
+	{
+		if(vm->argc >= 3)
+			eel_v_copy(res, args + 2);
+		else
+			eel_nil2v(res);
+	}
 	return 0;
 }
 
@@ -725,6 +753,7 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "copy", 1, 2, 0, bi_copy);
 	eel_export_cfunction(m, 1, "index", 2, 0, 0, bi_index);
 	eel_export_cfunction(m, 1, "key", 2, 0, 0, bi_key);
+	eel_export_cfunction(m, 1, "tryindex", 2, 1, 0, bi_tryindex);
 
 	/* Run-time EEL module management */
 	eel_export_cfunction(m, 1, "load", 1, 0, 0, bi_load);
