@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // beep.eel - EELBox Simple Audio Test
-// Copyright (C) 2006 David Olofson
+// Copyright 2006 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";

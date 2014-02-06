@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	'eel' command line tool.
 ---------------------------------------------------------------------------
- * David Olofson 2004-2013
+ * David Olofson 2004-2014
  *
  * This code is in the public domain. NO WARRANTY!
  */
@@ -33,7 +33,7 @@ static void usage(const char *exename)
 			EEL_GET_MAJOR(v),
 			EEL_GET_MINOR(v),
 			EEL_GET_MICRO(v));
-	fprintf(stderr, "Copyright 2002-2012 David Olofson\n\n");
+	fprintf(stderr, "Copyright 2002-2014 David Olofson\n\n");
 	fprintf(stderr, "Usage: %s [switches] <file> [arguments]\n\n", exename);
 	fprintf(stderr, "Switches:  -c          Compile only; don't run\n");
 	fprintf(stderr, "           -o <file>   Write binary to \"file\"\n");

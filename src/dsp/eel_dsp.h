@@ -1,7 +1,7 @@
 /*
  * DSP Module - KISS FFT library binding + other DSP tools
  *
- * Copyright (C) 2006-2007 David Olofson
+ * Copyright 2006-2007 David Olofson
  */
 
 #ifndef EEL_DSP_H

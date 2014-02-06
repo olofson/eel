@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // line.eel - Simple line drawing functions
-// Copyright (C) 2005 David Olofson
+// Copyright 2005 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";

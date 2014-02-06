@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////
 // glballs.eel - EELBox Balls - OpenGL version
-// Copyright (C) 2010 David Olofson
+// Copyright 2010 David Olofson
 ///////////////////////////////////////////////
 
 import "SDL" as SDL;

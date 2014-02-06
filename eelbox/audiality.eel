@@ -1,6 +1,6 @@
 /////////////////////////////////////////
 // audiality.eel - Audiality 2 Test
-// Copyright (C) 2011-2012 David Olofson
+// Copyright 2011-2012 David Olofson
 /////////////////////////////////////////
 
 import "SDL" as SDL;

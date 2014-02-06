@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // fmsynth.eel - Simple EELBox FM Synth
-// Copyright (C) 2006, 2010 David Olofson
+// Copyright 2006, 2010 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";

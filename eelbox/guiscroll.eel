@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////
 // guiscroll.eel - EBGUI scroll test
-// Copyright (C) 2006-2007, 2009, 2011 David Olofson
+// Copyright 2006-2007, 2009, 2011 David Olofson
 /////////////////////////////////////////////////////
 
 import "SDL" as SDL;

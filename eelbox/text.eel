@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // text.eel - EELBox "SFont" implementation
-// Copyright (C) 2005, 2009 David Olofson
+// Copyright 2005, 2009 David Olofson
 /////////////////////////////////////////////
 
 module text;

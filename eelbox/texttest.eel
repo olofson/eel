@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // texttest.eel - Test of text.eel
-// Copyright (C) 2005 David Olofson
+// Copyright 2005 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";

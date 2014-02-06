@@ -568,7 +568,7 @@ export function main<args>
 
 	open_screen();
 
-	SDL.SetCaption("ZeeSpace Test - (C) 2006-2011 David Olofson", "ZeeSpace");
+	SDL.SetCaption("ZeeSpace Test - 2006-2011 David Olofson", "ZeeSpace");
 
 	font = text.Open("microfont_sh.png");
 

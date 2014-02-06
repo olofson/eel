@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright (C) 2005 David Olofson
+// Copyright 2005 David Olofson
 /////////////////////////////////////////////
 // This test is intended to verify that 'for'
 // handles iterator declarations correctly.

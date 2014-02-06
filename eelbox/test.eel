@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////
 // Temporary EELBox Test Suite
-// Copyright (C) 2002-2005, 2010 David Olofson
+// Copyright 2002-2005, 2010 David Olofson
 ///////////////////////////////////////////////
 
 import "SDL";

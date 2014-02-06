@@ -2,7 +2,7 @@
 #define _FASTEVENTS_H_
 /*
     NET2 is a threaded, event based, network IO library for SDL.
-    Copyright (C) 2002 Bob Pendleton
+    Copyright 2002 Bob Pendleton
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public License

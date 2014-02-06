@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////
 // bars.eel - EELBox "Copper Bars"
-// Copyright (C) 2005, 2007, 2010 David Olofson
+// Copyright 2005, 2007, 2010 David Olofson
 ////////////////////////////////////////////////
 // This example also demonstrates how to put
 // an imported module (SDL, in this case) in

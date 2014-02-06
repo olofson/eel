@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // guitest.eel - Test of ebgui.eel
-// Copyright (C) 2005, 2007, 2009, 2011 David Olofson
+// Copyright 2005, 2007, 2009, 2011 David Olofson
 //////////////////////////////////////////////////////
 
 import "SDL" as SDL;

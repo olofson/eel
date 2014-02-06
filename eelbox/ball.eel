@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // ball.eel - Module that renders a ball
-// Copyright (C) 2005 David Olofson
+// Copyright 2005 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright (C) 2004, 2005, 2011 David Olofson
+// Copyright 2004, 2005, 2011 David Olofson
 ////////////////////////////////////////////////
 
 procedure print_tree(indent, a)

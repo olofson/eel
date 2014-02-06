@@ -1,7 +1,7 @@
 /*
  * DSP Module - KISS FFT library binding + other DSP tools
  *
- * Copyright (C) 2006-2007, 2010, 2012 David Olofson
+ * Copyright 2006-2007, 2010, 2012 David Olofson
  */
 
 #include <math.h>

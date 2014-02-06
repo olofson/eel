@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // chat.eel - EELBox Graphical Chat Toy
-// Copyright (C) 2005, 2009 David Olofson
+// Copyright 2005, 2009 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "NET2", "pen" as pen;

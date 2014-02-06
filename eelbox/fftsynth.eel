@@ -1,6 +1,6 @@
 //////////////////////////////////////////
 // fftsynth.eel - Simple FFT Synth
-// Copyright (C) 2006 David Olofson
+// Copyright 2006 David Olofson
 //////////////////////////////////////////
 
 import "math";

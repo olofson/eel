@@ -1,6 +1,6 @@
 //////////////////////////////////////////
 // miditest.eel - EEL MIDI Module Test
-// Copyright (C) 2006-2007 David Olofson
+// Copyright 2006-2007 David Olofson
 //////////////////////////////////////////
 // NOTE:
 //      As of EEL 0.1.11, MIDI is only

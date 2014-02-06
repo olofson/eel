@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // pigs.eel - Bouncing Pigs
-// Copyright (C) 2005, 2010 David Olofson
+// Copyright 2005, 2010 David Olofson
 /////////////////////////////////////////////
 
 import "SDL";

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // pen.eel - Simple pen class for drawing
-// Copyright (C) 2005 David Olofson
+// Copyright 2005 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math", "line";

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // draw.eel - EELBox Drawing Toy
-// Copyright (C) 2005, 2011 David Olofson
+// Copyright 2005, 2011 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "pen" as pen;

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////
 // ebgui.eel - EELBox GUI Toolkit
-// Copyright (C) 2005-2006, 2009-2011 David Olofson
+// Copyright 2005-2006, 2009-2011 David Olofson
 ////////////////////////////////////////////////////
 
 module ebgui;
