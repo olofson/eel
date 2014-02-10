@@ -2,7 +2,7 @@
 -----------------------------------------------------------------
 	zstest.eel - ZeeSpace test
 -----------------------------------------------------------------
- * David Olofson, 2005, 2006, 2010-2012
+ * David Olofson, 2005, 2006, 2010-2012, 2014
  *
  * This code is in the Public Domain. No warranty!
  */
@@ -61,13 +61,13 @@ static t_x = 0;
 static t_y = 0;
 static t_r = 0;
 static t_interpolation = zs.BICUBIC;
-static t_extendmode = zs.DIV1P5;
+static t_extendmode = zs.DIV2;
 static t_base = 0;
 static t_height = 100;
 static t_scale = 256;
-static t_p0 = 80;
-static t_p1 = 50;
-static t_p2 = 20;
+static t_p0 = 70;
+static t_p1 = 40;
+static t_p2 = 10;
 
 
 function roundstr(v, decimals)

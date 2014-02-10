@@ -1,22 +1,36 @@
-/////////////////////////////////////////
+///////////////////////////////////////////
 // audiality.eel - Audiality 2 Test
-// Copyright 2011-2012 David Olofson
-/////////////////////////////////////////
+// Copyright 2011-2012, 2014 David Olofson
+///////////////////////////////////////////
 
 import "SDL" as SDL;
 import "Audiality2" as A2;
 
-export constant MUSIC = 1;	// MUSIC group
+function hchk(h)
+{
+	if h < 0
+		print("Sound error: ", A2.ErrorString(-h), "\n");
+	return h;
+}
 
 export function main<args>
 {
-	local screen = SDL.SetVideoMode(640, 480, 0, SDL.SWSURFACE);
+	local screen = SDL.SetVideoMode(320, 240, 0, SDL.SWSURFACE);
 	SDL.SetCaption("Audiality 2 Test", args[0]);
-	local a2 = A2.Open();
-	local bank = a2:Load("k2intro.a2s");
-	local song = a2:Find(bank, "K2TitleFullSong");
-	a2:NewGroup(0, MUSIC);
-	a2:Start(MUSIC, 0, song);
+
+	// Create an audio engine state
+	local a2 = A2.a2state [ 44100, 1024, 2, A2.REALTIME ];
+
+	// Load song
+	local bank = hchk(a2:Load("k2intro.a2s"));
+	print("Song title: ", a2:String(a2:Get(bank, "title")), "\n");
+
+	// Find song entry point
+	local song = hchk(a2:Get(bank, "Song"));
+
+	// Start song as child of the root voice
+	local voice = hchk(a2:Start(a2:RootVoice(), song));
+
 	while true
 	mainloop:
 	{
@@ -29,11 +43,17 @@ export function main<args>
 			  case SDL.KEYUP
 				if ev.sym == SDL.KESCAPE
 					break mainloop;
-			  case SDL.QUIT
+			  case SDL.MOUSEBUTTONUP, SDL.QUIT
 				break mainloop;
 		}
 		SDL.Delay(10);
 	}
-	a2:Close();
+
+	// Stop song and pause for fade-out...
+	a2:Send(voice, 1);
+	a2:Release(voice);
+	SDL.Delay(1500);
+
+	// NOTE: The audio engine will close as a2 is deleted.
 	return 0;
 }
