@@ -1,6 +1,9 @@
 
 * Move to CMake!
 
+* Move eelbox into the main project and make all the modules compile
+  time options!
+
 * EEL probably has the same bug that I reinvented in Audiality 2: If the
   last token is invalid (after Unlex() usually), the start position is
   bogus, and should not be used!
