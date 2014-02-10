@@ -17,6 +17,7 @@ export function main<args>
 	print("     CFGPATH: ", CFGPATH, "\n");
 	print("    HOMEPATH: ", HOMEPATH, "\n");
 	print("  environment:\n");
+	print("     args[0]: ", args[0], "\n");
 	for local i = 0, sizeof $ - 1
 		if typeof index($, i) == array
 		{

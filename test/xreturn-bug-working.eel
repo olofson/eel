@@ -1,0 +1,21 @@
+/////////////////////////////////////////////
+// XRETURN segfault - working test
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+export function test
+{
+	try
+		print(1/0);
+	except
+	{
+		print("In 'except' handler!\n");
+		return 1;
+	}
+	return 0;
+}
+
+export function main<args>
+{
+	return test();
+}

@@ -1,0 +1,16 @@
+/////////////////////////////////////////////
+// XRETURN segfault - broken test
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	try
+		print(1/0);
+	except
+	{
+		print("In 'except' handler!\n");
+		return 1;	// VM segfaults when trying to return to C from here!
+	}
+	return 0;
+}
