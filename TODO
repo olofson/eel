@@ -1,13 +1,4 @@
 
-* The disfile.eel segfault: Exception handling again...?
-	* (See test/xreturn-bug-*.eel)
-	* It happens when returning from main() from within an 'except'
-	  handler; that is, XRETURN.
-	* More specifically, it happens when XRETURN climbs all the way
-	  up and returns to the C side. Wrapping the offending function
-	  in another EEL function eliminates the segfault.
-	  	* Fix eel__scheduler() or top level stack frame init?
-
 * Move to CMake!
 
 * EEL probably has the same bug that I reinvented in Audiality 2: If the

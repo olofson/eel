@@ -149,6 +149,7 @@ static inline int get_uv_base(EEL_vm *vm, unsigned uvlevel)
 	return b;
 }
 
+
 static inline EEL_callframe *b2callframe(EEL_vm *vm, int base)
 {
 	return (EEL_callframe *)(vm->heap + base - EEL_CFREGS);
@@ -841,7 +842,6 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 				vm->sp = cf->r_sp;
 /*FIXME: Is this extra stack_clear() correct, and does it cover all cases...? */
 				stack_clear(vm);
-				cf = b2callframe(vm, vm->base);
 				if(result >= 0)
 				{
 					/* Caller receives result! */
@@ -858,7 +858,7 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 #endif
 					eel_v_receive(vm->heap + result);
 				}
-				if(!cf->f)
+				if(!vm->base)
 					return EEL_XEND;
 				break;
 			}
