@@ -1,2 +1,0 @@
-#!/bin/sh
-CFLAGS="-O3 -g -Wall" cross-configure --disable-debug --disable-epm

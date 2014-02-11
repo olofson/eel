@@ -1,3 +1,0 @@
-#!/bin/sh
-# Standard config for building the "game executive" on native Windows MinGW32
-CFLAGS="-O3 -g -Wall -DMAIN_AUTOSTART" ./configure --prefix=/mingw --disable-debug --disable-epm

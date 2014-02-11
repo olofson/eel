@@ -1,12 +1,11 @@
 
-* Move to CMake!
-
-* Move eelbox into the main project and make all the modules compile
-  time options!
-
 * Broken tests:
 	zsgl2.eel	Doesn't compile!
 	zsgl.eel	Yellow window...
+
+* builtin.c should probably be stripped with eelstrip.eel - which may then
+  just as well output in C code format while at it, as that might be a handy
+  feature for building some EEL script into a host application executable.
 
 * EEL probably has the same bug that I reinvented in Audiality 2: If the
   last token is invalid (after Unlex() usually), the start position is

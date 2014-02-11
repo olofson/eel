@@ -1,5 +1,0 @@
-#!/bin/sh
-TARGET=i686-pc-mingw32
-PREFIX=/opt/mingw/usr
-export CFLAGS="-O3 -g -Wall -march=i686"
-./configure --host=${TARGET} --prefix=${PREFIX}/${TARGET} --disable-debug --disable-epm --disable-shared

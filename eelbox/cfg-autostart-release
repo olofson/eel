@@ -1,2 +1,0 @@
-#!/bin/sh
-CFLAGS="-O3 -g -Wall -DMAIN_AUTOSTART" ./configure --prefix=/usr --disable-debug --disable-epm

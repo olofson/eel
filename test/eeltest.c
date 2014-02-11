@@ -1,8 +1,8 @@
-/*(PD)
+/*
 ---------------------------------------------------------------------------
 	Minimal client that loads and runs a test script.
 ---------------------------------------------------------------------------
- * David Olofson 2002, 2004, 2005, 2007
+ * David Olofson 2002, 2004, 2005, 2007, 2014
  *
  * This code is in the public domain. NO WARRANTY!
  */
@@ -10,10 +10,10 @@
 #include <stdio.h>
 #include "EEL.h"
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
 	EEL_object *m;
-	EEL_vm *vm = eel_open();
+	EEL_vm *vm = eel_open(argc, argv);
 	if(!vm)
 	{
 		fprintf(stderr, "Could not initialize EEL!\n");

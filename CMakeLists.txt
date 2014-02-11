@@ -1,0 +1,36 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(EEL)
+
+set(VERSION_MAJOR 0)
+set(VERSION_MINOR 3)
+set(VERSION_PATCH 7)
+set(VERSION_BUILD 0)
+
+set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+set(PACKAGE "eel-${VERSION_STRING}")
+
+add_subdirectory(src)
+add_subdirectory(test)
+
+install(DIRECTORY include/ DESTINATION include/EEL
+	FILES_MATCHING PATTERN "*.h")
+
+# Release build: full optimization, no debug features, no debug info
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
+
+# Maintainer build: No optimizations, lots of warnings, fail on warnings
+set(f "-O0 -g -Wall -Wwrite-strings -Wcast-align")
+set(f "${f} -Wbad-function-cast -Waggregate-return")
+set(f "${f} -Wstrict-prototypes -fno-builtin -Wshadow")
+set(f "${f} -Wdeclaration-after-statement -Wmissing-prototypes")
+set(f "${f} -Wmissing-declarations -Wdisabled-optimization")
+set(CMAKE_C_FLAGS_MAINTAINER "${f} -Werror")
+
+# Debug build: Maintainer + extra debug features, don't fail on warnings
+set(f "${f} -DDEBUG")
+set(CMAKE_C_FLAGS_DEBUG ${f})
+
+configure_file(eel.pc.cmake ${CMAKE_SOURCE_DIR}/eel.pc @ONLY)
+install(FILES ${CMAKE_SOURCE_DIR}/eel.pc
+	DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/")
