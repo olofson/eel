@@ -1,7 +1,7 @@
-////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2002-2005, 2009-2011 David Olofson
-////////////////////////////////////////////////////
+// Copyright 2002-2005, 2009-2011, 2014 David Olofson
+//////////////////////////////////////////////////////
 
 static results = [];
 
@@ -70,6 +70,7 @@ export function main<args>
 	run("dsp");
 	run("weakref");
 	run("randomoop");
+	run("minihello");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{

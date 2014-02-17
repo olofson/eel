@@ -1,0 +1,9 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+export procedure main
+{
+	print("Hello, world!\n");
+}
