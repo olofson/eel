@@ -397,8 +397,10 @@ static EEL_xno gl_uploadtexture(EEL_vm *vm)
 
 	/* Convert */
 /* TODO: Optimization: Convert only when OpenGL can't handle it! */
-	tmp = SDL_ConvertSurface(s, s->format->Amask ?
-			&ebgl_md.RGBAfmt : &ebgl_md.RGBfmt, SDL_SWSURFACE);
+	tmp = SDL_ConvertSurface(s,
+			s->format->Amask || s->flags & SDL_SRCCOLORKEY ?
+					&ebgl_md.RGBAfmt : &ebgl_md.RGBfmt,
+			SDL_SWSURFACE);
 
 	/* Setup... */
 	ebgl_md.BindTexture(GL_TEXTURE_2D, tex);

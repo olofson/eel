@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eb_sdl.c - EELBox SDL Binding
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2011, 2013 David Olofson
+ * Copyright 2005-2007, 2009-2011, 2013-2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -364,19 +364,44 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	const char *is = eel_v2s(op1);
 	if(!is)
 		return EEL_XWRONGTYPE;
-	if(strlen(is) != 1)
-		return EEL_XWRONGINDEX;
-	switch(is[0])
+	if(strlen(is) == 1)
+		switch(is[0])
+		{
+		  case 'w':
+			op2->integer.v = s->surface->w;
+			break;
+		  case 'h':
+			op2->integer.v = s->surface->h;
+			break;
+		  default:
+			return EEL_XWRONGINDEX;
+		}
+	else if(!strcmp(is, "flags"))
+		op2->integer.v = s->surface->flags;
+	else if(!strcmp(is, "alpha"))
+		op2->integer.v = s->surface->format->alpha;
+	else if(!strcmp(is, "colorkey"))
+		op2->integer.v = s->surface->format->colorkey;
+	else if(!strcmp(is, "palette"))
 	{
-	  case 'w':
-		op2->integer.v = s->surface->w;
-		break;
-	  case 'h':
-		op2->integer.v = s->surface->h;
-		break;
-	  default:
-		return EEL_XWRONGINDEX;
+		op2->integer.v = s->surface->format->palette ? 1 : 0;
+		op2->type = EEL_TBOOLEAN;
+		return 0;
 	}
+	else if(!strcmp(is, "BitsPerPixel"))
+		op2->integer.v = s->surface->format->BitsPerPixel;
+	else if(!strcmp(is, "BytesPerPixel"))
+		op2->integer.v = s->surface->format->BytesPerPixel;
+	else if(!strcmp(is, "Rmask"))
+		op2->integer.v = s->surface->format->Rmask;
+	else if(!strcmp(is, "Gmask"))
+		op2->integer.v = s->surface->format->Gmask;
+	else if(!strcmp(is, "Bmask"))
+		op2->integer.v = s->surface->format->Bmask;
+	else if(!strcmp(is, "Amask"))
+		op2->integer.v = s->surface->format->Amask;
+	else
+		return EEL_XWRONGINDEX;
 	op2->type = EEL_TINTEGER;
 	return 0;
 }

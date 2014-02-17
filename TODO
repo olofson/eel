@@ -1,7 +1,19 @@
 
+* Should we just treat Audiality handles like plain integers, as in the C
+  API, or should we wrap them and wire them to EEL memory management?
+
 * Broken tests:
 	zsgl2.eel	Doesn't compile!
 	zsgl.eel	Yellow window...
+
+* Use macros for EEL_xno, like the Audiality 2 error codes!
+
+* Error code registry!
+	* Per-module error code ranges
+	* Error code is registered with:
+		Source module (object)
+		Name (string)
+		Description (string)
 
 * builtin.c should probably be stripped with eelstrip.eel - which may then
   just as well output in C code format while at it, as that might be a handy
@@ -73,25 +85,6 @@ Also Kobo II - uninitialized hashes in tables...?
 ==28430==    by 0x40536C: main (eelbox.c:306)
 ==28430== 
 
-
-
-* Finish the Audiality 2 binding!
-	* Waveform upload...?
-	* Error handling! (Script errors, most importantly.)
-
-* Error code registry!
-	* Per-module error code ranges
-	* Error code is registered with:
-		Source module (object)
-		Name (string)
-		Description (string)
-
-* a2_BufferedTap() and a2_Read()?
-
-* Should we just treat Audiality handles like plain integers, as in the C
-  API, or should we wrap them and wire them to EEL memory management?
-
-* Use macros for EEL_xno, like the Audiality 2 error codes!
 
 * Implement vacall()!
 
