@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 #include "EEL.h"
+#include "e_function.h"
 
 #ifdef EEL_HAVE_EELBOX
 # include "eelbox.h"
@@ -34,18 +35,42 @@
 /*----------------------------------------------------------
 	main() with helpers
 ----------------------------------------------------------*/
-static int args2args(EEL_vm *vm, const char *sname,
-		int argc, const char *argv[], int *resv)
+
+static EEL_xno find_function(EEL_object *m, const char *name,
+		EEL_object **fo)
 {
 	EEL_xno x;
-	int i;
-	x = eel_argf(vm, "*Rs", resv, sname);
-	if(x)
+	EEL_value f;
+	if((x = eel_getsindex(m, name, &f)))
 		return x;
-	for(i = 0; i < argc; ++i)
-		if( (x = eel_argf(vm, "s", argv[i])) )
+	if((EEL_classes)f.objref.v->type != EEL_CFUNCTION)
+		return EEL_XWRONGTYPE;
+	*fo = f.objref.v;
+	return EEL_XNONE;
+}
+
+
+static EEL_xno args2args(EEL_object *fo, const char *sname,
+		int argc, const char *argv[], int *resv)
+{
+	EEL_function *f = o2EEL_function(fo);
+	EEL_xno x;
+	int i;
+	eel_argf(fo->vm, "*");
+	if(f->common.results)
+		if((x = eel_argf(fo->vm, "R", resv)))
 			return x;
-	return 0;
+	if(f->common.reqargs || f->common.optargs || f->common.tupargs)
+	{
+		if((x = eel_argf(fo->vm, "s", sname)))
+			return x;
+		for(i = 0; i < argc; ++i)
+			if( (x = eel_argf(fo->vm, "s", argv[i])) )
+				return x;
+	}
+	else if(argc >= 1)
+		return EEL_XMANYARGS;
+	return EEL_XNONE;
 }
 
 
@@ -62,7 +87,8 @@ static void usage(const char *exename)
 #endif
 	fprintf(stderr, "| Copyright 2005-2014 David Olofson\n");
 	fprintf(stderr,	"|------------------------------------------------\n");
-	fprintf(stderr, "| Usage: %s [switches] <file> [arguments]\n", exename);
+	fprintf(stderr, "| Usage: %s [switches] <file> [arguments]\n", 
+			exename);
 	fprintf(stderr, "| Switches:  -c          Compile only; don't run\n");
 	fprintf(stderr, "|            -o <file>   Write binary to \"file\"\n");
 	fprintf(stderr, "|-           -l          List symbol tree\n");
@@ -176,16 +202,25 @@ int main(int argc, const char *argv[])
 
 	if(run)
 	{
+		EEL_object *fo;
+		if((x = find_function(m, "main", &fo)))
+		{
+			fprintf(stderr, "No main function found! (%s)\n",
+					eel_x_name(vm, x));
+			eel_disown(m);
+			eel_close(vm);
+			return 6;
+		}
+
 		/* Pass arguments and call the script's 'main' function */
-		x = args2args(vm, name, eelargc, eelargv, &resv);
-		if(x)
+		if((x = args2args(fo, name, eelargc, eelargv, &resv)))
 		{
 			eel_perror(vm, 1);
 			fprintf(stderr, "Could not pass arguments! (%s)\n",
 					eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
-			return 6;
+			return 7;
 		}
 
 #ifdef EEL_HAVE_EELBOX
@@ -195,13 +230,12 @@ int main(int argc, const char *argv[])
 			fprintf(stderr, "Could not open subsystems!\n");
 			eel_disown(m);
 			eel_close(vm);
-			return 7;
+			return 8;
 		}
 #endif
 
 		/* Run the script! */
-		x = eel_calln(vm, m, "main");
-		if(x)
+		if((x = eel_call(vm, fo)))
 		{
 			eel_perror(vm, 1);
 			fprintf(stderr, "Failure in main function! (%s)\n",
@@ -211,15 +245,21 @@ int main(int argc, const char *argv[])
 #ifdef EEL_HAVE_EELBOX
 			eb_close_subsystems();
 #endif
-			return 8;
+			return 9;
 		}
 
-		/* Get the return value */
-		result = eel_v2l(vm->heap + resv);
+		if(o2EEL_function(fo)->common.results)
+		{
+			/* Get the return value */
+			result = eel_v2l(vm->heap + resv);
 #ifdef DEBUG
-		printf("Return value: %d (%s @ heap[%d])\n", result,
-				eel_v_stringrep(vm, vm->heap + resv), resv);
+			printf("Return value: %d (%s @ heap[%d])\n", result,
+					eel_v_stringrep(vm, vm->heap + resv),
+					resv);
 #endif
+		}
+		else
+			result = 0;
 	}
 	else
 		result = 0;
