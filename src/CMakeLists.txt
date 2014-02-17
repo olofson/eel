@@ -1,4 +1,6 @@
 
 add_subdirectory(core)
-add_subdirectory(eelbox)
+if(BUILD_EELBOX)
+	add_subdirectory(eelbox)
+endif(BUILD_EELBOX)
 add_subdirectory(executive)

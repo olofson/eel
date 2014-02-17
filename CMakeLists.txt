@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8)
 
 project(EEL)
 
+option(BUILD_EELBOX "Build EELBox SDL binding" ON)
+set(EEL_HAVE_EELBOX ${BUILD_EELBOX})
+
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 3)
 set(VERSION_PATCH 7)
@@ -9,9 +12,6 @@ set(VERSION_BUILD 0)
 
 set(VERSION_STRING "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
 set(PACKAGE "eel-${VERSION_STRING}")
-
-add_subdirectory(src)
-add_subdirectory(test)
 
 install(DIRECTORY include/ DESTINATION include/EEL
 	FILES_MATCHING PATTERN "*.h")
@@ -30,6 +30,9 @@ set(CMAKE_C_FLAGS_MAINTAINER "${f} -Werror")
 # Debug build: Maintainer + extra debug features, don't fail on warnings
 set(f "${f} -DDEBUG")
 set(CMAKE_C_FLAGS_DEBUG ${f})
+
+add_subdirectory(src)
+add_subdirectory(test)
 
 configure_file(eel.pc.cmake ${CMAKE_SOURCE_DIR}/eel.pc @ONLY)
 install(FILES ${CMAKE_SOURCE_DIR}/eel.pc

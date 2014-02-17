@@ -14,6 +14,7 @@ include_directories(${EEL_SOURCE_DIR}/src/core)
 
 # eelbox modules
 set(sources
+	eelbox.c
 	eb_image.c
 	eb_net.c
 	eb_opengl.c

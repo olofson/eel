@@ -1,8 +1,8 @@
 /*
 ---------------------------------------------------------------------------
-	EELBox - A Quick Hack Binding to SDL And Some Helper Libs
+	eelbox.h - EEL binding to SDL, OpenGL, Audiality 2 etc
 ---------------------------------------------------------------------------
- * Copyright 2005, 2009 David Olofson
+ * Copyright 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -22,8 +22,12 @@
  */
 
 #ifndef EELBOX_H
-#define	EELBOX_H
+#define EELBOX_H
 
-#include "eb_version.h"
+#include "EEL.h"
+
+EEL_xno eb_init_bindings(EEL_vm *vm);
+int eb_open_subsystems(void);
+void eb_close_subsystems(void);
 
 #endif /* EELBOX_H */

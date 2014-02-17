@@ -1,16 +1,39 @@
-/*(PD)
+/*
 ---------------------------------------------------------------------------
-	'eel' command line tool.
+	'eel' command line executive
 ---------------------------------------------------------------------------
- * David Olofson 2004-2014
+ * Copyright 2005-2007, 2009-2012, 2014 David Olofson
  *
- * This code is in the public domain. NO WARRANTY!
+ * This software is provided 'as-is', without any express or implied warranty.
+ * In no event will the authors be held liable for any damages arising from the
+ * use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "EEL.h"
 
+#ifdef EEL_HAVE_EELBOX
+# include "eelbox.h"
+#endif
+
+
+/*----------------------------------------------------------
+	main() with helpers
+----------------------------------------------------------*/
 static int args2args(EEL_vm *vm, const char *sname,
 		int argc, const char *argv[], int *resv)
 {
@@ -29,19 +52,25 @@ static int args2args(EEL_vm *vm, const char *sname,
 static void usage(const char *exename)
 {
 	EEL_uint32 v = eel_lib_version();
-	fprintf(stderr, "EEL (Extensible Embeddable Language) v%d.%d.%d\n",
+	fprintf(stderr, ".------------------------------------------------\n");
+	fprintf(stderr, "| EEL (Extensible Embeddable Language) v%d.%d.%d\n",
 			EEL_GET_MAJOR(v),
 			EEL_GET_MINOR(v),
 			EEL_GET_MICRO(v));
-	fprintf(stderr, "Copyright 2002-2014 David Olofson\n\n");
-	fprintf(stderr, "Usage: %s [switches] <file> [arguments]\n\n", exename);
-	fprintf(stderr, "Switches:  -c          Compile only; don't run\n");
-	fprintf(stderr, "           -o <file>   Write binary to \"file\"\n");
-	fprintf(stderr, "           -l          List symbol tree\n");
-	fprintf(stderr, "           -a          List VM assembly code\n");
-	fprintf(stderr, "           -s          Read input from stdin\n");
-	fprintf(stderr, "           -h          Help\n\n");
-	exit(1);
+#ifdef EEL_HAVE_EELBOX
+	fprintf(stderr, "| With EELBox (SDL, OpenGL, Audiality 2)\n");
+#endif
+	fprintf(stderr, "| Copyright 2005-2014 David Olofson\n");
+	fprintf(stderr,	"|------------------------------------------------\n");
+	fprintf(stderr, "| Usage: %s [switches] <file> [arguments]\n", exename);
+	fprintf(stderr, "| Switches:  -c          Compile only; don't run\n");
+	fprintf(stderr, "|            -o <file>   Write binary to \"file\"\n");
+	fprintf(stderr, "|-           -l          List symbol tree\n");
+	fprintf(stderr, "|--          -a          List VM assembly code\n");
+	fprintf(stderr, "|---         -s          Read input from stdin\n");
+	fprintf(stderr, "|----        -h          Help\n");
+	fprintf(stderr, "'------------------------------------------------\n");
+	exit(100);
 }
 
 
@@ -49,16 +78,21 @@ int main(int argc, const char *argv[])
 {
 	EEL_xno x;
 	int result, i;
-	EEL_vm *vm;
 	EEL_object *m;
+	EEL_vm *vm;
 	int resv = -1;
 	int flags = 0;
 	int run = 1;
+	int readstdin = 0;
+#ifdef MAIN_AUTOSTART
+	const char *defname = "main";
+	const char *name = defname;
+#else
 	const char *name = NULL;
+#endif
 	const char *outname = NULL;
 	int eelargc;
 	const char **eelargv;
-	int readstdin = 0;
 
 	for(i = 1; i < argc; ++i)
 	{
@@ -110,16 +144,25 @@ int main(int argc, const char *argv[])
 	vm = eel_open(argc, argv);
 	if(!vm)
 	{
-		eel_perror(vm, 1);
+		eel_perror(NULL, 1);
 		fprintf(stderr, "Could not initialize EEL!\n");
-		return 1;
+		return 2;
 	}
+
+#ifdef EEL_HAVE_EELBOX
+	if((x = eb_init_bindings(vm)))
+	{
+		eel_perror(vm, 1);
+		fprintf(stderr, "Could not initialize EELBox!\n");
+		return 3;
+	}
+#endif
 
 	/* Load the script */
 	if(readstdin)
 	{
 		fprintf(stderr, "Not yet implemented!\n");
-		return 1;
+		return 4;
 	}
 	else
 		m = eel_load(vm, name, flags);
@@ -128,7 +171,7 @@ int main(int argc, const char *argv[])
 		eel_perror(vm, 1);
 		fprintf(stderr, "Could not load script!\n");
 		eel_close(vm);
-		return 1;
+		return 5;
 	}
 
 	if(run)
@@ -142,8 +185,21 @@ int main(int argc, const char *argv[])
 					eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
-			return 1;
+			return 6;
 		}
+
+#ifdef EEL_HAVE_EELBOX
+		if(eb_open_subsystems() < 0)
+		{
+			eel_perror(vm, 1);
+			fprintf(stderr, "Could not open subsystems!\n");
+			eel_disown(m);
+			eel_close(vm);
+			return 7;
+		}
+#endif
+
+		/* Run the script! */
 		x = eel_calln(vm, m, "main");
 		if(x)
 		{
@@ -152,7 +208,10 @@ int main(int argc, const char *argv[])
 					eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
-			return 1;
+#ifdef EEL_HAVE_EELBOX
+			eb_close_subsystems();
+#endif
+			return 8;
 		}
 
 		/* Get the return value */
@@ -177,12 +236,22 @@ int main(int argc, const char *argv[])
 		}
 	}
 
-	/* In case there are warnings */
 	eel_perror(vm, 0);
+
+#ifdef MAIN_AUTOSTART
+	if(result && name == defname)
+	{
+		fprintf(stderr, "Could not run default main program!\n");
+		usage(argv[0]);
+	}
+#endif
 
 	/* Clean up */
 	if(m)
 		eel_disown(m);
 	eel_close(vm);
+#ifdef EEL_HAVE_EELBOX
+	eb_close_subsystems();
+#endif
 	return result;
 }
