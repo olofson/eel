@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_system.c - EEL system/platform information module
 ---------------------------------------------------------------------------
- * Copyright 2007, 2009 David Olofson
+ * Copyright 2007, 2009, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -21,12 +21,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include "eel_system.h"
-#include "EEL_register.h"
-
 /*
 TODO:
 	* Try to get the executable path from various platform
@@ -42,7 +36,84 @@ TODO:
 	  exepath is probably the fallback as usual...
 
 	* System wide configuration path...?
+*/
+
+#include <stdlib.h>
+#include <string.h>
+#include "eel_system.h"
+#include "EEL_register.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+
+/*
+ * function getenv(name);
+ *
+ *	Returns the value (string), or nil, if no variable 'name' exists.
  */
+static EEL_xno s_getenv(EEL_vm *vm)
+{
+	EEL_object *s;
+	const char *value;
+	const char *name = eel_v2s(vm->heap + vm->argv);
+	if(!name)
+		return EEL_XNEEDSTRING;
+	if(!(value = getenv(name)))
+	{
+		eel_nil2v(vm->heap + vm->resv);
+		return 0;
+	}
+	if(!(s = eel_ps_new(vm, value)))
+		return EEL_XMEMORY;
+	eel_o2v(vm->heap + vm->resv, s);
+	return 0;
+}
+
+
+/*
+ * function setenv(name, value)[overwrite];
+ *
+ *	Adds a variable 'name' and sets it to 'value', or if 'value' is nil,
+ *	delete variable 'name' if it exists.
+ *
+ *	If 'overwrite' is true, an existing variable 'name' will be overwritten
+ *	with 'value'. If 'overwrite' is false, no action is performed if a
+ *	variable 'name' already exists.
+ *
+ *	'overwrite' must be true (or not specified) if 'value' is nil, because
+ *	deleting a variable without overwriting doesn't make sense.
+ *
+ *	Returns true if a variable was added, overwritten or deleted.
+ *
+ * NOTE: 'overwrite' defaults to true if not specified!
+ */
+static EEL_xno s_setenv(EEL_vm *vm)
+{
+	EEL_value *arg = vm->heap + vm->argv;
+#ifdef _WIN32
+	char buf[1];
+#endif
+	const char *value;
+	const char *name = eel_v2s(arg);
+	int overwrite = vm->argc >= 3 ? eel_v2l(arg + 2) : 1;
+	int added = 1;
+	value = EEL_TYPE(arg + 1) == EEL_TNIL ? NULL : eel_v2s(arg + 1);
+	if(!value && !overwrite)
+		return EEL_XARGUMENTS;	/* Delete, but don't overwrite? o.O */
+#ifdef _WIN32
+	if(overwrite || (GetEnvironmentVariableA(name, buf, sizeof(buf) > 0))
+		added = !SetEnvironmentVariableA(name, value ? value : NULL);
+#else
+	if(value)
+		added = (setenv(name, value, overwrite) == 0);
+	else
+		added = (unsetenv(name) == 0);
+#endif
+	eel_b2v(vm->heap + vm->resv, added);
+	return 0;
+}
+
 
 static EEL_xno s_unload(EEL_object *m, int closing)
 {
@@ -86,7 +157,7 @@ EEL_xno eel_system_init(EEL_vm *vm, int argc, const char *argv[])
 	else
 	{
 		exepath = strdup("");
-		exename = strdup("<unknown executable>");
+		exename = strdup("exename_unknown");
 	}
 	if(!exepath || !exename)
 		return EEL_XMODULEINIT;
@@ -114,9 +185,12 @@ EEL_xno eel_system_init(EEL_vm *vm, int argc, const char *argv[])
 	eel_export_sconstant(m, "CFGPATH", "~");
 	eel_export_sconstant(m, "HOMEPATH", "~");
 #endif
-
 	free(exepath);
 	free(exename);
+
+	eel_export_cfunction(m, 1, "getenv", 1, 0, 0, s_getenv);
+	eel_export_cfunction(m, 1, "setenv", 2, 1, 0, s_setenv);
+
 	eel_disown(m);
 	return 0;
 }

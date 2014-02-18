@@ -1,0 +1,55 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+import "system";
+
+constant TESTVAR = "EEL_TEST_VARIABLE";
+
+export function main<args>
+{
+	procedure pe(name)
+	{
+		print("  ", name, "=", getenv(name), "\n");
+	}
+	print("Some environment variables:\n");
+	pe("PATH");
+	pe("LANG");
+	pe("HOME");
+	pe("USER");
+
+	print("\nAdding a new environment variable:\n");
+	pe(TESTVAR);
+	setenv(TESTVAR, "test_value");
+	if getenv(TESTVAR) != "test_value"
+		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+				" - (expected \"test_value\")";
+	pe(TESTVAR);
+
+	print("\nCheck if a system() process can see it:\n");
+	system("echo \"  \"${" + TESTVAR + "}");
+
+	print("\nOverwrite environment variable (should fail):\n");
+	setenv(TESTVAR, "new_test_value", false);
+	if getenv(TESTVAR) != "test_value"
+		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+				" - (expected \"test_value\")";
+	pe(TESTVAR);
+
+	print("\nOverwrite environment variable (should succeed):\n");
+	setenv(TESTVAR, "new_test_value", true);
+	if getenv(TESTVAR) != "new_test_value"
+		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+				" - (expected \"new_test_value\")";
+	pe(TESTVAR);
+
+	print("\nDelete environment variable:\n");
+	setenv(TESTVAR, nil);
+	if getenv(TESTVAR) != nil
+		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+				" - (expected it to not exist)";
+	pe(TESTVAR);
+
+	return 0;
+}

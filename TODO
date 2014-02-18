@@ -6,7 +6,26 @@
 	zsgl2.eel	Doesn't compile!
 	zsgl.eel	Yellow window...
 
+* There are some functions in the builtin module that probably belong in
+  system.
+
+* Should the builtin module really be imported by default?
+
+* Some string formatting tools would be nice...!
+	* Would be even nicer if the full range of bases of the compiler were
+	  supported as well.
+
 * Use macros for EEL_xno, like the Audiality 2 error codes!
+
+* Parser tool that takes an input stream (memory or file), a state object, an
+  output stream, and one or more token and/or pattern matching tables, and
+  either copies the value fields from matched elements, or if they're callable,
+  calls them with the match buffer, the state object and the output stream, so
+  they can do whatever they want.
+
+* builtin.c should probably be stripped with eelstrip.eel - which may then
+  just as well output in C code format while at it, as that might be a handy
+  feature for building some EEL script into a host application executable.
 
 * Error code registry!
 	* Per-module error code ranges
@@ -14,10 +33,6 @@
 		Source module (object)
 		Name (string)
 		Description (string)
-
-* builtin.c should probably be stripped with eelstrip.eel - which may then
-  just as well output in C code format while at it, as that might be a handy
-  feature for building some EEL script into a host application executable.
 
 * EEL probably has the same bug that I reinvented in Audiality 2: If the
   last token is invalid (after Unlex() usually), the start position is
