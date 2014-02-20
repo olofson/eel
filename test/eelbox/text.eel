@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // text.eel - EELBox "SFont" implementation
-// Copyright 2005, 2009 David Olofson
+// Copyright 2005, 2009, 2014 David Olofson
 /////////////////////////////////////////////
 
 module text;
@@ -116,7 +116,7 @@ export function Open(filename)
 		if GetPixel(sfont, x, 0) == c
 		{
 			local mstart = x;
-			while x < sfont.w - 1 and GetPixel(sfont, x, 0) == c
+			while x < (sfont.w - 1) and (GetPixel(sfont, x, 0) == c)
 				x += 1;
 			local cut = (mstart + x) / 2;
 			if last_cut

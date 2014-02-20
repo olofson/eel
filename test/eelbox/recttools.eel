@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////
 // recttools.eel - Rectangle handling tools for SDL
-// Copyright 2010 David Olofson
+// Copyright 2010, 2014 David Olofson
 ////////////////////////////////////////////////////////////////
 
 module recttools;
@@ -25,9 +25,9 @@ export function Intersect(r1, r2)
 {
 	local xmin = r1.x >| r2.x;
 	local ymin = r1.y >| r2.y;
-	local xmax = r1.x + r1.w |< r2.x + r2.w;
-	local ymax = r1.y + r1.h |< r2.y + r2.h;
-	if xmax <= xmin or ymax <= ymin
+	local xmax = r1.x + r1.w |< (r2.x + r2.w);
+	local ymax = r1.y + r1.h |< (r2.y + r2.h);
+	if (xmax <= xmin) or (ymax <= ymin)
 		return nil;
 	else
 		return SDL.Rect [xmin, ymin, xmax - xmin, ymax - ymin];

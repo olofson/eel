@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_bio.h - EEL Binary I/O
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2009 David Olofson
+ * Copyright 2002-2006, 2009, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -40,6 +40,9 @@ typedef struct
 	int		lcc_pos;
 	int		lcc_line;
 	int		lcc_col;
+
+	/* FIXME: Temporary hack! */
+	int		noprecedence;	/* 1 == op precedence warnings off! */
 } EEL_bio;
 
 

@@ -1,7 +1,9 @@
 //////////////////////////////////////////
 // fftsynth.eel - Simple FFT Synth
-// Copyright 2006 David Olofson
+// Copyright 2006, 2014 David Olofson
 //////////////////////////////////////////
+
+noprecedence;	// Weird looking expressions ahead! You have been warned... ;-)
 
 import "math";
 import "SDL" as SDL;
@@ -32,8 +34,8 @@ static LAST = 42;
 
 function rnd(max)
 {
-	LAST = (LAST * IA + IC) % IM;
-	return (max * LAST) / IM;
+	LAST = LAST * IA + IC % IM;
+	return max * LAST / IM;
 }
 
 
@@ -108,19 +110,18 @@ function Bass
 			}
 			local f, local dph0, local ph = self.(f, dph0, ph);
 			ph.#+ dph0 #* (f * PI / FFT * WINDOW);
-			local a = (.5 - self.reso * .3) * self.a ** 7;
+			local a = .5 - (self.reso * .3) * (self.a ** 7);
 			local cutoff = self.fa ** 3;
-			cutoff = (MINCUT + self.reso *
-					(self.maxcut - MINCUT)) *
-					(1 - cutoff) +
-					(OSCILLATORS - 1) * cutoff;
+			cutoff = (self.reso * (self.maxcut - MINCUT) +
+					MINCUT) * (1 - cutoff) +
+					(OSCILLATORS - 1 * cutoff);
 			local m = 0;
 			for local h = 0, cutoff
 			{
 				local i =  f * dph0[h];
 				m = a / (h + 1.5);
 				// Filter peak
-				m *= 1 + self.reso * (h / cutoff) ** 3 * 30;
+				m *= self.reso * (h / cutoff ** 3) * 30 + 1;
 				dsp.c_add_polar_i(fdata, i, m, ph[h]);
 			}
 
@@ -129,12 +130,12 @@ function Bass
 			local cco = ceil(cutoff);
 			local i = f * dph0[cco];
 			m = a / (cutoff + 1.5);
-			m *= 1 + self.reso * 20;
+			m *= self.reso * 20 + 1;
 			dsp.c_add_polar_i(fdata, i, m * frac, ph[cco]);
 
 			// Bass enhancer
 			dsp.c_add_polar_i(fdata, f * dph0[0] * .5,
-					.1 * self.a ** 5, ph[0] * .5);
+					self.a ** 5 * .1, ph[0] * .5);
 
 			// Filter frequency
 			self.resoph += cutoff * f * PI / FFT * WINDOW;
@@ -143,7 +144,7 @@ function Bass
 			self.resom += m * self.reso;
 
 			// Filter resonance: Damping
-			self.resom *= .5 + .3 * self.reso;
+			self.resom *= .3 * self.reso + .5;
 
 			// Filter resonance: Saturation
 			self.resom |<= 1;
@@ -151,11 +152,11 @@ function Bass
 			// Filter output + distortion
 			for local h = 1, 30, 2
 				dsp.c_add_polar_i(fdata, cutoff * f * h,
-						.2 * self.resom ** h / h,
+						self.resom ** h / h * .2,
 						self.resoph * h);
 
 			// Update envelopes
-			self.f += (self.nf - self.f) * .5;
+			self.f += self.nf - self.f * .5;
 			self.a *= self.d;
 			self.fa *= self.fd;
 		}
@@ -210,7 +211,7 @@ function Whistle
 			local lfo = sin(SDL.GetTicks() * .011) * .02;
 			lfo += sin(SDL.GetTicks() * .017) * .05;
 			lfo += sin(SDL.GetTicks() * .04) * self.vib;
-			local f = self.f * (1 + lfo * .1);
+			local f = lfo * .1 + 1 * self.f;
 			self.ph.#+ self.dph0 #* (f * PI / FFT * WINDOW);
 			local low = self.a * .2;
 			local dph0, local ph = self.(dph0, ph);
@@ -221,14 +222,14 @@ function Whistle
 				local m = low / (h + 100);
 				dsp.c_add_polar_i(fd, i, m, ph[h]);
 			}
-			self.f += (self.nf - self.f) * .4;
-			self.a += (self.ta - self.a) * self.d;
+			self.f += self.nf - self.f * .4;
+			self.a += self.ta - self.a * self.d;
 		}
 	];
 	for local i = 1, OSCILLATORS
 	{
 		o.ph.+ rnd(2 * PI);
-		o.dph0.+ 1 + i * .007 + rnd(.01) * (i - 1);
+		o.dph0.+ 1 + (i * .007) + (i - 1 * rnd(.01));
 	}
 	return o;
 }
@@ -279,10 +280,10 @@ function Strings
 			for local j = 0, VOICES - 1
 			{
 				local w = j / VOICES;
-				local m = .08 * sin(t * 6 + w * 2);
-				local h = (sin(t * (.55 + w)) +
-					sin(t * (2.3 + w * 1.7))) * .007;
-				vf.+ (1 + m * self.vib + h) * self.f;
+				local m = .08 * sin(t * 6 + (w * 2));
+				local h = (sin(.55 + w * t) +
+					sin(w * 1.7 + 2.3 * t)) * .007;
+				vf.+ m * self.vib + 1 + h * self.f;
 			}
 			local low = self.a;
 			local dph0, local ph = self.(dph0, ph);
@@ -294,16 +295,16 @@ function Strings
 				local m = low / (h + 20);
 				dsp.c_add_polar_i(fd, i, m, ph[h]);
 			}
-			self.f += (self.nf - self.f) * .4;
-			self.a += (self.ta - self.a) * self.d;
+			self.f += self.nf - self.f * .4;
+			self.a += self.ta - self.a * self.d;
 		}
 	];
 	for local j = 0, VOICES - 1
 		for local i = 1, OSCILLATORS / VOICES
 		{
-			local ind = (i - 1) * VOICES + j;
+			local ind = i - 1 * VOICES + j;
 			o.ph[ind] =  rnd(2 * PI);
-			o.dph0[ind] = 1 + (i - 1) * (.995 + rnd(.01));
+			o.dph0[ind] = i - 1 * (.995 + rnd(.01)) + 1;
 		}
 	return o;
 }
@@ -346,11 +347,12 @@ function Crash
 			self.ph.#+ self.dph0 #* (self.f * PI / FFT * WINDOW);
 
 			// Render oscillators in frequency space
-			local low = 3 * self.a ** 10;
+			local low = self.a ** 10 * 3;
 			if self.a == 1
 				local high = 7;
 			else
-				high = 30 * (1 - self.a) ** 1.5 * self.a ** 4;
+				high = 30 * (1 - self.a ** 1.5) *
+						(self.a ** 4);
 			local f, local dph0, local ph = self.(f, dph0, ph);
 			for local h = 0, OSCILLATORS - 1
 			{
@@ -358,22 +360,22 @@ function Crash
 				local i = f * dph0[h];
 
 				// Calculate magnitude
-				local m = low / (h + 30) + high / (h + 300);
+				local m = low / (h + 30) + (high / (h + 300));
 
 				// Add component
 				dsp.c_add_polar_i(fd, i, m, ph[h]);
 			}
 
 			// Update frequency and amplitude
-			self.f += (self.nf - self.f) * .5;
+			self.f += self.nf - self.f * .5;
 			self.a *= self.d;
 		}
 	];
 	for local i = 1, OSCILLATORS
 	{
-		local w = (i - 1) / OSCILLATORS;
+		local w = i - 1 / OSCILLATORS;
 		o.ph.+ rnd(2 * PI);
-		o.dph0.+ 1 + w * (15 + rnd(15));
+		o.dph0.+ 15 + rnd(15) * w + 1;
 	}
 	return o;
 }
@@ -413,7 +415,7 @@ function HiHat
 		procedure Process(self, fd)
 		{
 			self.ph.#+ self.dph0 #* (self.f * PI / FFT * WINDOW);
-			local low = 4 * self.a ** 7;
+			local low = self.a ** 7 * 4;
 			local f, local dph0, local ph = self.(f, dph0, ph);
 			for local h = 0, OSCILLATORS - 1
 			{
@@ -421,15 +423,15 @@ function HiHat
 				local m = low / (h + 50);
 				dsp.c_add_polar_i(fd, i, m, ph[h]);
 			}
-			self.f += (self.nf - self.f) * .5;
+			self.f += self.nf - self.f * .5;
 			self.a *= self.d;
 		}
 	];
 	for local i = 1, OSCILLATORS
 	{
-		local w = (i - 1) / OSCILLATORS;
+		local w = i - 1 / OSCILLATORS;
 		o.ph.+ rnd(2 * PI);
-		o.dph0.+ 1 + w * (4 + rnd(1));
+		o.dph0.+ 4 + rnd(1) * w + 1;
 	}
 	return o;
 }
@@ -447,7 +449,7 @@ procedure plot(surface, tdata, fdata, adata)
 	local c = SDL.MapColor(surface, 0, 0, 255);
 	for local x = 0, surface.w - 1
 	{
-		local m = .5 - tdata[FFT * x / surface.w] * .5;
+		local m = .5 - (tdata[FFT * x / surface.w] * .5);
 		local y1, local y2 = m * surface.h, surface.h * .5;
 		local y = y1 |< y2;
 		r.(x, y, h) = x, y, (y1 >| y2) - y;
@@ -459,7 +461,7 @@ procedure plot(surface, tdata, fdata, adata)
 	try for local x = 0, surface.w - 1, 2
 	{
 		local m = (integer)(2 ** (FFTOCT * x / surface.w));
-		m = .5 - fdata[m * 2] * .5;
+		m = .5 - (fdata[m * 2] * .5);
 		local y1, local y2 = m * surface.h, surface.h * .5;
 		local y = y1 |< y2;
 		r.(x, y, h) = x, y, (y1 >| y2) - y;
@@ -469,7 +471,7 @@ procedure plot(surface, tdata, fdata, adata)
 	try for local x = 1, surface.w - 1, 2
 	{
 		local m = (integer)(2 ** (FFTOCT * x / surface.w));
-		m = .5 - fdata[m * 2 + 1] * .5;
+		m = .5 - (fdata[m * 2 + 1] * .5);
 		local y1, local y2 = m * surface.h, surface.h * .5;
 		local y = y1 |< y2;
 		r.(x, y, h) = x, y, (y1 >| y2) - y;
@@ -480,7 +482,7 @@ procedure plot(surface, tdata, fdata, adata)
 	c = SDL.MapColor(surface, 255, 0, 255);
 	try for local x = 0, surface.w - 1
 	{
-		local m = .5 - adata[sizeof adata * x / surface.w] * .5;
+		local m = .5 - (adata[sizeof adata * x / surface.w] * .5);
 		SDL.Plot(surface, c, x, m * surface.h);
 	}
 }
@@ -495,7 +497,7 @@ procedure plot_load(surface, times, colors)
 	local x = 0;
 	for local i = 0, sizeof times - 2
 	{
-		local x2 = x + times[i] * scale;
+		local x2 = times[i] * scale + x;
 		local r = SDL.Rect[floor(x), 0, ceil(x2 - x), 5];
 		SDL.FillRect(surface, r, colors[i]);
 		x = x2;
@@ -539,7 +541,7 @@ export function main<args>
 	for local i = 1, (FFT - WINDOW) / 2
 		win.+ 0;
 	for local i = 0, WINDOW - 1
-		win.+ (.5 - cos(i * 2 * PI / WINDOW) * .5) ** .75;
+		win.+ (.5 - (cos(i * 2 * PI / WINDOW) * .5)) ** .75;
 	for local i = 1, (FFT - WINDOW) / 2
 		win.+ 0;
 
@@ -645,7 +647,7 @@ export function main<args>
 			  case SDL.MOUSEMOTION
 			  {
 				fx = ev.x / screen.w;
-				fy = 1 - ev.y / screen.h;
+				fy = 1 - (ev.y / screen.h);
 				instrument:Frequency(2 ** (FFTOCT * fx));
 				instrument:Control(fy);
 			  }

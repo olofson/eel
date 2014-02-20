@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////
 // zsgl2.eel - Combining ZeeSpace and OpenGL, take 2
-// Copyright 2010 David Olofson
+// Copyright 2010, 2014 David Olofson
 /////////////////////////////////////////////////////
 
 /*
@@ -55,7 +55,8 @@ function TiledLayer(tw, th, tb, tbpp, world)
 		.world		world,
 
 		// Surface for unpacking and preparing tiles for upload
-		.scratch	SDL.Surface [0, tw + tb * 2, th + tb * 2, tbpp],
+		.scratch	SDL.Surface [0, tb * 2 + tw,
+						tb * 2 + th, tbpp],
 
 		// View size
 		.w		0,
@@ -130,7 +131,7 @@ function TiledLayer(tw, th, tb, tbpp, world)
 
 			// Keep the LAM centered around the view!
 			local lam = self.lam;
-			local dx = x - (self.lamx + (self.lamw - self.w) / 2);
+			local dx = x - ((self.lamw - self.w) / 2 + self.lamx);
 			if dx > 1
 				while dx > 1
 				{
@@ -156,7 +157,7 @@ function TiledLayer(tw, th, tb, tbpp, world)
 					self.lamx -= 1;
 					self:DirtyColumn(0);
 				}
-			local dy = y - (self.lamy + (self.lamh - self.h) / 2);
+			local dy = y - ((self.lamh - self.h) / 2 + self.lamy);
 			if dy > 1
 				while dy > 1
 				{
@@ -184,11 +185,12 @@ function TiledLayer(tw, th, tb, tbpp, world)
 			local w = self.world;
 			local s = self.scratch;
 			x = x * self.tw - self.tb;
-			y = w.h - y * self.th - self.tb;
+			y = w.h - (y * self.th) - self.tb;
 			local  r = SDL.Rect [x, y, s.(w, h)];
 			// Not required; just to remove the garbage when
 			// scrolling off the world map!
-			if x < 0 or y < 0 or x > w.w - s.w or y > w.h - s.h
+			if (x < 0) or (y < 0) or (x > (w.w - s.w)) or
+					(y > (w.h - s.h))
 				SDL.FillRect(s);
 			SDL.BlitSurface(w, r, s);
 			gl.UploadTexture(s, 0, tex);
@@ -361,9 +363,9 @@ function render_world(w, h, scale)
 			zs.BICUBIC | zs.DIV2 | zs.O_MUL);
 	print("    OK!\n");
 
-	print("  Shadowcasting...\n");
-	zs.ShadowCast(world, 25, .2, ss);
-	print("    OK!\n");
+//	print("  Shadowcasting...\n");
+//	zs.ShadowCast(world, 25, .2, ss);
+//	print("    OK!\n");
 
 	print("  Bumpmapping...\n");
 	zs.BumpMap(world, 25, .2, ss);
@@ -432,7 +434,7 @@ export function main<args>
 		local t = SDL.GetTicks() - start;
 		local dt = .001 * (t - lt);
 		lt = t;
-		ftimes[0 >| dt * 1000 |< sizeof ftimes - 1] += 1;
+		ftimes[0 >| (dt * 1000) |< (sizeof ftimes - 1)] += 1;
 		fdt += (dt - fdt) * .05;
 
 		// Handle events
@@ -507,7 +509,8 @@ export function main<args>
 		{
 			local bx = bg.lamw - bg.w;
 			local by = bg.lamh - bg.h;
-			gl.Scale(bg.w / (bg.w + bx * 2), bg.h / (bg.h + by * 2), 1);
+			gl.Scale(bg.w / (bx * 2 + bg.w),
+					bg.h / (by * 2 + bg.h), 1);
 			gl.Translate(bx, by, 0);
 		}
 

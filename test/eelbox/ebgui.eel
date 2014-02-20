@@ -1,7 +1,7 @@
-////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
 // ebgui.eel - EELBox GUI Toolkit
-// Copyright 2005-2006, 2009-2011 David Olofson
-////////////////////////////////////////////////////
+// Copyright 2005-2006, 2009-2011, 2014 David Olofson
+//////////////////////////////////////////////////////
 
 module ebgui;
 
@@ -21,7 +21,7 @@ function round(v)
 
 function round2(v, m)
 {
-	return floor(v / m + m / 2) * m;
+	return floor(v / m + (m / 2)) * m;
 }
 
 
@@ -705,7 +705,7 @@ procedure align_scale(self)
 // TODO: Implement childsize for "2D" containers!
 procedure align_grid(self)
 {
-	local clw, local clh = self.rect.(w, h) - 2 * self.border;
+	local clw, local clh = self.rect.(w, h) - (2 * self.border);
 
 	// Calculate row and column distributions
 	local rrs, local crs = vector [], vector [];
@@ -739,7 +739,7 @@ procedure align_grid(self)
 		for local i = 1, sizeof crs - 1
 			crs[i] += crs[i - 1];
 
-	if self.childsize and self.rows > 1 and self.cols > 1
+	if self.childsize and (self.rows > 1) and (self.cols > 1)
 		print("EBGUI WARNING: Aligner \"grid\" does not yet implement "
 				"'childsize' for 2D grids! "
 				"Expect weird results!\n");
@@ -751,12 +751,12 @@ procedure align_grid(self)
 	for local row = 0, self.rows - 1
 	rowloop:
 	{
-		if self.childsize and i < sizeof self.widgets
+		if self.childsize and (i < sizeof self.widgets)
 		{
 			row += self.widgets[i].logicrect.h - 1 >| 0;
 			row |<= sizeof rrs - 1;
 		}
-		local y = round(cly + clh * rrs[row]);
+		local y = round(clh * rrs[row] + cly);
 		local h = round(y) - round(lasty);
 		local lastx = clx;
 		for local col = 0, self.cols - 1
@@ -772,7 +772,7 @@ procedure align_grid(self)
 				col += wi.logicrect.w - 1 >| 0;
 				col |<= sizeof crs - 1;
 			}
-			local x = round(clx + clw * crs[col]);
+			local x = round(clw * crs[col] + clx);
 			local w = round(x) - round(lastx);
 			wi.rect.(x, y) = lastx, lasty;
 			wi.rect.(w, h) = w, h;
@@ -806,7 +806,7 @@ procedure align_stretch(self)
 		w += wg.logicrect.w;
 		maxh >|= wg.logicrect.h;
 		col += 1;
-		if col >= self.cols or i == sizeof widgets - 1
+		if (col >= self.cols) or (i == (sizeof widgets - 1))
 		{
 //print("row!\n");
 			clw >|= w;
@@ -817,8 +817,8 @@ procedure align_stretch(self)
 			col = 0;
 		}
 	}
-	self:SetSize((clw, clh) + 2 * self.border);
-	self.logicrect.(w, h) = (clw, clh) + 2 * self.border;
+	self:SetSize((clw, clh) + (2 * self.border));
+	self.logicrect.(w, h) = (clw, clh) + (2 * self.border);
 	self.rect = clone self.logicrect;
 //print(self, ": final: ", self.logicrect.w, "x", self.logicrect.h, "\n");
 }
@@ -864,7 +864,7 @@ procedure align_ratio(self)
 		return;		// No widgets to align!
 
 	// Client area size
-	local clw, local clh = self.rect.(w, h) - 2 * self.border;
+	local clw, local clh = self.rect.(w, h) - (2 * self.border);
 
 	// Calculate row/column ratio
 	local crr = self.colrowratio;
@@ -964,7 +964,7 @@ procedure align_ratio(self)
 	for local row = 0, rows - 1
 	rowloop:
 	{
-		local y = round(cly + clh * rrs[row]);
+		local y = round(clh * rrs[row] + cly);
 		local h = y - lasty;
 		local lastx = clx;
 		for local col = 0, cols - 1
@@ -975,7 +975,7 @@ procedure align_ratio(self)
 			i += 1;
 			if not self.childsize and not wi.visible
 				repeat;
-			local x = round(clx + clw * crs[col]);
+			local x = round(clw * crs[col] + clx);
 			local w = x - lastx;
 			wi.rect.(x, y) = lastx, lasty;
 			wi.rect.(w, h) = (w, h) >| 0;
@@ -1019,9 +1019,9 @@ function set_align(self, a)<params>
 		self.SetScroll = procedure(ss, x, y)
 		{
 			local ra = false;
-			if x != nil and x != ss.xscroll
+			if (x != nil) and (x != ss.xscroll)
 				ss.xscroll, ra = x, true;
-			if y != nil and y != ss.yscroll
+			if (y != nil) and (y != ss.yscroll)
 				ss.yscroll, ra = y, true;
 			if ra
 				ss:Realign();
@@ -1030,10 +1030,10 @@ function set_align(self, a)<params>
 		{
 			local xt = ss.extents;
 			local xs, local ys = nil;
-			if x != nil and xt.w > ss.rect.w
-				xs = -(xt.x + x * (xt.w - ss.rect.w));
-			if y != nil and xt.h > ss.rect.h
-				ys = -(xt.y + (1 - y) * (xt.h - ss.rect.h));
+			if (x != nil) and (xt.w > ss.rect.w)
+				xs = -(x * (xt.w - ss.rect.w) + xt.x);
+			if (y != nil) and (xt.h > ss.rect.h)
+				ys = -((1 - y) * (xt.h - ss.rect.h) + xt.y);
 			ss:SetScroll(xs, ys);
 		};
 	  }
@@ -1054,7 +1054,7 @@ function set_align(self, a)<params>
 		self.SetScroll = procedure(ss, y)
 		{
 			local ra = false;
-			if y != nil and y != ss.yscroll
+			if (y != nil) and (y != ss.yscroll)
 				ss.yscroll, ra = y, true;
 			if ra
 				ss:Realign();
@@ -1062,7 +1062,7 @@ function set_align(self, a)<params>
 		self.SetScrollPos = procedure(ss, y)
 		{
 			local ys = nil;
-			if y != nil and ss.ymax > ss.rect.h
+			if (y != nil) and (ss.ymax > ss.rect.h)
 				ys = -((1 - y) * (ss.ymax - ss.rect.h));
 			ss:SetScroll(ys);
 		};
@@ -1379,8 +1379,8 @@ export function Widget(parent)[rect]
 		function SetRect(self, rect)
 		{
 			local sr = self.logicrect;
-			if rect.x == sr.x and rect.y == sr.y and
-					rect.w == sr.w and rect.h == sr.h
+			if (rect.x == sr.x) and (rect.y == sr.y) and
+					(rect.w == sr.w) and (rect.h == sr.h)
 				return self;
 			self.logicrect = clone rect;
 			if self.parent
@@ -1452,9 +1452,9 @@ export function Widget(parent)[rect]
 			if not self.enabled or not self.visible
 				return nil;
 			local r = self.rect;
-			if x < r.x or y < r.y or
-					x > r.x + r.w or
-					y > r.y + r.h
+			if (x < r.x) or (y < r.y) or
+					(x > (r.x + r.w)) or
+					(y > (r.y + r.h))
 				return nil;
 			if sizeof self.widgets
 				for local i = sizeof self.widgets - 1, 0, -1
@@ -1863,9 +1863,9 @@ function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 		.name		name,
 		.color		SDL.MapColor(target, r, g, b),
 		.linecolor	SDL.MapColor(target,
-				r * .3 + graph.paper_r * .7,
-				g * .3 + graph.paper_g * .7,
-				b * .3 + graph.paper_b * .7),
+				r * .3 + (graph.paper_r * .7),
+				g * .3 + (graph.paper_g * .7),
+				b * .3 + (graph.paper_b * .7)),
 		.lines		true,
 		.visible	true,
 		.xscale		1.,
@@ -2115,7 +2115,7 @@ function new_scale(parent, onchange, horiz, color)
 				self.offset -= .5;
 				if self.scale
 					self.offset /= self.scale;
-				if self.scale < step / 10
+				if self.scale < (step / 10)
 					self.scale = step / 10;
 				else
 					self.scale *= 1. + step;
@@ -2144,7 +2144,7 @@ function new_scale(parent, onchange, horiz, color)
 				self.offset -= .5;
 				if self.scale
 					self.offset /= self.scale;
-				if self.scale < step / 10
+				if self.scale < (step / 10)
 					self.scale = step / 10;
 				else
 					self.scale *= 1. + step;
@@ -2196,19 +2196,19 @@ function new_scale(parent, onchange, horiz, color)
 	w.OnMove = procedure(self, ev)
 	{
 		local cx, local cy = (integer)(target.(w, h) / 2);
-		if self.mx == nil or ev.x == cx and ev.y == cy
+		if (self.mx == nil) or ((ev.x == cx) and (ev.y == cy))
 			return;
 		SDL.WarpMouse(cx, cy);
 		self.(mx, my) += ev.(xrel, yrel);
 		local r = RT.Shrink(self.rect, self.border);
-		local size = sqrt(r.w * r.w + r.h * r.h);
+		local size = sqrt(r.w * r.w + (r.h * r.h));
 		local xdist = self.mx / size;
 		local ydist = self.my / size;
 		if self.horizontal
 			local sf, local of = -ydist, xdist;
 		else
 			sf, of = xdist, ydist;
-		self.scale = self.grab_scale * 1.5 ** sf;
+		self.scale = self.grab_scale * (1.5 ** sf);
 		self.offset = self.grab_offset * self.scale + of + .5;
 		self:OnChange(self.(scale, offset));
 		self:Invalidate();
@@ -2728,7 +2728,7 @@ export function TextBox(parent)[txt]
 		local i, self.vscroll = 0 >| self.vscroll |< maxvs;
 		while y < maxy
 		{
-			if i >= 0 and i < sizeof self.lines
+			if (i >= 0) and (i < sizeof self.lines)
 				f:PutString(self.lines[i], x, y,
 						target, maxx);
 			i += 1;
@@ -2845,7 +2845,7 @@ export function LineEditor(parent)[txt, onchange]
 				self:Invalidate();
 			  }
 			  case SDL.KBACKSPACE
-				if self.position > 0 and sizeof self.text >= 1
+				if (self.position > 0) and (sizeof self.text >= 1)
 				{
 					self.position -= 1;
 					delete(self.text, self.position);
@@ -2868,7 +2868,7 @@ export function LineEditor(parent)[txt, onchange]
 					self:Invalidate();
 				}
 			  default
-				if ev.unicode < 127 and ev.unicode > 31
+				if (ev.unicode < 127) and (ev.unicode > 31)
 				{
 					insert(self.text, self.position,
 							ev.unicode);
@@ -3030,7 +3030,7 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 		  case SDL.BUTTON_LEFT, SDL.BUTTON_RIGHT
 			if ev[shx] < knob.rect[shx]
 				pos -= step;
-			else if ev[shx] > knob.rect[shx] + knob.rect[shw]
+			else if ev[shx] > (knob.rect[shx] + knob.rect[shw])
 				pos += step;
 			else
 				return;
@@ -3112,11 +3112,11 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 		if self.graboffs == nil
 			return;
 		local nx = ev[shx] - self.graboffs;
-		nx = sr[shx] + s.border >| nx |<
-				sr[shx] + sr[shw] - self.rect[shw] - s.border;
+		nx = (sr[shx] + s.border) >| nx |<
+				(sr[shx] + sr[shw] - self.rect[shw] - s.border);
 		self.rect[shx] = nx;
 		s.position = (self.rect[shx] - sr[shx] - s.border) /
-				(sr[shw] - self.rect[shw] - 2 * s.border);
+				(sr[shw] - self.rect[shw] - (2 * s.border));
 		if not self.slider.horizontal
 			s.position = 1 - s.position;
 		s:MovePos(s.position);
@@ -3170,15 +3170,15 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 		local knob = self.knob;
 		local b = self.border;
 		knob.rect[shy] = self.rect[shy] + b;
-		knob.rect[shh] = self.rect[shh] - 2 * b;
-		knob.rect[shw] = (self.rect[shw] - 2 * b) * .1;
+		knob.rect[shh] = self.rect[shh] - (2 * b);
+		knob.rect[shw] = (self.rect[shw] - (2 * b)) * .1;
 		if self.rect[shh] < self.rect[shw]
 			knob.rect[shw] >|= knob.rect[shh];
 		local pos = self:Value2Pos(self.value);
 		if not self.horizontal
 			pos = 1 - pos;
 		knob.rect[shx] = self.rect[shx] + b +
-				pos * (self.rect[shw] - 2 * b - knob.rect[shw]);
+				(pos * (self.rect[shw] - (2 * b) - knob.rect[shw]));
 	};
 	w.Init = procedure(self)
 	{
@@ -3294,7 +3294,7 @@ export function Plotter(parent, min, max)[caption]
 		}
 
 		// Zero level
-		if x0 > minx and x0 < maxx
+		if (x0 > minx) and (x0 < maxx)
 		{
 			r.x = x0;
 			r.y = miny;
@@ -3308,7 +3308,7 @@ export function Plotter(parent, min, max)[caption]
 		local ty = miny + 2;
 		if self.caption
 			f:PutString(self.caption,
-					minx + (rw - f:Width(self.caption)) / 2,
+					(rw - f:Width(self.caption)) / 2 + minx,
 					ty, tg);
 		f:PutString((string)self.min, minx + 3, ty, tg);
 		local ms = (string)self.max;
@@ -3372,7 +3372,7 @@ export function Lissajous(parent, history)
 				xs = self.xscale * r.w / 2;
 			if self.yscale
 				ys = self.yscale * r.h / 2;
-			local xc, local yc = r.(x, y) + r.(w, h) / 2;
+			local xc, local yc = r.(w, h) / 2 + r.(x, y);
 			local lock = SDL.LockSurface(target);
 			local c = self.theme.colors[CMK];
 			for local i = 0, sizeof xd - 1
@@ -3582,10 +3582,10 @@ export function DragHandle(parent, x, y, size)[ondrag, onclick, style]
 	w.Move = procedure(self, x, y)[report]
 	{
 		local s = self.size;
-		local r = SDL.Rect [x - s / 2, y - s / 2, s, s];
+		local r = SDL.Rect [x - (s / 2), y - (s / 2), s, s];
 		self:SetRect(r);
 		if specified report and self.OnDrag
-			self:OnDrag(r.x + r.w / 2, r.y + r.h / 2);
+			self:OnDrag(r.w / 2 + r.x, r.h / 2 + r.y);
 	};
 	w.MoveRel = procedure(self, dx, dy)[report]
 	{
@@ -3593,7 +3593,7 @@ export function DragHandle(parent, x, y, size)[ondrag, onclick, style]
 		r.(x, y) += dx, dy;
 		self:SetRect(r);
 		if specified report and self.OnDrag
-			self:OnDrag(r.x + r.w / 2, r.y + r.h / 2);
+			self:OnDrag(r.w / 2 + r.x, r.h / 2 + r.y);
 	};
 	w.OnDown = procedure(self, ev)
 	{
@@ -3627,7 +3627,7 @@ export function DragHandle(parent, x, y, size)[ondrag, onclick, style]
 		r.y = ev.y - self.y0;
 		self:SetRect(r);
 		if self.OnDrag
-			self:OnDrag(r.x + r.w / 2, r.y + r.h / 2);
+			self:OnDrag(r.w / 2 + r.x, r.h / 2 + r.y);
 	};
 	w.OnKeyDown = function(self, ev)
 	{
@@ -3715,7 +3715,7 @@ export function DragBar(parent)[caption, ondrag, onclick, style]
 		self.state = false;
 		self:Invalidate();
 //		if self:Find(ev.(x, y)) == self and self.OnClick
-		if self.x0 == ev.x and self.y0 == ev.y and self.OnClick
+		if (self.x0 == ev.x) and (self.y0 == ev.y) and self.OnClick
 			self:OnClick();
 		self.button = 0;
 		self.(x0, y0) = nil;

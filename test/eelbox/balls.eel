@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // balls.eel - EELBox Balls
-// Copyright 2005, 2010 David Olofson
+// Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math", "ball" as ball;
@@ -25,7 +25,7 @@ export function main<args>
 	local start = GetTicks();
 	local maxsize = sprites[sizeof sprites - 1].w;
 	local xc, local yc = screen.(w, h) / 2;
-	local xa, local ya = (xc, yc) - maxsize / 2;
+	local xa, local ya = (xc, yc) - (maxsize / 2);
 	local dr = Rect[];
 	while true
 	mainloop:
@@ -55,9 +55,9 @@ export function main<args>
 		for local i = 0, nballs - 1
 		{
 			stx, sty, stz += .07, .09, .15;
-			local s = sprites[za + sin(stz) * za];
-			dr.x = xc + cos(stx) * xa - s.w / 2;
-			dr.y = yc + sin(sty) * ya - s.h / 2;
+			local s = sprites[sin(stz) * za + za];
+			dr.x = cos(stx) * xa + xc - (s.w / 2);
+			dr.y = sin(sty) * ya + yc - (s.h / 2);
 			BlitSurface(s, nil, nil, dr);
 		}
 

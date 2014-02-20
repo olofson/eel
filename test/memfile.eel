@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "io";
@@ -23,7 +23,7 @@ export function main<args>
 		except
 			return 0;
 		for local c = 0, sizeof b - 1
-			if b[c] < ' ' or b[c] >= 127
+			if (b[c] < ' ') or (b[c] >= 127)
 				b[c] = '.';
 		print("\"", b, "\"\n");
 	}

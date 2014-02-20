@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////
 // zsdraw.eel - ZeeSpace authoring tool
-// Copyright 2011 David Olofson
+// Copyright 2011, 2014 David Olofson
 ////////////////////////////////////////////////////
 
 import "math";
@@ -367,7 +367,7 @@ function EntityWidgetXYRH(parent, entity)
 	{
 		local e = self.entity;
 		x, y -= e.(x, y);
-		e.r = sqrt(x*x + y*y);
+		e.r = sqrt(x*x + (y*y));
 		e.canvas:Invalidate();
 		self:RefitOutline();
 	};
@@ -748,7 +748,7 @@ print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
 					else
 						SDL.FillRect(tg, rect, dark);
 				}
-			if r.w != c.w or r.h != c.h
+			if (r.w != c.w) or (r.h != c.h)
 				c:Resize(self.rect.(w, h));
 			c:Present(tg);
 		};
@@ -869,7 +869,7 @@ function ViewControl(root)
 	gui.Label(win, "Pitch");
 	gui.HSlider(win, procedure(self, v)
 			{
-				pitch = 90 - v * 90;
+				pitch = 90 - (v * 90);
 				workspace:Invalidate();
 			});
 //	win:AutoSize(100, 20);
@@ -884,7 +884,7 @@ function LightingControl(root)
 	win.elabel = gui.Label(win, "Altitude");
 	gui.HSlider(win, procedure(self, v)
 			{
-				altitude = floor(90 - v * 90);
+				altitude = floor(90 - (v * 90));
 				self.parent.elabel:SetCaption("Altitude (" +
 						(string)altitude + ")");
 				workspace.canvas:Light();
@@ -1063,11 +1063,11 @@ export function main<args>
 	local px = ZS_Pixel [128, 128, 128, 255, 1, 0];
 	for local i = 0, 7
 	{
-		px.r = 64 + 64 * ((integer)i & 1);
-		px.g = 64 + 64 * ((integer)i & 2 >> 1);
-		px.b = 64 + 64 * ((integer)i & 4 >> 2);
-		canvas:Dome(225 + cos(i * 2 * PI / 8) * 100,
-				350 + sin(i * 2 * PI / 8) * 100,
+		px.r = 64 * ((integer)i & 1) + 64;
+		px.g = 64 * ((integer)i & 2 >> 1) + 64;
+		px.b = 64 * ((integer)i & 4 >> 2) + 64;
+		canvas:Dome(cos(i * 2 * PI / 8) * 100 + 225,
+				sin(i * 2 * PI / 8) * 100 + 350,
 				100, 100, px);
 	}
 	px.(r, g, b) = 128;

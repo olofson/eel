@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////
 // glballs.eel - EELBox Balls - OpenGL version
-// Copyright 2010 David Olofson
+// Copyright 2010, 2014 David Olofson
 ///////////////////////////////////////////////
 
 import "SDL" as SDL;
@@ -103,7 +103,7 @@ export function main<args>
 			local x = sx * cos(stx);
 			local y = sy * sin(sty);
 			local z = sin(stz);
-			local c = .55 + .45 * z;
+			local c = .45 * z + .55;
 			Color(c, c, c);
 			TexCoord(0, 1);
 			Vertex(x - .1, y - .1,  z);

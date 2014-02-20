@@ -1,10 +1,12 @@
-/////////////////////////////////////////////
+/////////////////////////////////////////////////
 // Temporary EEL Test Suite
 // Based on the Lua Random Number Generator
 // test code by Roberto Ierusalimschy, for
 // The Great Computer Language Shootout.
-// EEL version by David Olofson, 2004-2005
-/////////////////////////////////////////////
+// EEL version by David Olofson, 2004-2005, 2014
+/////////////////////////////////////////////////
+
+noprecedence;
 
 static IM = 139968;
 static IA = 3877;
@@ -13,8 +15,8 @@ static LAST = 42;
 
 function gen_random(max)
 {
-	LAST = (LAST * IA + IC) % IM;
-	return (max * LAST) / IM;
+	LAST = LAST * IA + IC % IM;
+	return max * LAST / IM;
 }
 
 export procedure test[n]

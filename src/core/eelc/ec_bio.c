@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_bio.c - EEL Binary I/O
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2009 David Olofson
+ * Copyright 2002-2006, 2009, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -28,7 +28,7 @@
 
 EEL_bio *eel_bio_open(void *data, int len)
 {
-	EEL_bio *bio = malloc(sizeof(EEL_bio));
+	EEL_bio *bio = calloc(1, sizeof(EEL_bio));
 	if(!bio)
 		return NULL;
 	bio->data = (unsigned char *)data;

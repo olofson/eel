@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // texttest.eel - Test of text.eel
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";
@@ -14,7 +14,7 @@ export function main<args>
 
 	local f = text.Open("microfont_sh.png");
 	local xc, local yc = (screen.w, screen.h) / 2;
-	local xa, local ya = (xc, yc) - (130, 10) / 2;
+	local xa, local ya = (xc, yc) - ((130, 10) / 2);
 	local last_tick = GetTicks();
 	local t = 0;
 	local slow = true;
@@ -52,8 +52,8 @@ export function main<args>
 		for local i = 0, 100
 		{
 			stx, sty += .07, .09;
-			local x = (integer)(xc + cos(stx) * xa - 65);
-			local y = (integer)(yc + sin(sty) * ya - 5);
+			local x = (integer)(cos(stx) * xa + xc - 65);
+			local y = (integer)(sin(sty) * ya + yc - 5);
 			f:PutString("Hello, world! (" + (string)x +
 					"," + (string)y + ")", x, y);
 		}

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2006 David Olofson
+// Copyright 2006, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "math";
@@ -71,7 +71,7 @@ export function main<args>
 	print("    vector v[]:\n");
 	v = vector [];
 	for local i = 0, 15/16, 1/16
-		v.+ 1 + .7 * sin(i * 2 * PI) + .3 * cos(i * 2 * PI * 8);
+		v.+ 1 + (.7 * sin(i * 2 * PI)) + (.3 * cos(i * 2 * PI * 8));
 	print_v(v);
 	print("    fft_real():\n");
 	local f = dsp.fft_real(v);

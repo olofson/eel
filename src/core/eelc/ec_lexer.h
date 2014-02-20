@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_lexer.h - EEL engine lexer
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009-2011 David Olofson
+ * Copyright 2002, 2004-2006, 2009-2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -54,6 +54,7 @@ typedef enum
 	TK_KW_IMPORT,
 	TK_KW_AS,
 	TK_KW_END,
+/*HACK:*/TK_KW_NOPRECEDENCE,
 
 	TK_KW_RETURN,
 	TK_KW_IF,

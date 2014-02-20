@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////
 // gltest.eel - EELBox OpenGL Test
-// Copyright 2010 David Olofson
+// Copyright 2010, 2014 David Olofson
 //
 // Based on NeHe tutorial code by Jeff Molofee
 ///////////////////////////////////////////////
@@ -151,7 +151,7 @@ export function main<args>
 			  case SDL.KEYUP
 				if ev.sym == SDL.KESCAPE
 					break mainloop;
-			  case SDL.QUIT
+			  case SDL.MOUSEBUTTONUP, SDL.QUIT
 				break mainloop;
 			  case SDL.VIDEORESIZE
 			  {

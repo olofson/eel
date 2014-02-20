@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // ball.eel - Module that renders a ball
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";
@@ -11,19 +11,19 @@ export function render(size)
 	local r = size / 2;
 	for local y = 0, size - 1
 	{
-		local dy = (y - size / 2) / r;
+		local dy = (y - (size / 2)) / r;
 		for local x = 0, size - 1
 		{
-			local dx = (x - size / 2) / r;
-			local d = sqrt(dx*dx + dy*dy);
+			local dx = (x - (size / 2)) / r;
+			local d = sqrt(dx * dx + (dy * dy));
 			if ceil(d * r) == r
-				local a = 255 * (r - d * r);
+				local a = 255 * (r - (d * r));
 			else if d > 1
 				a = 0;
 			else
 				a = 255;
-			local c = MapColor(s, 255 - x * 255 / r,
-					255 - y * 255 / r,
+			local c = MapColor(s, 255 - (x * 255 / r),
+					255 - (y * 255 / r),
 					d * 200,
 					a);
 			Plot(s, c, x, y);

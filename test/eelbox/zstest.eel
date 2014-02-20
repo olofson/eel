@@ -72,14 +72,14 @@ static t_p2 = 10;
 
 function roundstr(v, decimals)
 {
-	return (string)(floor(v * 10 ** decimals + .5) / 10 ** decimals);
+	return (string)(floor(v * (10 ** decimals) + .5) / (10 ** decimals));
 }
 
 
 procedure draw_terrain(m, base, height, scale, p0, p1, p2, u, v, r)
 {
 	local amps = vector [height, p0, p1, p2];
-	zs.PerlinTerrainZ(m, base + height / 2,
+	zs.PerlinTerrainZ(m, height / 2 + base,
 			u, v, cos(r) / scale, sin(r) / scale,
 			amps, t_interpolation | t_extendmode);
 }
@@ -96,20 +96,20 @@ procedure draw_stuff(p, m, objects)
 		local x = zs.RndGet(m.w - w);
 		local y = zs.RndGet(m.h - h);
 		px.z = 30 + zs.RndGet(100);
-		px.r = 128 + 20 * sin(i);
-		px.g = 128 + 20 * sin(i + 6.25 / 3);
-		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		px.r = 20 * sin(i) + 128;
+		px.g = 20 * sin(6.25 / 3 + i) + 128;
+		px.b = 20 * sin(2 * 6.25 / 3 + i) + 128;
 		zs.Block(p, m, x, y, w, h, px);
 	}
 	for local i = 0, objects - 1
 	{
 		local r = 10 + zs.RndGet(40);
 		px.z = 50 + zs.RndGet(100);
-		px.r = 128 + 20 * sin(i);
-		px.g = 128 + 20 * sin(i + 6.25 / 3);
-		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
-		zs.Cylinder(p, m, r + zs.RndGet(m.w - 2 * r),
-				r + zs.RndGet(m.h - 2 * r),
+		px.r = 20 * sin(i) + 128;
+		px.g = 20 * sin(6.25 / 3 + i) + 128;
+		px.b = 20 * sin(2 * 6.25 / 3 + i) + 128;
+		zs.Cylinder(p, m, r + zs.RndGet(m.w - (2 * r)),
+				r + zs.RndGet(m.h - (2 * r)),
 				r, px);
 	}
 	for local i = 0, objects - 1
@@ -117,22 +117,22 @@ procedure draw_stuff(p, m, objects)
 		local r = 10 + zs.RndGet(60);
 		local h = 30 * 256 + zs.RndGet(100 * 256);
 		px.z = 1 + zs.RndGet(50);
-		px.r = 128 + 20 * sin(i);
-		px.g = 128 + 20 * sin(i + 6.25 / 3);
-		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
-		zs.Cone(p, m, r + zs.RndGet(m.w - 2 * r),
-				r + zs.RndGet(m.h - 2 * r),
+		px.r = 20 * sin(i) + 128;
+		px.g = 20 * sin(6.25 / 3 + i) + 128;
+		px.b = 20 * sin(2 * 6.25 / 3 + i) + 128;
+		zs.Cone(p, m, r + zs.RndGet(m.w - (2 * r)),
+				r + zs.RndGet(m.h - (2 * r)),
 				r, h, px);
 	}
 	for local i = 0, objects - 1
 	{
 		local r = 10 + zs.RndGet(60);
-		px.r = 128 + 20 * sin(i);
-		px.g = 128 + 20 * sin(i + 6.25 / 3);
-		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
+		px.r = 20 * sin(i) + 128;
+		px.g = 20 * sin(6.25 / 3 + i) + 128;
+		px.b = 20 * sin(2 * 6.25 / 3 + i) + 128;
 		px.z = 20 + zs.RndGet(100);
-		zs.Dome(p, m, r + zs.RndGet(m.w - 2 * r),
-				r + zs.RndGet(m.h - 2 * r),
+		zs.Dome(p, m, r + zs.RndGet(m.w - (2 * r)),
+				r + zs.RndGet(m.h - (2 * r)),
 				r, r, px);
 	}
 	for local i = 0, objects - 1
@@ -140,11 +140,11 @@ procedure draw_stuff(p, m, objects)
 		local r = 10 + zs.RndGet(40);
 		local h = 20 + zs.RndGet(100);
 		px.z = 1 + zs.RndGet(50);
-		px.r = 128 + 20 * sin(i);
-		px.g = 128 + 20 * sin(i + 6.25 / 3);
-		px.b = 128 + 20 * sin(i + 2 * 6.25 / 3);
-		zs.Beehive(p, m, r + zs.RndGet(m.w - 2 * r),
-				r + zs.RndGet(m.h - 2 * r),
+		px.r = 20 * sin(i)+ 128;
+		px.g = 20 * sin(6.25 / 3 + i)+ 128;
+		px.b = 20 * sin(2 * 6.25 / 3 + i)+ 128;
+		zs.Beehive(p, m, r + zs.RndGet(m.w - (2 * r)),
+				r + zs.RndGet(m.h - (2 * r)),
 				r, h, px);
 	}
 }
@@ -162,8 +162,8 @@ procedure draw_water2(m, altitude, sealevel)
 {
 	local afx = sin(altitude * 2 * PI / 360);
 	local px = ZS_Pixel [80, 112, 160, 80,
-			(afx + afx * afx * afx) / 2, sealevel];
-	zs.Fog(m, nil, px, 48 - 24 * afx);
+			(afx * afx * afx + afx) / 2, sealevel];
+	zs.Fog(m, nil, px, 48 - (24 * afx));
 }
 
 
@@ -172,7 +172,7 @@ procedure draw_fog(m, altitude, density)
 	local afx = sin(altitude * 2 * PI / 360);
 	local px = ZS_Pixel [255, 192, 255, 0, afx / 2, 150];
 	density = 256 - density;
-	zs.Fog(m, nil, px, density * density / 128 + 100 - 90 * afx);
+	zs.Fog(m, nil, px, density * density / 128 + 100 - (90 * afx));
 }
 
 
@@ -319,7 +319,7 @@ procedure check_input(dt)
 	if ks[SDL.KEND]
 	{
 		if dt < .1
-			t_scale *= 1 - dt * ss;
+			t_scale *= 1 - (dt * ss);
 		else
 			t_scale *= 1 - ss;
 		if t_scale < .5
@@ -329,7 +329,7 @@ procedure check_input(dt)
 	else if ks[SDL.KHOME]
 	{
 		if dt < .1
-			t_scale *= 1 + dt * ss;
+			t_scale *= dt * ss + 1;
 		else
 			t_scale *= 1 + ss;
 		if t_scale > 1024
@@ -553,14 +553,14 @@ export function main<args>
 		  }
 		  case "-w"
 		  {
-			if arguments < i + 2
+			if arguments < (i + 2)
 				throw "The -w switch needs an argument!";
 			screenw = (integer)args[i + 1];
 			print("Requested width ", screenw, ".\n");
 		  }
 		  case "-h"
 		  {
-			if arguments < i + 2
+			if arguments < (i + 2)
 				throw "The -h switch needs an argument!";
 			screenh = (integer)args[i + 1];
 			print("Requested height ", screenh, ".\n");
@@ -620,7 +620,7 @@ export function main<args>
 			local new = zs.View(map, r);
 			zs.RawFill(zs.ALL, new, nil, ZS_Pixel
 					[160, 128, 96, 255, 1, 0]);
-			zs.RndReset(.5 + sin(mt) * .5);
+			zs.RndReset(sin(mt) * .5 + .5);
 			draw_terrain(new, t_base, t_height, t_scale,
 					t_p0, t_p1, t_p2,
 					t_x, t_y, t_r);
@@ -638,7 +638,7 @@ export function main<args>
 				ws = map;
 			zs.RawFill(zs.ALL, ws, nil, ZS_Pixel
 					[160, 128, 96, 255, 1, 0]);
-			zs.RndReset(.5 + sin(mt) * .5);
+			zs.RndReset(sin(mt) * .5 + .5);
 			draw_terrain(ws, t_base, t_height, t_scale,
 					t_p0, t_p1, t_p2,
 					t_x, t_y, t_r);
@@ -683,7 +683,7 @@ export function main<args>
 			zs.I2SDL(work, screen);
 
 		// fps meter, scale etc
-		if fps_count > 50 or t2 - fps_start > 250
+		if (fps_count > 50) or ((t2 - fps_start) > 250)
 		{
 			fps = fps_count * 1000. / (t2 - fps_start);
 			fps_count = 0;

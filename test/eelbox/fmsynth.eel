@@ -1,7 +1,9 @@
 /////////////////////////////////////////////
 // fmsynth.eel - Simple EELBox FM Synth
-// Copyright 2006, 2010 David Olofson
+// Copyright 2006, 2010, 2014 David Olofson
 /////////////////////////////////////////////
+
+noprecedence;
 
 import "SDL", "math";
 
@@ -67,17 +69,17 @@ export function main<args>
 			  case MOUSEMOTION
 			  {
 				// Change pitch and FM depth
-				tf = F0 * 2 ** (OCTAVES * ev.x / screen.w);
-				tfm = (ev.y - screen.h) / screen.h * PI * 7;
+				tf = 2 ** (OCTAVES * ev.x / screen.w) * F0;
+				tfm = ev.y - screen.h / screen.h * PI * 7;
 			  }
 			  case QUIT
 				break mainloop;
 		}
 		while AudioSpace()
 		{
-			f += (tf - f) * .0005;
-			fm += (tfm - fm) * .0005;
-			local mod = sin(ph) * (fm + fm * a * a);
+			f += tf - f * .0005;
+			fm += tfm - fm * .0005;
+			local mod = fm * a * a + fm * sin(ph);
 			if lfm > 1
 				mod += sin(ph / lfm) * fm;
 			local s = sin(ph + mod) * a;

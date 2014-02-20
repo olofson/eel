@@ -34,7 +34,7 @@ function bar(r, g, b, h)
 	local gr = new_gradient(h);
 	for local y = 0, h - 1
 	{
-		local s = 55 + sin(sin(PI * y / h)) * 200;
+		local s = sin(sin(PI * y / h)) * 200 + 55;
 		gr[y] = SDL.MapColor(nil, r * s, g * s, b * s);
 	}
 	return gr;
@@ -93,7 +93,7 @@ export function main<args>
 		draw(sky, buffer, 0);
 		for local i = 0, sizeof bars - 1
 			draw(bars[i], buffer,
-					a + sin(t / 500 + i / 10) * a);
+					sin(t / 500 + (i / 10)) * a + a);
 		render(screen, buffer);
 		SDL.Flip();
 		SDL.Delay(0);	// In case we don't have retrace sync...

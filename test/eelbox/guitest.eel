@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 // guitest.eel - Test of ebgui.eel
-// Copyright 2005, 2007, 2009, 2011 David Olofson
-//////////////////////////////////////////////////////
+// Copyright 2005, 2007, 2009, 2011, 2014 David Olofson
+////////////////////////////////////////////////////////
 
 import "SDL" as SDL;
 import "ebgui" as ebgui;
@@ -154,9 +154,9 @@ procedure spawn(what)
 		for local i = 0, 1, .01
 		{
 			dots:Add(i, .5 * sin(i * 2 * PI));
-			squares:Add(i, .5 * sin(i * 2 * PI + PI / 4));
-			boxes:Add(i, .5 * sin(i * 2 * PI + PI / 2));
-			rings:Add(i, .5 * sin(i * 2 * PI + PI * 3 / 4));
+			squares:Add(i, .5 * sin(i * 2 * PI + (PI / 4)));
+			boxes:Add(i, .5 * sin(i * 2 * PI + (PI / 2)));
+			rings:Add(i, .5 * sin(i * 2 * PI + (PI * 3 / 4)));
 			lines:Add(i, .25 * sin(i * 6 * PI));
 		}
 		dots:AutoScale(true, true);

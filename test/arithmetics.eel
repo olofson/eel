@@ -1,7 +1,9 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2002-2005 David Olofson
+// Copyright 2002-2005, 2014 David Olofson
 /////////////////////////////////////////////
+
+noprecedence;	// Suppress operator precedence warnings
 
 procedure verify(name, val, correct)
 {
@@ -47,23 +49,38 @@ export function main<args>
 	e = 0n(36)Weird;
 	f = 0o777;
 	verify("a", a, 234);
-	verify("b", b, 10/16);
+	verify("b", b, 10 / 16);
 	verify("c", c, 108);
 	verify("d", d, 140);
 	verify("e", e, 54425209);
 	verify("f", f, 511);
 
+	// Not as much fun after the removal of operator precedence...! ;-)
 	print("\nSome expressions:\n");
-	a = 100+100/10-1*0.1;
-	b = (1000+100)/10-1*0.1;
-	c = 100+100/(10-2)*0.1;
-	d = (integer)(440*2**-(1/12)*100);
-	e = (integer)(440*2**(1/12)*100);
+	a = 100 + (100 / 10) - (1 * 0.1);
+	b = 1000 + 100 / 10 - (1 * 0.1);
+	c = 100 + (100 / (10 - 2) * 0.1);
+	d = (integer)(440 * (2 ** -(1 / 12)) * 100);
+	e = (integer)(440 * (2 ** (1 / 12)) * 100);
 	verify("a", a, 109.9);
 	verify("b", b, 109.9);
 	verify("c", c, 101.25);
 	verify("d", d, 41530);
 	verify("e", e, 46616);
+
+	print("\nVerifying left-to-right evaluation:\n");
+	// The expression:
+	a = 1 * 2 + 3 ** 4 / 5 + 6 * 7;
+	// What you think it does (and would do prior to EEL 0.3.7):
+	b = (1 * 2) + ((3 ** 4) / 5) + (6 * 7);
+	// What it actually does:
+	c = ((((((1 * 2) + 3) ** 4) / 5) + 6) * 7);
+	// And let's check that unary operators don't mess it up:
+	d = not not true * 2 + 3 ** --4 / -5 + -6 * ---7;
+	verify("a", a, 917);
+	verify("b", b, 60.2);
+	verify("c", c, 917);
+	verify("d", d, 917);
 
 	print("\nClamp to [-5, 5] using '>|' and '|<':\n");
 
@@ -86,7 +103,7 @@ export function main<args>
 	a = 0x12345678&0x00ff00ff;
 	a = a<<8;
 	b = a&false;
-	c = false&a|0x5555aaaa^0xf0f0f0f0;
+	c = false&a|(0x5555aaaa^0xf0f0f0f0);
 	c = c ror 4;
 	d = 0b110101000110101101101111><24;
 	verify("a", a, 0x34007800);

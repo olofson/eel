@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_parser.c - The EEL Parser/Compiler
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2009-2012 David Olofson
+ * Copyright 2002-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -34,6 +34,12 @@
 #include "e_string.h"
 #include "e_object.h"
 #include "e_table.h"
+
+/*
+ * True if we're NOT supposed to warn when the old operator precedence would
+ * have kicked in.
+ */
+#define	EEL_NOPRECEDENCE(x)	((x)->context->bio->noprecedence)
 
 #if DBGH2(1)+0 == 1
 static inline int eel__tk(const char *tkn, int tkc, int line)
@@ -2239,7 +2245,9 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 			int i;
 			EEL_types t = lastm->v.constant.v.integer.v;
 			EEL_mlist *src = eel_ml_open(cdr);
-			if(TK_WRONG == expression2(es, EEL_CAST_PRIORITY, src, 1))
+			/* FIXME: Temporary operator precedence disabler! */
+			if(TK_WRONG == expression2(es,
+					EEL_CAST_PRIORITY + 1000, src, 1))
 				eel_cerror(es, "Expected expression!");
 			if(!src->length)
 				eel_cerror(es, "Cast operator gets void operand!");
@@ -2499,9 +2507,16 @@ TODO: VARIABLE and FUNCTION subrules of the field rule. Needs typed variables.
  *
  * The -3 return is used IFF limit == -1, to trap
  * "this is not an expression" on the first level.
+ *
+ * NOTE:
+ *	As of EEL 0.3.7, operator precedence has been removed!
+ *	For now, we still have the logic in place, but all it
+ *	does is handle chains of unary operators, and issuing
+ *	warnings when evaluation would have been different
+ *	with EEL 0.3.6 and older.
  */
-static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
-		int wantresult)
+static int expression3(EEL_state *es, int limit, EEL_mlist *left,
+		EEL_mlist *al, int wantresult)
 {
 	int lpri;
 	EEL_coder *cdr = es->context->coder;
@@ -2511,7 +2526,7 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 	{
 	  case TK_WRONG:
 	  case TK_VOID:
-		if(TK_SYM_OPERATOR == es->token)
+		if(es->token == TK_SYM_OPERATOR)
 		{
 			int i;
 			EEL_mlist *right = eel_ml_open(cdr);
@@ -2521,7 +2536,8 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 				eel_cerror(es, "No unary version of operator '%s' "
 						"available!", opname);
 			eel_lex(es, 0);
-			expression2(es, op->un_pri, right, 1);
+			/* FIXME: Temporary operator precedence disabler! */
+			expression2(es, op->un_pri + 1000, right, 1);
 			if(!right->length)
 				eel_cerror(es, "No operands for unary operator '%s'!",
 						opname);
@@ -2544,7 +2560,7 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 		EEL_operator *op;
 		EEL_mlist *right;
 		const char *opname;
-		if(TK_SYM_OPERATOR != es->token)
+		if(es->token != TK_SYM_OPERATOR)
 		{
 			eel_ml_transfer(left, al);
 			return -1;
@@ -2556,6 +2572,16 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 		if(!(op->flags & EOPF_BINARY))
 			eel_cerror(es, "No binary version of operator '%s' "
 					"available!", opname);
+
+		/*
+		 * Warn whenever operator precedence would have made a
+		 * difference!
+		 */
+		if(!EEL_NOPRECEDENCE(es) && (limit >= 1000) &&
+				((lpri <= (limit - 1000)) != (lpri <= limit)))
+			eel_cwarning(es, "EEL <= 0.3.6 would evaluate this "
+					"expression differently due to "
+					"operator precedence!");
 		if(lpri <= limit)
 		{
 			eel_ml_transfer(left, al);
@@ -2564,9 +2590,11 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left, EEL_mlist *al,
 
 		eel_lex(es, 0);
 		right = eel_ml_open(cdr);
-		lpri = expression2(es, op->rpri, right, 1);
+		/* FIXME: Temporary operator precedence disabler! */
+		lpri = expression2(es, op->rpri + 1000, right, 1);
 		if(lpri == -4)
 			eel_cerror(es, "Subexpression generates no result!");
+
 		/*
 		 * Perform the operation, replacing
 		 * left hand terms with result.
@@ -3830,6 +3858,7 @@ static int untrystat(EEL_state *es)
 		| EOF
 		| KW_END ';'
 		| ';'
+HACK:		| KW_NOPRECEDENCE ';'
 		| KW_INCLUDE filelist ';'
 		| importstat
 TODO:		| KW_ALWAYS ':'
@@ -3864,6 +3893,12 @@ static int statement2(EEL_state *es)
 	  case ';':
 		eel_lex(es, 0);
 		DBGH(printf("## statement: ';'\n");)
+		return TK(STATEMENT);
+	  /* KW_NOPRECEDENCE ';' */
+	  case TK_KW_NOPRECEDENCE:
+		eel_lex(es, 0);
+		es->context->bio->noprecedence = 1;
+		expect(es, ';', NULL);
 		return TK(STATEMENT);
 	  /* KW_INCLUDE filelist ';' */
 	  case TK_KW_INCLUDE:

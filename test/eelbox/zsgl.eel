@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////
 // zsgl.eel - Combining EEL, ZeeSpace and OpenGL
-// Copyright 2010 David Olofson
+// Copyright 2010, 2014 David Olofson
 /////////////////////////////////////////////////
 
 /*
@@ -56,10 +56,12 @@ function TiledLayer(tw, th, tb, tbpp)
 		.tbpp		tbpp,
 
 		// Scratch SDL surface for refreshing tiles
-		.scratch	SDL.Surface [0, tw + tb * 2, th + tb * 2, tbpp],
+		.scratch	SDL.Surface [0, tb * 2 + tw,
+						tb * 2 + th, tbpp],
 
 		// ZeeSpace scratch surface
-		.zscratch	ZS_Surface [tw + tb * 2 + 1, th + tb * 2 + 1],
+		.zscratch	ZS_Surface [tb * 2 + tw + 1,
+						tb * 2 + th + 1],
 
 		// View size
 		.w		0,
@@ -134,7 +136,7 @@ function TiledLayer(tw, th, tb, tbpp)
 
 			// Keep the LAM centered around the view!
 			local lam = self.lam;
-			local dx = x - (self.lamx + (self.lamw - self.w) / 2);
+			local dx = x - ((self.lamw - self.w) / 2 + self.lamx);
 			if dx > 1
 				while dx > 1
 				{
@@ -160,7 +162,7 @@ function TiledLayer(tw, th, tb, tbpp)
 					self.lamx -= 1;
 					self:DirtyColumn(0);
 				}
-			local dy = y - (self.lamy + (self.lamh - self.h) / 2);
+			local dy = y - ((self.lamh - self.h) / 2 + self.lamy);
 			if dy > 1
 				while dy > 1
 				{
@@ -377,7 +379,7 @@ export function main<args>
 		local t = SDL.GetTicks() - start;
 		local dt = .001 * (t - lt);
 		lt = t;
-		ftimes[0 >| dt * 1000 |< sizeof ftimes - 1] += 1;
+		ftimes[0 >| (dt * 1000) |< (sizeof ftimes - 1)] += 1;
 		fdt += (dt - fdt) * .05;
 
 		// Handle events
@@ -452,7 +454,8 @@ export function main<args>
 		{
 			local bx = bg.lamw - bg.w;
 			local by = bg.lamh - bg.h;
-			gl.Scale(bg.w / (bg.w + bx * 2), bg.h / (bg.h + by * 2), 1);
+			gl.Scale(bg.w / (bx * 2 + bg.w),
+					bg.h / (by * 2 + bg.h), 1);
 			gl.Translate(bx, by, 0);
 		}
 

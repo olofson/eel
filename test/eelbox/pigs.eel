@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // pigs.eel - Bouncing Pigs
-// Copyright 2005, 2010 David Olofson
+// Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "SDL";
@@ -89,7 +89,7 @@ export function main<args>
 
 			// anim wrap
 			if pigs[i].frame < 0
-				pigs[i].frame = 12 - -pigs[i].frame % 12;
+				pigs[i].frame = 12 - (-pigs[i].frame % 12);
 			else
 				pigs[i].frame %= 12;
 
@@ -99,14 +99,14 @@ export function main<args>
 				pigs[i].dx = -pigs[i].dx;
 				pigs[i].x = -pigs[i].x;
 			}
-			else if pigs[i].x > 640 - 64
+			else if pigs[i].x > (640 - 64)
 			{
 				pigs[i].dx = -pigs[i].dx;
 				pigs[i].x -= pigs[i].x - (640 - 64);
 			}
 
 			// y bounce
-			if pigs[i].y > 480 - 48
+			if pigs[i].y > (480 - 48)
 			{
 				pigs[i].dy = -pigs[i].dy;
 				pigs[i].y -= pigs[i].y - (480 - 48);

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2005, 2011 David Olofson
+// Copyright 2005, 2011, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "io", "dir";
@@ -18,7 +18,7 @@ procedure list(p, indent)
 			local sp = p + "/" +  n;
 			directory [sp];
 			print(indent, "   (dir) ", n, "\n");
-			if n != "." and n != ".."
+			if (n != ".") and (n != "..")
 				list(sp, indent + "\t");
 		}
 		except

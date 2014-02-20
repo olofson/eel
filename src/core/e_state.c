@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_state.c - EEL State (Compiler, VM, symbols etc)
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -241,6 +241,7 @@ EEL_vm *eel_open(int argc, const char *argv[])
 	eel_register_keyword(vm, "import", TK_KW_IMPORT);
 	eel_register_keyword(vm, "as", TK_KW_AS);
 	eel_register_keyword(vm, "end", TK_KW_END);
+/*HACK:*/eel_register_keyword(vm, "noprecedence", TK_KW_NOPRECEDENCE);
 
 	/* Flow control keywords */
 	eel_register_keyword(vm, "return", TK_KW_RETURN);

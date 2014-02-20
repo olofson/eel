@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // addsynth.eel
-// Copyright 2005, 2010 David Olofson
+// Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math";
@@ -37,11 +37,11 @@ export function main<args>
 		}
 		while AudioSpace()
 		{
-			local f = 100. - 10. * sin(vph);
+			local f = 100. - (10. * sin(vph));
 			vph += dvph;
 			local dph = 2. * PI * f / FS;
 			local s = 0.;
-			local spread = 10. + 9. * sin(vph);
+			local spread = 10. + (9. * sin(vph));
 			local i = 0.;
 			for i = 1., spread
 				s += sin(ph * i) / i;

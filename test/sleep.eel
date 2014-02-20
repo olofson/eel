@@ -1,11 +1,11 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2007 David Olofson
+// Copyright 2007, 2014 David Olofson
 /////////////////////////////////////////////
 
 export function main<args>
 {
-	while true
+	for local i = 1, 20
 	{
 		local dt = sleep(100);
 		if(dt)

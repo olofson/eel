@@ -119,7 +119,17 @@ int main(int argc, const char *argv[])
 	const char *outname = NULL;
 	int eelargc;
 	const char **eelargv;
-
+/*
+	fprintf(stderr,
+		"\n"
+		"#######################################################\n"
+		"##                     WARNING!                      ##\n"
+		"##    No operator precedence in EEL as of 0.3.7!     ##\n"
+		"##   Expressions are evaluated from left to right.   ##\n"
+		"## Order operations as intended, or use parentheses. ##\n"
+		"#######################################################\n"
+		"\n");
+*/
 	for(i = 1; i < argc; ++i)
 	{
 		int j;

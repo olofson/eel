@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // balls2.eel - Smarter EELBox Balls
-// Copyright 2005, 2010 David Olofson
+// Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
 import "SDL", "math", "ball" as ball;
@@ -34,7 +34,7 @@ export function main<args>
 	local start = GetTicks();
 	local maxsize = sprites[sizeof sprites - 1].w;
 	local xc, local yc = screen.(w, h) / 2;
-	local xa, local ya = (xc, yc) - maxsize / 2;
+	local xa, local ya = (xc, yc) - (maxsize / 2);
 	while true
 	mainloop:
 	{
@@ -70,9 +70,9 @@ export function main<args>
 		for local i = 0, nballs - 1
 		{
 			stx, sty, stz += .07, .09, .15;
-			local s = sprites[za + sin(stz) * za];
-			drs[i].x = xc + cos(stx) * xa - s.w / 2;
-			drs[i].y = yc + sin(sty) * ya - s.h / 2;
+			local s = sprites[sin(stz) * za + za];
+			drs[i].x = cos(stx) * xa + xc - (s.w / 2);
+			drs[i].y = sin(sty) * ya + yc - (s.h / 2);
 			drs[i].(w, h) = s.(w, h);
 			BlitSurface(s, nil, nil, drs[i]);
 		}

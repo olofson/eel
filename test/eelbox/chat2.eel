@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////
 // chat2.eel - EELBox Graphical Chat Toy, version 2
-// Copyright 2005, 2009 David Olofson
+// Copyright 2005, 2009, 2014 David Olofson
 /////////////////////////////////////////////////////
 
 import "SDL", "NET2", "pen" as pen, "io";
@@ -60,7 +60,7 @@ export function main<args>
 			  }
 			  case 'T'
 			  {
-				if sizeof buf < 1 + 2 * 4
+				if sizeof buf < (2 * 4 + 1)
 					break parseloop;
 				delete(buf, 0);
 				local x = read(buf, integer);
