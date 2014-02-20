@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vm.c - EEL Virtual Machine
 ---------------------------------------------------------------------------
- * Copyright 2004-2013 David Olofson
+ * Copyright 2004-2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -33,6 +33,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "EEL.h"
 #include "e_state.h"
 #include "ec_coder.h"
@@ -166,12 +167,7 @@ static inline EEL_callframe *b2callframe(EEL_vm *vm, int base)
  */
 static void relocate_limbo(EEL_vm *vm, EEL_uint32 frame, EEL_value *oldheap)
 {
-/*
-FIXME: This 'long long' is only needed on platforms with 64 bit pointers.
-FIXME: There should be a check to avoid it in 32 bit environments, which
-FIXME: don't need it anyway.
-*/
-	long long offset = (char *)vm->heap - (char *)oldheap;
+	intptr_t offset = (char *)vm->heap - (char *)oldheap;
 	while(frame)
 	{
 		EEL_callframe *cf = b2callframe(vm, frame);
