@@ -119,7 +119,7 @@ int main(int argc, const char *argv[])
 	const char *outname = NULL;
 	int eelargc;
 	const char **eelargv;
-/*
+
 	fprintf(stderr,
 		"\n"
 		"#######################################################\n"
@@ -129,7 +129,7 @@ int main(int argc, const char *argv[])
 		"## Order operations as intended, or use parentheses. ##\n"
 		"#######################################################\n"
 		"\n");
-*/
+
 	for(i = 1; i < argc; ++i)
 	{
 		int j;
