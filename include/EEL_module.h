@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_module.h - EEL code module management (API)
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009 David Olofson
+ * Copyright 2002, 2004-2006, 2009, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -55,7 +55,7 @@ typedef enum
 	EEL_SF_TYPEINFO =	0x00000200
 } EEL_sflags;
 
-EELAPI(EEL_object *)eel_load_from_mem(EEL_vm *vm,
+EELAPI(EEL_object *)eel_load_buffer(EEL_vm *vm,
 		const char *source, unsigned len, EEL_sflags flags);
 
 /*

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_module.h - EEL code module management
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2009, 2011 David Olofson
+ * Copyright 2002-2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -75,7 +75,7 @@ void eel_cmodule_register(EEL_vm *vm);
 EEL_object *eel_load_nc(EEL_vm *vm, const char *filename, EEL_sflags flags);
 
 /* Load a string as a module, but don't compile or initialize it. */
-EEL_object *eel_load_from_mem_nc(EEL_vm *vm,
+EEL_object *eel_load_buffer_nc(EEL_vm *vm,
 		const char *source, unsigned len, EEL_sflags flags);
 
 /* Count references to compiler generated objects */

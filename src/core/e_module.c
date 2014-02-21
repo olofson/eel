@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_module.c - EEL code module management
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009-2013 David Olofson
+ * Copyright 2002, 2004-2006, 2009-2014 David Olofson
  * Copyright 2002 Florian Schulze <fs@crowproductions.de>
  *
  * This software is provided 'as-is', without any express or implied warranty.
@@ -274,7 +274,7 @@ EEL_object *eel_import(EEL_vm *vm, const char *modname)
 }
 
 
-static void load_from_mem(EEL_vm *vm, EEL_module *m,
+static void load_buffer(EEL_vm *vm, EEL_module *m,
 		const char *source, unsigned len)
 {
 	EEL_state *es = VMP->state;
@@ -304,7 +304,7 @@ static void load_from_mem(EEL_vm *vm, EEL_module *m,
 }
 
 
-EEL_object *eel_load_from_mem_nc(EEL_vm *vm,
+EEL_object *eel_load_buffer_nc(EEL_vm *vm,
 		const char *source, unsigned len, EEL_sflags flags)
 {
 	EEL_state *es = VMP->state;
@@ -315,7 +315,7 @@ EEL_object *eel_load_from_mem_nc(EEL_vm *vm,
 		return NULL;
 	m = v.objref.v;
 	eel_try(es)
-		load_from_mem(vm, o2EEL_module(m), source, len);
+		load_buffer(vm, o2EEL_module(m), source, len);
 	eel_except
 	{
 		eel_o_disown_nz(m);
@@ -325,11 +325,11 @@ EEL_object *eel_load_from_mem_nc(EEL_vm *vm,
 }
 
 
-EEL_object *eel_load_from_mem(EEL_vm *vm,
+EEL_object *eel_load_buffer(EEL_vm *vm,
 		const char *source, unsigned len, EEL_sflags flags)
 {
 	EEL_state *es = VMP->state;
-	EEL_object *m = eel_load_from_mem_nc(vm, source, len, flags);
+	EEL_object *m = eel_load_buffer_nc(vm, source, len, flags);
 	if(!m)
 		return NULL;
 	eel_clear_errors(es);

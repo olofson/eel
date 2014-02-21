@@ -31,6 +31,8 @@
 # include "eelbox.h"
 #endif
 
+#define	READ_CHUNK_SIZE	256
+
 
 /*----------------------------------------------------------
 	main() with helpers
@@ -100,6 +102,39 @@ static void usage(const char *exename)
 }
 
 
+/*
+ * Read from 'f' until EOF, returning the buffer pointer and size through
+ * 'buf' and 'len'. Returns 1 on success, 0 on failure.
+ */
+static int read_until_eof(FILE *f, char **buf, size_t *len)
+{
+	*len = 0;
+	*buf = NULL;
+	while(1)
+	{
+		size_t count;
+		char *nb = realloc(*buf, *len + READ_CHUNK_SIZE);
+		if(!nb)
+			break;
+		*buf = nb;
+		count = fread(*buf + *len, 1, READ_CHUNK_SIZE, f);
+		*len += count;
+		if(count < READ_CHUNK_SIZE)
+		{
+			if(feof(f))
+				return 1;
+			break;
+		}
+	}
+	/* Failure! */
+	fprintf(stderr, "Could not read input!\n");
+	free(*buf);
+	*len = 0;
+	*buf = NULL;
+	return 0;
+}
+
+
 int main(int argc, const char *argv[])
 {
 	EEL_xno x;
@@ -135,6 +170,12 @@ int main(int argc, const char *argv[])
 		int j;
 		if('-' != argv[i][0])
 		{
+			if(readstdin)
+			{
+				fprintf(stderr, "Specify file name or '-s' - "
+						"not both!\n");
+				usage(argv[0]);
+			}
 			name = argv[i];
 			++i;
 			break;	/* Pass the rest to the EEL script! */
@@ -144,6 +185,7 @@ int main(int argc, const char *argv[])
 			{
 			  case 's':
 				readstdin = 1;
+				name = "<stdin>";
 				break;
 			  case 'c':
 				run = 0;
@@ -157,7 +199,8 @@ int main(int argc, const char *argv[])
 			  case 'o':
 				if(argc < i + 1)
 				{
-					fprintf(stderr, "No output file name!\n");
+					fprintf(stderr, "No output file "
+							"name!\n");
 					usage(argv[0]);
 				}
 				++i;
@@ -170,7 +213,7 @@ int main(int argc, const char *argv[])
 	}
 	eelargv = argv + i;
 	eelargc = argc - i;
-	if(!name)
+	if(!name && !readstdin)
 	{
 		fprintf(stderr, "No source file name!\n");
 		usage(argv[0]);
@@ -193,12 +236,15 @@ int main(int argc, const char *argv[])
 		return 3;
 	}
 #endif
-
 	/* Load the script */
 	if(readstdin)
 	{
-		fprintf(stderr, "Not yet implemented!\n");
-		return 4;
+		char *buf;
+		size_t len;
+		if(!read_until_eof(stdin, &buf, &len))
+			return 4;
+		m = eel_load_buffer(vm, buf, len, flags);
+		free(buf);
 	}
 	else
 		m = eel_load(vm, name, flags);
@@ -215,8 +261,15 @@ int main(int argc, const char *argv[])
 		EEL_object *fo;
 		if((x = find_function(m, "main", &fo)))
 		{
-			fprintf(stderr, "No main function found! (%s)\n",
-					eel_x_name(vm, x));
+			/*
+			 * FIXME: We don't whine about there being no main<>
+			 * when reading from stdin - but since that means any
+			 * code is executing during module initialization, it
+			 * all happens without initializing any subsystems!
+			 */
+			if(!readstdin)
+				fprintf(stderr, "No main function found! "
+					"(%s)\n", eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
 			return 6;

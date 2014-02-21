@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_builtin.c - EEL built-in functions
 ---------------------------------------------------------------------------
- * Copyright 2002-2013 David Olofson
+ * Copyright 2002-2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -266,7 +266,7 @@ static EEL_xno bi_compile(EEL_vm *vm)
 	  default:
 		return EEL_XNEEDSTRING;
 	}
-	m = eel_load_from_mem_nc(vm, buf, len, 0);
+	m = eel_load_buffer_nc(vm, buf, len, 0);
 	if(!m)
 		return EEL_XFILELOAD;
 	eel_try(VMP->state)
@@ -772,7 +772,7 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 
 #ifdef	EEL_USE_EELBIL
 	/* Built-in EEL library */
-	es->eellib = eel_load_from_mem(vm, builtin_eel, strlen(builtin_eel), 0);
+	es->eellib = eel_load_buffer(vm, builtin_eel, strlen(builtin_eel), 0);
 	if(!es->eellib)
 	{
 		eel_o_disown_nz(m);
