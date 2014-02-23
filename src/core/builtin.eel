@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////
-// EEL Built-In Library v0.3.5
+// EEL Built-In Library v0.3.7
 ///////////////////////////////////////////////////////////////////////////
-// Copyright 2005, 2009, 2011-2012 David Olofson
+// Copyright 2005, 2009, 2011-2012, 2014 David Olofson
 //
 // NOTE:	This file is converted into C string format and
 //		included by e_builtin.c. If changes are made to
@@ -37,7 +37,10 @@ if __version(3)
 	_eel_version[3] = __version(3);
 
 // EEL Built-In Library Version
-static _lib_version = [0, 3, 5];
+//
+// NOTE: Set this equal to the current EEL version after making changes!
+//
+static _lib_version = [0, 3, 7];
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -48,6 +51,10 @@ static _lib_version = [0, 3, 5];
 //
 // Any elements beyond index 2 are for builds and releases only, and
 // should normally not be considered when checking versions.
+//
+// NOTE: All bets are off for major == 0 (beta) and when minor is an odd
+//       number (development branch). Expect even micro bumps to break
+//       everything!
 //
 export function eel_version
 {
@@ -94,7 +101,7 @@ export function deepclone(src)[_level]
 		local level = _level + 1;
 	else
 		level = 0;
-	if level > 100
+	if level > 1000
 		throw "deepclone(): Infinite recursion aborted!";
 	switch typeof src
 	  case array
@@ -119,8 +126,14 @@ export function deepclone(src)[_level]
 //////////////////////////////////////////////////////////////////////////
 // Deep comparison tool
 //
-export function deepcompare(l, r)
+export function deepcompare(l, r)[_level]
 {
+	if specified _level
+		local level = _level + 1;
+	else
+		level = 0;
+	if level > 1000
+		throw "deepcompare(): Infinite recursion aborted!";
 	switch typeof l
 	  case array
 	  {
@@ -129,7 +142,7 @@ export function deepcompare(l, r)
 		if sizeof l != sizeof r
 			return false;
 		for local i = 0, sizeof l - 1
-			if not deepcompare(l[i], r[i])
+			if not deepcompare(l[i], r[i], level)
 				return false;
 		return true;
 	  }
@@ -142,7 +155,7 @@ export function deepcompare(l, r)
 		for local i = 0, sizeof l - 1
 		{
 			local k = key(l, i);
-			if not deepcompare(l[k], r[k])
+			if not deepcompare(l[k], r[k], level)
 				return false;
 		}
 		return true;
