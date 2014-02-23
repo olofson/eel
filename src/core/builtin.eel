@@ -80,9 +80,9 @@ export function exception_info(x)
 		r.name = exception_name(x);
 	except
 		r.name = "";
-//	try
-//		r.description = __xdesc(x);
-//	except
+	try
+		r.description = exception_description(x);
+	except
 		r.description = "(No description available.)";
 	return r;
 }

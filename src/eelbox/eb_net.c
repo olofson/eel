@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eb_net.c - EEL SDL_net Binding
 ---------------------------------------------------------------------------
- * Copyright 2005, 2006, 2009, 2011 David Olofson
+ * Copyright 2005, 2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -170,7 +170,7 @@ static EEL_xno n2s_construct(EEL_vm *vm, EEL_types type,
 	rs->sender = NULL;
 	rs->fifo.buffer = NULL;
 	rs->closed = 0;
-	rs->status = EEL_XNONE;
+	rs->status = EEL_XOK;
 	switch(initc)
 	{
 	  case 1:

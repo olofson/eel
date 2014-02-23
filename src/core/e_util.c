@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_util.c - EEL engine utilities
 ---------------------------------------------------------------------------
- * Copyright 2002-2007, 2009-2013 David Olofson
+ * Copyright 2002-2007, 2009-2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -141,113 +141,30 @@ void eel_sfree(EEL_state *es, const char *s)
 }
 
 
-#define	XN(n)	case EEL_##n:	return #n;
+#define	EEL_DEFEX(x, y)	case EEL_##x: return #x;
 const char *eel_x_name(EEL_vm *vm, EEL_xno x)
 {
 	switch(x)
 	{
-	  XN(XNONE)
-
-	  XN(XYIELD)
-	  XN(XCOUNTER)
-	  XN(XEND)
-	  XN(XRETURN)
-	  XN(XREFUSE)
-	  XN(XOTHER)
-	  XN(XVMCHECK)
-	  XN(XBADEXCEPTION)
-
-	  XN(XINTERNAL)
-	  XN(XVMERROR)
-
-	  XN(XILLEGAL)
-	  XN(XNOTIMPLEMENTED)
-	  XN(XCANTREAD)
-	  XN(XCANTWRITE)
-	  XN(XCANTINDEX)
-	  XN(XCANTINPLACE)
-	  XN(XUPVALUE)
-	  XN(XCASTFAILED)
-	  XN(XNOMETAMETHOD)
-	  XN(XNOCONSTRUCTOR)
-	  XN(XCONSTRUCTOR)
-	  XN(XBADCONTEXT)
-
-	  XN(XARGUMENTS)
-	  XN(XFEWARGS)
-	  XN(XMANYARGS)
-	  XN(XTUPLEARGS)
-	  XN(XNORESULT)
-	  XN(XNEEDREAL)
-	  XN(XNEEDINTEGER)
-	  XN(XNEEDBOOLEAN)
-	  XN(XNEEDTYPEID)
-	  XN(XNEEDOBJECT)
-	  XN(XNEEDLIST)
-	  XN(XNEEDSTRING)
-	  XN(XNEEDDSTRING)
-	  XN(XNEEDARRAY)
-	  XN(XNEEDTABLE)
-	  XN(XNEEDCALLABLE)
-	  XN(XNEEDEVEN)
-	  XN(XWRONGTYPE)
-	  XN(XBADTYPE)
-	  XN(XBADCLASS)
-	  XN(XLOWINDEX)
-	  XN(XHIGHINDEX)
-	  XN(XWRONGINDEX)
-
-	  XN(XHIGHVALUE)
-	  XN(XLOWVALUE)
-	  XN(XBADVALUE)
-	  XN(XDIVBYZERO)
-	  XN(XOVERFLOW)
-	  XN(XUNDERFLOW)
-	  XN(XDOMAIN)
-	  XN(XMATHERROR)
-	  XN(XILLEGALOPERATION)
-
-	  XN(XMEMORY)
-	  XN(XEOF)
-	  XN(XFILEOPEN)
-	  XN(XFILESEEK)
-	  XN(XFILEREAD)
-	  XN(XFILEWRITE)
-	  XN(XFILELOAD)
-	  XN(XFILESAVE)
-	  XN(XFILEOPENED)
-	  XN(XFILECLOSED)
-	  XN(XFILEERROR)
-	  XN(XDEVICEOPEN)
-	  XN(XDEVICEREAD)
-	  XN(XDEVICEWRITE)
-	  XN(XDEVICECONTROL)
-	  XN(XDEVICEOPENED)
-	  XN(XDEVICECLOSED)
-	  XN(XDEVICEERROR)
-	  XN(XTHREADCREATE)
-	  XN(XBUFOVERFLOW)
-
-	  XN(XNONUMBER)
-	  XN(XBADBASE)
-	  XN(XBIGBASE)
-	  XN(XBADINTEGER)
-	  XN(XBADFRACTION)
-	  XN(XBADEXPONENT)
-	  XN(XREALNUMBER)
-
-	  XN(XCOMPILE)
-	  XN(XSYNTAX)
-	  XN(XNOTFOUND)
-	  XN(XMODULEINIT)
-	  XN(XCANTSETMETHOD)
-
-	  case EEL__XCOUNT:
-		break;
+	  case EEL_XOK:		return "XOK";
+	  EEL_ALLEXCEPTIONS
 	}
 	return "<unknown>";
 }
-#undef XN
+#undef	EEL_DEFEX
+
+
+#define	EEL_DEFEX(x, y)	case EEL_##x: return y;
+const char *eel_x_description(EEL_vm *vm, EEL_xno x)
+{
+	switch(x)
+	{
+	  case EEL_XOK:		return "<no exception>";
+	  EEL_ALLEXCEPTIONS
+	}
+	return "<unknown - no description>";
+}
+#undef	EEL_DEFEX
 
 
 #define	MMN(n)	case EEL_MM_##n:	return #n;

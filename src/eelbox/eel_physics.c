@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_physics.c - EEL 2D Physics
 ---------------------------------------------------------------------------
- * Copyright 2011-2012 David Olofson
+ * Copyright 2011-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -167,7 +167,7 @@ static EEL_xno space_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_value v;
 	EPH_space *space = o2EPH_space(eo);
-	if(eel_table_get(eph_md.spacefields, op1, &v) != EEL_XNONE)
+	if(eel_table_get(eph_md.spacefields, op1, &v) != EEL_XOK)
 	{
 		/* No hit! Fall through to extension table. */
 		EEL_xno x = eel_table_get(space->table, op1, op2);
@@ -224,7 +224,7 @@ static EEL_xno space_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_value v;
 	EPH_space *space = o2EPH_space(eo);
-	if(eel_table_get(eph_md.spacefields, op1, &v) != EEL_XNONE)
+	if(eel_table_get(eph_md.spacefields, op1, &v) != EEL_XOK)
 		return eel_o_metamethod(space->table, EEL_MM_SETINDEX, op1, op2);
 	switch(v.integer.v)
 	{
@@ -1211,7 +1211,7 @@ static EEL_xno body_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int ind;
 	EEL_value v;
 	EPH_body *body = o2EPH_body(eo);
-	if(eel_table_get(eph_md.bodyfields, op1, &v) != EEL_XNONE)
+	if(eel_table_get(eph_md.bodyfields, op1, &v) != EEL_XOK)
 	{
 		/* No hit! Fall through to extension table. */
 		EEL_xno x = eel_table_get(body->table, op1, op2);
@@ -1268,7 +1268,7 @@ static EEL_xno body_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int ind;
 	EEL_value v;
 	EPH_body *body = o2EPH_body(eo);
-	if(eel_table_get(eph_md.bodyfields, op1, &v) != EEL_XNONE)
+	if(eel_table_get(eph_md.bodyfields, op1, &v) != EEL_XOK)
 		return eel_o_metamethod(body->table, EEL_MM_SETINDEX, op1, op2);
 	ind = v.integer.v & 0xff;
 	if((v.integer.v & 0xff00) == EPH_B_METHODS)
@@ -1504,7 +1504,7 @@ static EEL_xno constraint_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op
 	EEL_value v;
 	EPH_constraint *c = o2EPH_constraint(eo);
 	EPH_spring *s = &c->p.spring;
-	if(eel_table_get(eph_md.constraintfields, op1, &v) != EEL_XNONE)
+	if(eel_table_get(eph_md.constraintfields, op1, &v) != EEL_XOK)
 		return EEL_XWRONGINDEX;
 	switch(v.integer.v)
 	{
@@ -1555,7 +1555,7 @@ static EEL_xno constraint_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op
 	EEL_value v;
 	EPH_constraint *c = o2EPH_constraint(eo);
 	EPH_spring *s = &c->p.spring;
-	if(eel_table_get(eph_md.constraintfields, op1, &v) != EEL_XNONE)
+	if(eel_table_get(eph_md.constraintfields, op1, &v) != EEL_XOK)
 		return EEL_XWRONGINDEX;
 	switch(v.integer.v)
 	{

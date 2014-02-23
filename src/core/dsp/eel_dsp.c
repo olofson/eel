@@ -1,7 +1,7 @@
 /*
  * DSP Module - KISS FFT library binding + other DSP tools
  *
- * Copyright 2006-2007, 2010, 2012 David Olofson
+ * Copyright 2006-2007, 2010, 2012, 2014 David Olofson
  */
 
 #include <math.h>
@@ -108,7 +108,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 	  case OP_GET:
 		avals[0] = vvals[0];
 		avals[1] = vvals[1];
-		return EEL_XNONE;
+		return EEL_XOK;
 	  case OP_SET:
 		vvals[0] = avals[0];
 		vvals[1] = avals[1];
@@ -171,7 +171,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 		return eel_o__metamethod(o, EEL_MM_SETINDEX, &iv, &v);
 	  }
 	}
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -209,7 +209,7 @@ static EEL_xno do_sum(EEL_vm *vm, int *count)
 	if(!vec->length)
 	{
 		eel_d2v(vm->heap + vm->resv, sum);
-		return EEL_XNONE;
+		return EEL_XOK;
 	}
 	last = vec->length - 1;
 
@@ -281,7 +281,7 @@ static EEL_xno do_sum(EEL_vm *vm, int *count)
 
 	*count = 1 + (last - first) / stride;
 	eel_d2v(vm->heap + vm->resv, sum);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -450,7 +450,7 @@ static EEL_xno do_polynomial(EEL_vm *vm, int add, int inclusive)
 	if(!add)
 		eel_o2v(vm->heap + vm->resv, o);
 	eel_free(vm, coeffs);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -528,7 +528,7 @@ static EEL_xno dsp_fft_real(EEL_vm *vm)
 	fv->buffer.d[fv->length - 2] *= 0.5f;
 	fv->buffer.d[fv->length - 1] *= 0.5f;
 	eel_o2v(vm->heap + vm->resv, fo);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -568,7 +568,7 @@ static EEL_xno dsp_ifft_real(EEL_vm *vm)
 	fv->buffer.d[fv->length - 2] = save[1];
 	fv->buffer.d[fv->length - 1] = save[2];
 	eel_o2v(vm->heap + vm->resv, to);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -576,7 +576,7 @@ static EEL_xno dsp_fft_cleanup(EEL_vm *vm)
 {
 	kfc_cleanup();
 	kiss_fft_cleanup();
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -591,7 +591,7 @@ static EEL_xno dsp_c_abs(EEL_vm *vm)
 	if(x)
 		return x;
 	eel_d2v(vm->heap + vm->resv, sqrt(v[0]*v[0] + v[1]*v[1]));
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -606,7 +606,7 @@ static EEL_xno dsp_c_arg(EEL_vm *vm)
 	if(x)
 		return x;
 	eel_d2v(vm->heap + vm->resv, atan2(v[1], v[0]));
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -620,7 +620,7 @@ static EEL_xno dsp_c_set(EEL_vm *vm)
 	v[1] = eel_v2d(args + 3);
 	/* NOTE: Exceptions are ignored and lead to NOP! */
 	do_op2(eel_v2o(args), eel_v2l(args + 1) * 2, v, OP_SET);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -634,7 +634,7 @@ static EEL_xno dsp_c_add(EEL_vm *vm)
 	v[1] = eel_v2d(args + 3);
 	/* NOTE: Exceptions are ignored and lead to NOP! */
 	do_op2(eel_v2o(args), eel_v2l(args + 1) * 2, v, OP_ADD);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -650,7 +650,7 @@ static EEL_xno dsp_c_set_polar(EEL_vm *vm)
 	v[1] = sin(v[1]) * m;
 	/* NOTE: Exceptions are ignored and lead to NOP! */
 	do_op2(eel_v2o(args), eel_v2l(args + 1) * 2, v, OP_SET);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -666,7 +666,7 @@ static EEL_xno dsp_c_add_polar(EEL_vm *vm)
 	v[1] = sin(v[1]) * m;
 	/* NOTE: Exceptions are ignored and lead to NOP! */
 	do_op2(eel_v2o(args), eel_v2l(args + 1) * 2, v, OP_ADD);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -693,7 +693,7 @@ static EEL_xno dsp_c_add_i(EEL_vm *vm)
 	v[0] = -re * frac;
 	v[1] = -im * frac;
 	do_op2(eel_v2o(args), i + 2, v, op);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -722,7 +722,7 @@ static EEL_xno dsp_c_add_polar_i(EEL_vm *vm)
 	v[0] = -re * frac;
 	v[1] = -im * frac;
 	do_op2(eel_v2o(args), i + 2, v, op);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 

@@ -124,7 +124,7 @@ static EEL_xno a2s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EA2_state *ea2s = o2EA2_state(eo);
 	/* Passive content only for now, so we just read the table directly! */
-	if(eel_table_get(a2_md.statefields, op1, op2) != EEL_XNONE)
+	if(eel_table_get(a2_md.statefields, op1, op2) != EEL_XOK)
 	{
 		/* No hit! Fall through to extension table. */
 		EEL_xno x = eel_table_get(ea2s->table, op1, op2);
@@ -142,7 +142,7 @@ static EEL_xno a2s_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_value v;
 	EA2_state *ea2s = o2EA2_state(eo);
-	if(eel_table_get(a2_md.statefields, op1, &v) == EEL_XNONE)
+	if(eel_table_get(a2_md.statefields, op1, &v) == EEL_XOK)
 		return EEL_XCANTWRITE;
 	return eel_o_metamethod(ea2s->table, EEL_MM_SETINDEX, op1, op2);
 }

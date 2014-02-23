@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_zeespace.c - EEL ZeeSpace binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2011 David Olofson
+ * Copyright 2010-2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -1438,5 +1438,5 @@ eel_export_cfunction(m, 0, "DomeRect", 7, 0, 0, ezs_domerect);
 
 	loaded = 1;
 	eel_disown(m);
-	return EEL_XNONE;
+	return EEL_XOK;
 }

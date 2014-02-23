@@ -112,6 +112,29 @@ static EEL_xno bi__xname(EEL_vm *vm)
 }
 
 
+static EEL_xno bi__xdesc(EEL_vm *vm)
+{
+	EEL_value *arg = vm->heap + vm->argv;
+	EEL_object *s;
+	const char *n;
+
+	if(arg->type != EEL_TINTEGER)
+		return EEL_XNEEDINTEGER;
+	if(arg->integer.v >= EEL__XCOUNT)
+		return EEL_XHIGHINDEX;
+	if(arg->integer.v < 0)
+		return EEL_XLOWINDEX;
+
+	n = eel_x_description(vm, arg->integer.v);
+	s = eel_ps_new(vm, n);
+	if(!s)
+		return EEL_XCONSTRUCTOR;
+	vm->heap[vm->resv].type = EEL_TOBJREF;
+	vm->heap[vm->resv].objref.v = s;
+	return 0;
+}
+
+
 static EEL_xno print_object(EEL_vm *vm, EEL_object *o)
 {
 	switch((EEL_classes)o->type)
@@ -736,6 +759,8 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 	/* Version and other info */
 	eel_export_cfunction(m, 1, "__version", 1, 0, 0, bi__version);
 	eel_export_cfunction(m, 1, "exception_name", 1, 0, 0, bi__xname);
+	eel_export_cfunction(m, 1, "exception_description", 1, 0, 0,
+			bi__xdesc);
 
 	/* "System" */
 	eel_export_cfunction(m, 1, "print", 0, -1, 0, bi_print);

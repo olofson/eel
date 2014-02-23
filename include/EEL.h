@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL.h - The "Extensible Embeddable Language"
 ---------------------------------------------------------------------------
- * Copyright 2002-2004, 2006, 2009, 2011 David Olofson
+ * Copyright 2002-2004, 2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -117,8 +117,7 @@ static inline void eel_s2v(EEL_vm *vm, EEL_value *v, const char *s)
  * If nothing sensible can be extracted from the value, NULL
  * is returned.
  *
- * The returned string is only valid for the life time of
- * the object referred to by 'v'!
+ * The returned string is only valid until re-entering the VM!
  *
  * NOTE:
  *	This will *not* cast non-string values to strings,

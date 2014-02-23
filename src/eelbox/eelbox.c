@@ -125,7 +125,7 @@ EEL_xno eb_init_bindings(EEL_vm *vm)
 			return x;
 		}
 	}
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 

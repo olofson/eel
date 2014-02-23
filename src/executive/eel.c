@@ -48,7 +48,7 @@ static EEL_xno find_function(EEL_object *m, const char *name,
 	if((EEL_classes)f.objref.v->type != EEL_CFUNCTION)
 		return EEL_XWRONGTYPE;
 	*fo = f.objref.v;
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -72,7 +72,7 @@ static EEL_xno args2args(EEL_object *fo, const char *sname,
 	}
 	else if(argc >= 1)
 		return EEL_XMANYARGS;
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 

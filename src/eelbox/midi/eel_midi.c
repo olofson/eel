@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_midi.c - EEL MIDI I/O module
 ---------------------------------------------------------------------------
- * Copyright 2006, 2009, 2011 David Olofson
+ * Copyright 2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -295,7 +295,7 @@ static EEL_xno alsaseq_read(EELMIDI_data *d)
 		break;
 	}
 	snd_seq_free_event(ev);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -351,14 +351,14 @@ static EEL_xno em_OpenMIDI(EEL_vm *vm)
 	alsaseq_close(&emd);
 	if(alsaseq_open(&emd) < 0)
 		return EEL_XDEVICEOPEN;
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
 static EEL_xno em_CloseMIDI(EEL_vm *vm)
 {
 	alsaseq_close(&emd);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -368,13 +368,13 @@ static EEL_xno em_ReadMIDI(EEL_vm *vm)
 	if(x == -1)
 	{
 		eel_nil2v(vm->heap + vm->resv);
-		return EEL_XNONE;
+		return EEL_XOK;
 	}
 	else if(x)
 		return x;
 	eel_o2v(vm->heap + vm->resv, emd.msg);
 	emd.msg = NULL;
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -402,7 +402,7 @@ static EEL_xno em_EventName(EEL_vm *vm)
 	if(!s)
 		return EEL_XCONSTRUCTOR;
 	eel_o2v(vm->heap + vm->resv, o);
-	return EEL_XNONE;
+	return EEL_XOK;
 }
 
 
@@ -468,5 +468,5 @@ EEL_xno eel_midi_init(EEL_vm *vm)
 
 	loaded = 1;
 	eel_disown(m);
-	return EEL_XNONE;
+	return EEL_XOK;
 }

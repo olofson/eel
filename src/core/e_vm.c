@@ -787,7 +787,7 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 	/* Figure out where the exception is to be handled */
 	switch(x)
 	{
-	  case EEL_XNONE:
+	  case EEL_XOK:
 	  case EEL_XYIELD:
 /*TODO: Reschedule, if other threads should run some. */
 		break;
@@ -2800,7 +2800,7 @@ static inline EEL_xno call_do_run(EEL_vm *vm)
 		EEL_xno x = eel_run(vm);
 		switch(x)
 		{
-		  case EEL_XNONE:
+		  case EEL_XOK:
 		  case EEL_XYIELD:
 			break;
 		  case EEL_XEND:
