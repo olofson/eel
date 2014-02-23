@@ -647,3 +647,24 @@ void eel_clear_info(EEL_state *es)
 		m = nm;
 	}
 }
+
+
+int eel_warning_count(EEL_state *es)
+{
+	int cnt = 0;
+	EEL_emessage *msg = es->firstmsg;
+	while(msg)
+	{
+		switch(msg->type)
+		{
+		  case EEL_EM_CWARNING:
+		  case EEL_EM_VMWARNING:
+			++cnt;
+		  default:
+			break;
+		}
+		if(!(msg = msg->next))
+			break;
+	}
+	return cnt;
+}

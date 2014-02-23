@@ -3,8 +3,8 @@
   API, or should we wrap them and wire them to EEL memory management?
 
 * Broken tests:
-	zsgl2.eel	Doesn't compile!
-	zsgl.eel	Yellow window...
+	zsgl2.eel
+	zsgl.eel
 
 * There are some functions in the builtin module that probably belong in
   system.

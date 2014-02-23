@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_state.h - EEL State (Compiler, VM, symbols etc)
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -109,6 +109,7 @@ FIXME: 'path' probably belongs in the VM...
 	EEL_emessage	*firstmsg, *lastmsg;
 	int		include_depth;	/* Circular include detection */
 	EEL_object	*modnames;	/* Circular import detection */
+	int		werror;		/* Warnings ==> errors (recursive!) */
 
 	/* Misc */
 	EEL_sbuffer	*firstfsb, *lastfsb;	/* Free sbuffers */

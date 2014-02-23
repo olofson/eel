@@ -91,12 +91,13 @@ static void usage(const char *exename)
 	fprintf(stderr,	"|------------------------------------------------\n");
 	fprintf(stderr, "| Usage: %s [switches] <file> [arguments]\n", 
 			exename);
-	fprintf(stderr, "| Switches:  -c          Compile only; don't run\n");
-	fprintf(stderr, "|            -o <file>   Write binary to \"file\"\n");
-	fprintf(stderr, "|-           -l          List symbol tree\n");
-	fprintf(stderr, "|--          -a          List VM assembly code\n");
-	fprintf(stderr, "|---         -s          Read input from stdin\n");
-	fprintf(stderr, "|----        -h          Help\n");
+	fprintf(stderr, "| Switches:  -c        Compile only; don't run\n");
+	fprintf(stderr, "|            -e        Fail on compiler warnings\n");
+	fprintf(stderr, "|            -o <file> Write binary to \"file\"\n");
+	fprintf(stderr, "|-           -l        List symbol tree\n");
+	fprintf(stderr, "|--          -a        List VM assembly code\n");
+	fprintf(stderr, "|---         -s        Read input from stdin\n");
+	fprintf(stderr, "|----        -h        Help\n");
 	fprintf(stderr, "'------------------------------------------------\n");
 	exit(100);
 }
@@ -189,6 +190,9 @@ int main(int argc, const char *argv[])
 				break;
 			  case 'c':
 				run = 0;
+				break;
+			  case 'e':
+				flags |= EEL_SF_WERROR;
 				break;
 			  case 'l':
 				flags |= EEL_SF_LIST;

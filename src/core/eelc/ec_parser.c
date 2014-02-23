@@ -4275,6 +4275,9 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	else
 		filename.type = EEL_TNIL;
 
+	if(flags & EEL_SF_WERROR)
+		++es->werror;
+
 	es->include_depth = 0;
 /* FIXME: 'x' might be clobbered by setjmp()/longjmp()... */
 	x = 0;
@@ -4287,9 +4290,12 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	if(filename.type != EEL_TNIL)
 		eel_table_delete(es->modnames, &filename);
 
+	if(!x && es->werror)
+		x = eel_warning_count(es);
+
+	if(flags & EEL_SF_WERROR)
+		--es->werror;
+
 	if(x)
-	{
-		eel_perror(es->vm, 1);
 		eel_cthrow(es);
-	}
 }

@@ -45,6 +45,8 @@ typedef enum
 	EEL_SF_LIST =		0x00000004,
 	/* List VM asm code in the symbol tree */
 	EEL_SF_LISTASM =	0x00000008,
+	/* Turn compiler warnings into errors (give up after current module) */
+	EEL_SF_WERROR =		0x00000010,
 
 	/*
 	 * Serialization flags
