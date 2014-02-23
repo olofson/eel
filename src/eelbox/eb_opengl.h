@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eb_opengl.h - EEL OpenGL Binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2012 David Olofson
+ * Copyright 2010-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -34,44 +34,19 @@
 #include "eb_sdl.h"
 
 #ifdef HAS_SDL_OPENGL_H
-#include "SDL_opengl.h"
+# include "SDL_opengl.h"
 #else
-#ifdef WIN32
-#include <windows.h>
-#endif
-#if defined(__APPLE__) && defined(__MACH__)
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-#endif
-
-#ifndef GL_CLAMP_TO_EDGE
-#	define	GL_CLAMP_TO_EDGE			0x812F
-#endif
-#ifndef GL_BLEND_EQUATION
-#	define GL_BLEND_EQUATION                       0x8009
-#endif
-#ifndef GL_MIN
-#	define GL_MIN                                  0x8007
-#endif
-#ifndef GL_MAX
-#	define GL_MAX                                  0x8008
-#endif
-#ifndef GL_FUNC_ADD
-#	define GL_FUNC_ADD                             0x8006
-#endif
-#ifndef GL_FUNC_SUBTRACT
-#	define GL_FUNC_SUBTRACT                        0x800A
-#endif
-#ifndef GL_FUNC_REVERSE_SUBTRACT
-#	define GL_FUNC_REVERSE_SUBTRACT                0x800B
-#endif
-#ifndef GL_BLEND_COLOR
-#	define GL_BLEND_COLOR                          0x8005
-#endif
+# ifdef WIN32
+#  include <windows.h>
+# endif /* WIN32 */
+# if defined(__APPLE__) && defined(__MACH__)
+#  include <OpenGL/gl.h>
+#  include <OpenGL/glu.h>
+# else
+#  include <GL/gl.h>
+#  include <GL/glu.h>
+# endif
+#endif /* HAS_SDL_OPENGL_H */
 
 #if defined(_WIN32) && !defined(APIENTRY) && \
 		!defined(__CYGWIN__) && !defined(__SCITECH_SNAP__)

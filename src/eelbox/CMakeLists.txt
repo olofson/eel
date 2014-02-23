@@ -10,6 +10,8 @@ include_directories(${EEL_SOURCE_DIR}/src/eelbox/net2)
 include_directories(${EEL_SOURCE_DIR}/src/eelbox/zeedraw)
 include_directories(${EEL_SOURCE_DIR}/src/eelbox/zeespace)
 
+check_include_files(SDL/SDL_opengl.h HAS_SDL_OPENGL_H)
+
 # FIXME: eel_physics.c needs to access some internals of the vector types...
 include_directories(${EEL_SOURCE_DIR}/src/core)
 
@@ -80,6 +82,10 @@ endif(WIN32)
 # Until 1.0, we assume there's no ABI compatibility across releases!
 set_target_properties(libeelbox PROPERTIES VERSION ${VERSION_STRING}
 	SOVERSION ${VERSION_STRING})
+
+if(HAS_SDL_OPENGL_H)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAS_SDL_OPENGL_H")
+endif(HAS_SDL_OPENGL_H)
 
 set_target_properties(libeelbox PROPERTIES OUTPUT_NAME "eelbox")
 
