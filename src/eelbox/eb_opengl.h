@@ -49,9 +49,8 @@
 #endif
 
 #ifndef GL_CLAMP_TO_EDGE
-#	define	GL_CLAMP_TO_EDGE	0x812F
+#	define	GL_CLAMP_TO_EDGE			0x812F
 #endif
-#if 0
 #ifndef GL_BLEND_EQUATION
 #	define GL_BLEND_EQUATION                       0x8009
 #endif
@@ -72,7 +71,6 @@
 #endif
 #ifndef GL_BLEND_COLOR
 #	define GL_BLEND_COLOR                          0x8005
-#endif
 #endif
 
 #if defined(_WIN32) && !defined(APIENTRY) && \

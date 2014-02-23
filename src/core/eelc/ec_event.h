@@ -60,7 +60,7 @@
  * compiler can then use eel_e_merge() to combine the extra
  * event lists and adjust the current context's event list
  * as required. This is used to deal with multiple paths that
- * combined quarantee initializations, to detect constructs
+ * combined guarantee initializations, to detect constructs
  * with multiple function exits leaving following code dead,
  * and similar situations.
  */

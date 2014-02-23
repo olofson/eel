@@ -1,3 +1,5 @@
+# @EEL_AUTO_MESSAGE@
+
 # eel pkg-config source file
 
 prefix=@CMAKE_INSTALL_PREFIX@

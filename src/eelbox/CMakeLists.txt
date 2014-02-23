@@ -1,6 +1,7 @@
 include(CheckIncludeFiles)
 include(CheckFunctionExists)
 
+include_directories(${EEL_BINARY_DIR}/include)
 include_directories(${EEL_SOURCE_DIR}/include)
 include_directories(${EEL_SOURCE_DIR}/src/eelbox)
 include_directories(${EEL_SOURCE_DIR}/src/eelbox/audiality2)
@@ -44,33 +45,21 @@ set(sources
 
 find_package(SDL REQUIRED)
 include_directories(${SDL_INCLUDE_DIR})
-link_libraries(${SDL_LIBRARY})
 
 find_package(SDL_net REQUIRED)
 include_directories(${SDLNET_INCLUDE_DIR})
-link_libraries(${SDLNET_LIBRARY})
 
 find_package(SDL_image REQUIRED)
 include_directories(${SDLIMAGE_INCLUDE_DIR})
-link_libraries(${SDLIMAGE_LIBRARY})
 
 find_package(PNG REQUIRED)
 include_directories(${PNG_INCLUDE_DIR})
-link_libraries(${PNG_LIBRARY})
 
 #find_package(AUDIALITY2 REQUIRED)
 #include_directories(${AUDIALITY2_INCLUDE_DIR})
-#link_libraries(${AUDIALITY2_LIBRARY})
-
 find_package(PkgConfig)
 pkg_check_modules(AUDIALITY2 REQUIRED audiality2)
 include_directories(${AUDIALITY2_INCLUDE_DIRS})
-link_libraries(${AUDIALITY2_LIBRARIES})
-
-#CHECK_INCLUDE_FILES(jack/jack.h HAVE_JACK_H)
-#if(HAVE_JACK_H)
-#	add_definitions(-DA2_HAVE_JACK)
-#endif(HAVE_JACK_H)
 
 find_package(ALSA)
 if(ALSA_FOUND)
@@ -80,7 +69,13 @@ endif(ALSA_FOUND)
 
 #add_library(libeelbox SHARED ${sources})
 add_library(libeelbox STATIC ${sources})
-
+target_link_libraries(libeelbox ${SDL_LIBRARY} ${SDLNET_LIBRARY}
+	${SDLIMAGE_LIBRARY} ${PNG_LIBRARY} ${AUDIALITY2_LIBRARIES})
+if(WIN32)
+	target_link_libraries(libeelbox -lwinmm -ldxguid)
+	# FIXME: Why do we have to pull all these in manually now...?
+	target_link_libraries(libeelbox -lws2_32 -liphlpapi -ljpeg -lz)
+endif(WIN32)
 
 # Until 1.0, we assume there's no ABI compatibility across releases!
 set_target_properties(libeelbox PROPERTIES VERSION ${VERSION_STRING}

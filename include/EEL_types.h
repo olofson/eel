@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_types.h - Commonly used types (API)
 ---------------------------------------------------------------------------
- * Copyright 2001-2004, 2006, 2009 David Olofson
+ * Copyright 2001-2004, 2006, 2009, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -48,23 +48,6 @@ EEL_COMPILE_TIME_ASSERT(sint32, sizeof(EEL_int32) == 4);
 #undef EEl_COMPILE_TIME_ASSERT
 
 /*
- * NULL (stolen from the GNU C Library)
- */
-#ifndef NULL
-#	if defined __GNUG__ &&					\
-			(__GNUC__ > 2 ||			\
-			(__GNUC__ == 2 && __GNUC_MINOR__ >= 8))
-#		define NULL (__null)
-#	else
-#		if !defined(__cplusplus)
-#			define NULL ((void*)0)
-#		else
-#			define NULL (0)
-#		endif
-#	endif
-#endif
-
-/*
  * Some types that are opaque to applications,
  * but show up in public interfaces.
  */
@@ -82,28 +65,6 @@ typedef	EEL_int32 EEL_index;	/* For indices in the heap, lists etc */
 
 /* Size of the EEL_value struct in bytes */
 #define	EEL_VALUE_SIZE		16
-
-
-/* Figure out what endian this platform is. (Stolen from SDL.) */
-#define EEL_LIL_ENDIAN  1234
-#define EEL_BIG_ENDIAN  4321
-
-/* Pardon the mess, I'm trying to determine the endianness of this host.
-   I'm doing it by preprocessor defines rather than some sort of configure
-   script so that application code can use this too.  The "right" way would
-   be to dynamically generate this file on install, but that's a lot of work.
- */
-#if  defined(__i386__) || defined(__ia64__) || defined(WIN32) || \
-    (defined(__alpha__) || defined(__alpha)) || \
-     defined(__arm__) || \
-    (defined(__mips__) && defined(__MIPSEL__)) || \
-     defined(__SYMBIAN32__) || \
-     defined(__x86_64__) || \
-     defined(__LITTLE_ENDIAN__)
-#define EEL_BYTEORDER   EEL_LIL_ENDIAN
-#else
-#define EEL_BYTEORDER   EEL_BIG_ENDIAN
-#endif
 
 /*
  * List of integer constants, for eel_export_lconstants(),

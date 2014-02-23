@@ -23,7 +23,7 @@ export function main<args>
 	pe(TESTVAR);
 	setenv(TESTVAR, "test_value");
 	if getenv(TESTVAR) != "test_value"
-		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+		throw "${TESTVAR} is " + (string)getenv(TESTVAR) +
 				" - (expected \"test_value\")";
 	pe(TESTVAR);
 
@@ -33,21 +33,21 @@ export function main<args>
 	print("\nOverwrite environment variable (should fail):\n");
 	setenv(TESTVAR, "new_test_value", false);
 	if getenv(TESTVAR) != "test_value"
-		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+		throw "${TESTVAR} is " + (string)getenv(TESTVAR) +
 				" - (expected \"test_value\")";
 	pe(TESTVAR);
 
 	print("\nOverwrite environment variable (should succeed):\n");
 	setenv(TESTVAR, "new_test_value", true);
 	if getenv(TESTVAR) != "new_test_value"
-		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+		throw "${TESTVAR} is " + (string)getenv(TESTVAR) +
 				" - (expected \"new_test_value\")";
 	pe(TESTVAR);
 
 	print("\nDelete environment variable:\n");
 	setenv(TESTVAR, nil);
 	if getenv(TESTVAR) != nil
-		throw "${ + TESTVAR + } is " + getenv(TESTVAR) +
+		throw "${TESTVAR} is " + (string)getenv(TESTVAR) +
 				" - (expected it to not exist)";
 	pe(TESTVAR);
 

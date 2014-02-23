@@ -467,7 +467,7 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 {
 #ifdef WIN32
 	EEL_value *args = vm->heap + vm->argv;
-	int res;
+	HINSTANCE res;
 	int showcmd = SW_SHOWNORMAL;
 	const char *op = eel_v2s(args);
 	const char *file = eel_v2s(args + 1);
@@ -484,9 +484,9 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	res = ShellExecute(NULL, op, file, params, dir, showcmd);
 	CoUninitialize();
-	if(res < 32)
+	if((int)res < 32)
 	{
-		switch(res)
+		switch((int)res)
 		{
 		  case 0:
 		  case SE_ERR_OOM:
@@ -508,7 +508,7 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 		}
 		return EEL_XDEVICEERROR;
 	}
-	eel_l2v(vm->heap + vm->resv, res);
+	eel_l2v(vm->heap + vm->resv, (int)res);
 	return 0;
 #else
 	return EEL_XNOTIMPLEMENTED;

@@ -7,6 +7,8 @@ include_directories(${EEL_SOURCE_DIR}/include)
 link_directories(${EEL_BINARY_DIR})
 
 link_directories(${EELBOX_BINARY_DIR})
+
+include_directories(${EEL_BINARY_DIR}/include)
 include_directories(${EEL_SOURCE_DIR})
 include_directories(${EEL_SOURCE_DIR}/src/core)
 if(BUILD_EELBOX)

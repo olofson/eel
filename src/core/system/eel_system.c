@@ -54,17 +54,39 @@ TODO:
  */
 static EEL_xno s_getenv(EEL_vm *vm)
 {
-	EEL_object *s;
+#ifdef _WIN32
+	size_t valuelen;
+	char buf[1];
+	char *value;
+#else
 	const char *value;
+#endif
+	EEL_object *s;
 	const char *name = eel_v2s(vm->heap + vm->argv);
 	if(!name)
 		return EEL_XNEEDSTRING;
+#ifdef _WIN32
+	if(!(valuelen = GetEnvironmentVariableA(name, buf, sizeof(buf))))
+	{
+		/* Nonexistent variable! */
+		eel_nil2v(vm->heap + vm->resv);
+		return 0;
+	}
+	if(!(value = malloc(valuelen)))
+		return EEL_XMEMORY;
+	GetEnvironmentVariableA(name, value, valuelen);
+#else
 	if(!(value = getenv(name)))
 	{
 		eel_nil2v(vm->heap + vm->resv);
 		return 0;
 	}
-	if(!(s = eel_ps_new(vm, value)))
+#endif
+	s = eel_ps_new(vm, value);
+#ifdef _WIN32
+	free(value);
+#endif
+	if(!s)
 		return EEL_XMEMORY;
 	eel_o2v(vm->heap + vm->resv, s);
 	return 0;
@@ -102,8 +124,8 @@ static EEL_xno s_setenv(EEL_vm *vm)
 	if(!value && !overwrite)
 		return EEL_XARGUMENTS;	/* Delete, but don't overwrite? o.O */
 #ifdef _WIN32
-	if(overwrite || (GetEnvironmentVariableA(name, buf, sizeof(buf) > 0))
-		added = !SetEnvironmentVariableA(name, value ? value : NULL);
+	if(overwrite || (GetEnvironmentVariableA(name, buf, sizeof(buf) > 0)))
+		added = SetEnvironmentVariableA(name, value ? value : NULL);
 #else
 	if(value)
 		added = (setenv(name, value, overwrite) == 0);
