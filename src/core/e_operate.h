@@ -31,6 +31,7 @@
 #include "e_object.h"
 #include "e_state.h"
 #include "e_cast.h"
+#include "e_config.h"
 
 #define	EEL_NTYPES		(EEL_TLASTTYPE + 1)
 #define	EEL_MK2TYPES(l, r)	((EEL_NTYPES * EEL_NTYPES) + (l) * EEL_NTYPES + (r))

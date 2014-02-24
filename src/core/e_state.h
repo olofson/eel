@@ -25,6 +25,7 @@
 #define	EEL_E_STATE_H
 
 #include <setjmp.h>
+#include "e_config.h"
 
 #ifdef	BROKEN__LONGJMP
   /* Special case for Cygwin, which won't take _longjmp() for unknown reasons */

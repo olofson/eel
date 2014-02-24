@@ -27,6 +27,8 @@
 #include "EEL_register.h"
 #include "EEL_module.h"
 #include "e_util.h"
+#include "e_config.h"
+
 
 typedef EEL_object *EEL_object_p;
 EEL_DARRAY(eel_objs_, EEL_object_p)

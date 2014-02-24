@@ -27,6 +27,7 @@
 #include "EEL_object.h"
 #include "e_state.h"
 #include "e_util.h"
+#include "e_config.h"
 
 /*
  * Cast value 'src' to type 't' and put the result in 'dst'.

@@ -51,6 +51,4 @@ set(CMAKE_C_FLAGS_MAINTAINER ${f})
 set(f "${f} -DDEBUG")
 set(CMAKE_C_FLAGS_DEBUG ${f})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include e_config.h")
-
 install(TARGETS eel DESTINATION bin)

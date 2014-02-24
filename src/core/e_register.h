@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include "EEL.h"
 #include "e_operate.h"
+#include "e_config.h"
 
 /*----------------------------------------------------------
 	ESS file support

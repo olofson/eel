@@ -24,7 +24,7 @@
 #ifndef	EEL_PORTABLE_H
 #define	EEL_PORTABLE_H
 
-#include "config.h"
+#include "e_config.h"
 
 /*
  * Windoze calls it _snprintf - just to piss off anyone who likes to

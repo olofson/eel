@@ -26,6 +26,7 @@
 
 #include "EEL.h"
 #include "EEL_types.h"
+#include "e_config.h"
 
 /* What you get if you try to instantiate the base class */
 #define	EEL_DEFAULT_VECTOR_SUBCLASS	EEL_CVECTOR_D

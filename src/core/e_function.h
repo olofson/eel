@@ -27,6 +27,7 @@
 #include "EEL.h"
 #include "EEL_register.h"
 #include "e_vm.h"
+#include "e_config.h"
 
 
 /*----------------------------------------------------------

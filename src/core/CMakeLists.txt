@@ -136,6 +136,4 @@ configure_file(${CMAKE_SOURCE_DIR}/include/EEL_platform.h.cmake
 install(FILES ${CMAKE_BINARY_DIR}/include/EEL_platform.h
 	DESTINATION include/EEL)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include e_config.h")
-
 install(TARGETS libeel DESTINATION lib)

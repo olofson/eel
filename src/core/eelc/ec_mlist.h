@@ -25,6 +25,7 @@
 #define	EEL_EC_MLIST_H
 
 #include "ec_manip.h"
+#include "e_config.h"
 
 /*----------------------------------------------------------
 	Argument Manipulator List

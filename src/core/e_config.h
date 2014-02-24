@@ -193,8 +193,8 @@ FIXME: and of suitable types!
 /*--- BEGIN ---------------------------------------------*/
 
 /* Error logging */
-#define	DBGZ(x)		/* Print all messages instantly */
-#define	DBGZ2(x) 	/* Internal errors -> abort() */
+#define	DBGZ(x)	x	/* Print all messages instantly */
+#define	DBGZ2(x) x	/* Internal errors -> abort() */
 
 /* Symbol table */
 #define	DBG2(x)		/* Hit messages */

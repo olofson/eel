@@ -25,6 +25,7 @@
 #define EEL_EC_BIO_H
 
 #include "EEL_xno.h"
+#include "e_config.h"
 
 
 typedef struct

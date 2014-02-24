@@ -58,13 +58,15 @@
 #ifndef EEL_E_OBJECT_H
 #define EEL_E_OBJECT_H
 
+#include "EEL_object.h"
+#include "e_module.h"
+#include "e_error.h"
+#include "e_config.h"
+
 #if (DBGK(1)+0 == 1) || (DBGL(1)+0 == 1) || defined (EEL_CLEAN_COPY) ||	\
 		defined(EEL_VM_CHECKING)
 # include <stdio.h>
 #endif
-#include "EEL_object.h"
-#include "e_module.h"
-#include "e_error.h"
 
 EEL_DLSTACK(eel_limbo_, EEL_object, lnext, lprev)
 

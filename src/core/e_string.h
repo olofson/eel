@@ -26,6 +26,7 @@
 
 #include "EEL.h"
 #include "EEL_types.h"
+#include "e_config.h"
 
 typedef struct
 {

@@ -25,6 +25,7 @@
 #define EEL_E_EEL_H
 
 #include "EEL.h"
+#include "e_config.h"
 
 typedef struct EEL_state EEL_state;
 typedef struct EEL_context EEL_context;

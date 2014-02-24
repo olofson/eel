@@ -21,16 +21,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-#ifdef DEBUG
-#	include <stdio.h>
-#endif
-
-#if defined(EEL_PROFILING) || defined(EEL_VM_PROFILING)
-#	include <sys/io.h>
-#	include <sys/time.h>
-#	include <time.h>
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -44,6 +34,15 @@
 #include "e_array.h"
 #include "e_function.h"
 
+#ifdef DEBUG
+#	include <stdio.h>
+#endif
+
+#if defined(EEL_PROFILING) || defined(EEL_VM_PROFILING)
+#	include <sys/io.h>
+#	include <sys/time.h>
+#	include <time.h>
+#endif
 
 /*
  * Set a VM exception.
@@ -2698,6 +2697,7 @@ FIXME: If modules ever use weakrefs for functions, we need to handle that here!
 static inline void reset_args(EEL_vm *vm)
 {
 	stack_clear(vm);
+//fprintf(stderr, "reset_args(): vm->base = %d\n", vm->base);
 	eel_v_disown_nz(vm->heap + vm->base);
 	vm->heap[vm->base].type = EEL_TNIL;
 }

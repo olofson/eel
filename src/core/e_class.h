@@ -25,6 +25,7 @@
 #define EEL_E_CLASS_H
 
 #include "EEL_register.h"
+#include "e_config.h"
 
 typedef struct
 {

@@ -1,17 +1,15 @@
 #!/bin/sh
-echo "=========================================================="
-echo "Setting up build directories for all targets..."
-echo "=========================================================="
-
-if [ -z $MXEPATH ]; then
-	MXEPATH=~/src/other/mxe
-fi
-
 SOURCEDIR=$(pwd)
 BUILDDIR=$SOURCEDIR/build
 
 if [ ! -e $BUILDDIR ]; then
 	mkdir $BUILDDIR
+fi
+
+# MinGW32 cross build using MXE (http://mxe.cc/)
+if [ -z $MXEPATH ]; then
+	# This is where Dave keeps his MXE.
+	MXEPATH=~/src/other/mxe
 fi
 
 create_build_dir() {
@@ -46,23 +44,46 @@ create_build_dir_cross() {
 	cd $SOURCEDIR
 }
 
-# Native builds
+
+# FIXME: This doesn't belong here...
+echo
+echo "=== Generating builtin.c from builtin.eel ==="
+cd $SOURCEDIR/src/core
+sed -f text2c.sed builtin.eel > builtin.c
+cd $SOURCEDIR
+echo "-- Done!"
+
+
+echo
+echo "=========================================================="
+echo "Setting up build directories for native targets..."
+echo "=========================================================="
 create_build_dir release Release "host native" /usr
 create_build_dir maintainer Maintainer "host native" /usr
 create_build_dir debug Debug "host native" /usr
+echo
+echo "=========================================================="
+echo "Done!"
+echo "=========================================================="
 
-# MinGW32 cross build using MXE (http://mxe.cc/)
+
+echo
 echo -n "Looking for MXE in '$MXEPATH'... "
 if [ -e $MXEPATH ]; then
 	echo "Found!"
+	echo
+	echo "=========================================================="
+	echo "Setting up build directories for MXE cross-compiling..."
+	echo "=========================================================="
 	create_build_dir_cross mingw-release Release "MXE cross" i686-pc-mingw32
 	create_build_dir_cross mingw-debug Debug "MXE cross" i686-pc-mingw32
+	echo
+	echo "=========================================================="
+	echo "Done!"
+	echo "=========================================================="
 else
 	echo "Not found!"
 	echo "(Please install MXE and set MXEPATH to cross-compile!)"
 fi
 
 echo
-echo "=========================================================="
-echo "Done!"
-echo "=========================================================="

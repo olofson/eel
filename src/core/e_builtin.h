@@ -25,6 +25,7 @@
 #define EEL_E_BUILTIN_H
 
 #include "EEL.h"
+#include "e_config.h"
 
 EEL_xno eel_builtin_init(EEL_vm *vm);
 

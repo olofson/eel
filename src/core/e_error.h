@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "e_vm.h"
+#include "e_config.h"
 
 
 /* Compiler and VM error messages */

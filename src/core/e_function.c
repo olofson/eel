@@ -23,13 +23,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-#if DBGN(1)+0 == 1
-# include <stdio.h>
-#endif
 #include "e_function.h"
 #include "e_object.h"
 #include "e_string.h"
 #include "e_register.h"
+#if DBGN(1)+0 == 1
+# include <stdio.h>
+#endif
 
 /*----------------------------------------------------------
 	Function Class

@@ -29,6 +29,7 @@
 #include "EEL.h"
 #include "e_vm.h"
 #include "e_string.h"
+#include "e_config.h"
 
 
 /*----------------------------------------------------------
