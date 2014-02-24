@@ -41,6 +41,7 @@
 	Code module management
 ----------------------------------------------------------*/
 
+#if 0
 static void read_file(EEL_state *es, EEL_object *mo, FILE *f)
 {
 	EEL_module *m = o2EEL_module(mo);
@@ -272,6 +273,7 @@ EEL_object *eel_import(EEL_vm *vm, const char *modname)
 		return NULL;
 	return m;
 }
+#endif
 
 
 static void load_buffer(EEL_vm *vm, EEL_module *m,
@@ -304,7 +306,7 @@ static void load_buffer(EEL_vm *vm, EEL_module *m,
 }
 
 
-EEL_object *eel_load_buffer_nc(EEL_vm *vm,
+static EEL_object *eel_load_buffer_nc(EEL_vm *vm,
 		const char *source, unsigned len, EEL_sflags flags)
 {
 	EEL_state *es = VMP->state;
@@ -354,12 +356,39 @@ EEL_object *eel_load_buffer(EEL_vm *vm,
 }
 
 
-EEL_xno eel_save(EEL_vm *vm, EEL_object *object,
-		const char *filename, EEL_sflags flags)
+EEL_object *eel_get_loaded_module(EEL_vm *vm, const char *modname)
 {
+	EEL_state *es = VMP->state;
+	EEL_value v;
+	EEL_object *m;
+	if(!es->modules)
+		return NULL;
+	if(eel_table_gets(es->modules, modname, &v))
+		return NULL;
+	if(!EEL_IS_OBJREF(v.type))
+		return NULL;
+	m = v.objref.v;
+	if(!m->refcount)
+		eel_limbo_unlink(m);	/* es->deadmods! */
+	eel_o_own(m);
+	return m;
+}
+
+
+EEL_object *eel_load(EEL_vm *vm, const char *modname, EEL_sflags flags)
+{
+	EEL_state *es = VMP->state;
+	int res;
 	eel_clear_errors(VMP->state);
 	eel_clear_warnings(VMP->state);
-	return EEL_XNOTIMPLEMENTED;
+	if(!es->eellib)
+		return eel_get_loaded_module(vm, modname); /* Bootstrap! */
+	if(eel_callnf(vm, es->eellib, "load", "*R(si)", &res, modname, flags))
+		return NULL;
+	if(!EEL_IS_OBJREF(vm->heap[res].type))
+		return NULL;
+	eel_o_own(vm->heap[res].objref.v);
+	return vm->heap[res].objref.v;
 }
 
 
@@ -547,7 +576,36 @@ static EEL_xno m_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 
 static EEL_xno m_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	return EEL_XCANTWRITE;
+	EEL_module *m = o2EEL_module(eo);
+/*
+FIXME: Should probably keep the source in exports.__source, but makes it
+entirely possible that the buffer is changed or moved while compiling!
+*/
+	const char *s = eel_v2s(op1);
+	if(s && (strcmp(s, "__source") == 0))
+	{
+		if(m->source)
+			return EEL_XCANTWRITE;	/* Not safe! */
+		if(!(s = eel_v2s(op2)))
+			return EEL_XNEEDSTRING;
+		m->len = eel_length(eel_v2o(op2));
+		m->source = (unsigned char *)malloc(m->len + 1);
+		if(!m->source)
+			return EEL_XMEMORY;
+		memcpy(m->source, s, m->len);
+		m->source[m->len] = 0;
+#ifdef EEL_VM_CHECKING
+		// Otherwise, we'll get an internal error in checking mode,
+		// because it thinks we should take ownership of the string...
+		eel_v_own(op2);
+#endif /* EEL_VM_CHECKING */
+		return 0;
+	}
+#ifdef EEL_VM_CHECKING
+	if(!m->exports)
+		return EEL_XINTERNAL;
+#endif /* EEL_VM_CHECKING */
+	return eel_o__metamethod(m->exports, EEL_MM_SETINDEX, op1, op2);
 }
 
 

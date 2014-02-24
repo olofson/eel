@@ -224,86 +224,40 @@ static EEL_xno bi_print(EEL_vm *vm)
 }
 
 
-static EEL_xno bi_load(EEL_vm *vm)
-{
-#if 0
-	EEL_xno x;
-#endif
-	EEL_object *m;
-	const char *s = eel_v2s(&vm->heap[vm->argv]);
-	if(!s)
-		return EEL_XNEEDSTRING;
-#if 0
 /*
- * This behaves differently from import statements if there are multiple files,
- * but the first one(s) tried fail to compile! Need to compile as well before
- * deciding if we give up or try a different file.
+ * NOTE: This takes a flags argument to match the prototype for
+ *       $.module_loader entries, but ignores that argument.
  */
-	m = eel_load_nc(vm, s, 0);
-	if(!m)
-		return EEL_XFILELOAD;
-	eel_try(VMP->state)
-		eel_compile(VMP->state, m, 0);
-	eel_except
-	{
-		eel_o_disown_nz(m);
-		return EEL_XCOMPILE;
-	}
-	x = eel_callnf(vm, m, "__init_module", NULL);
-	if(x)
-		return x;
-#else
-	m = eel_load(vm, s, 0);
-	if(!m)
-		return vm->lasterror;
-#endif
-	vm->heap[vm->resv].type = EEL_TOBJREF;
-	vm->heap[vm->resv].objref.v = m;
+static EEL_xno bi__get_loaded_module(EEL_vm *vm)
+{
+	EEL_object *m;
+	EEL_value *args = vm->heap + vm->argv;
+	const char *name = eel_v2s(args + 0);
+	if(!name)
+		return EEL_XNEEDSTRING;
+	if(!(m = eel_get_loaded_module(vm, name)))
+		return EEL_XWRONGINDEX;
+	eel_o2v(vm->heap + vm->resv, m);
 	return 0;
 }
 
 
-static EEL_xno bi_compile(EEL_vm *vm)
+static EEL_xno bi__load_binary(EEL_vm *vm)
 {
-	EEL_xno x;
-	EEL_value *arg = vm->heap + vm->argv;
-	EEL_object *m;
-	const char *buf;
-	int len;
-	switch((EEL_classes)EEL_TYPE(arg))
-	{
-	  case EEL_CSTRING:
-	  {
-		EEL_string *s = o2EEL_string(arg->objref.v);
-		buf = s->buffer;
-		len = s->length;
-		break;
-	  }
-	  case EEL_CDSTRING:
-	  {
-		EEL_dstring *ds = o2EEL_dstring(arg->objref.v);
-		buf = ds->buffer;
-		len = ds->length;
-		break;
-	  }
-	  default:
-		return EEL_XNEEDSTRING;
-	}
-	m = eel_load_buffer_nc(vm, buf, len, 0);
-	if(!m)
-		return EEL_XFILELOAD;
+	return EEL_XNOTIMPLEMENTED;
+}
+
+
+static EEL_xno bi__compile(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	unsigned flags = (unsigned)eel_v2l(args + 1);
+	if(EEL_TYPE(args + 0) != (EEL_types)EEL_CMODULE)
+		return EEL_XNEEDMODULE;
 	eel_try(VMP->state)
-		eel_compile(VMP->state, m, 0);
+		eel_compile(VMP->state, args[0].objref.v, flags);
 	eel_except
-	{
-		eel_o_disown_nz(m);
 		return EEL_XCOMPILE;
-	}
-	x = eel_callnf(vm, m, "__init_module", NULL);
-	if(x)
-		return x;
-	vm->heap[vm->resv].type = EEL_TOBJREF;
-	vm->heap[vm->resv].objref.v = m;
 	return 0;
 }
 
@@ -717,17 +671,24 @@ static char builtin_eel[] =
 static const EEL_lconstexp bi_constants[] =
 {
 	/* showcmd argument for ShellExecute() */
-	{"SW_HIDE",		0},
-	{"SW_SHOWNORMAL",	1},
-	{"SW_SHOWMINIMIZED",	2},
-	{"SW_SHOWMAXIMIZED",	3},
-	{"SW_SHOWNOACTIVATE",	4},
-	{"SW_SHOW",		5},
-	{"SW_MINIMIZE",		6},
-	{"SW_SHOWMINNOACTIVE",	7},
-	{"SW_SHOWNA",		8},
-	{"SW_RESTORE",		9},
-	{"SW_SHOWDEFAULT",	10},
+	{ "SW_HIDE",		0	},
+	{ "SW_SHOWNORMAL",	1	},
+	{ "SW_SHOWMINIMIZED",	2	},
+	{ "SW_SHOWMAXIMIZED",	3	},
+	{ "SW_SHOWNOACTIVATE",	4	},
+	{ "SW_SHOW",		5	},
+	{ "SW_MINIMIZE",	6	},
+	{ "SW_SHOWMINNOACTIVE",	7	},
+	{ "SW_SHOWNA",		8	},
+	{ "SW_RESTORE",		9	},
+	{ "SW_SHOWDEFAULT",	10	},
+
+	/* Compiler flags */
+	{ "SF_NOCOMPILE",	EEL_SF_NOCOMPILE	},
+	{ "SF_NOINIT",		EEL_SF_NOINIT		},
+	{ "SF_LIST",		EEL_SF_LIST		},
+	{ "SF_LISTASM",		EEL_SF_LISTASM		},
+	{ "SF_WERROR",		EEL_SF_WERROR		},
 
 	{NULL, 0}
 };
@@ -743,7 +704,7 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 			sizeof(BI_moduledata));
 	if(!md)
 		return EEL_XMEMORY;
-	m = eel_create_module(vm, "eelbil_c", bi_unload, md);
+	m = eel_create_module(vm, "builtin_c", bi_unload, md);
 	if(!m)
 	{
 		eel_free(vm, md);
@@ -783,11 +744,14 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "tryindex", 2, 1, 0, bi_tryindex);
 
 	/* Run-time EEL module management */
-	eel_export_cfunction(m, 1, "load", 1, 0, 0, bi_load);
-	eel_export_cfunction(m, 1, "compile", 1, 0, 0, bi_compile);
+	eel_export_cfunction(m, 1, "__get_loaded_module", 2, 0, 0,
+			bi__get_loaded_module);
+	eel_export_cfunction(m, 1, "__load_binary", 2, 0, 0, bi__load_binary);
+	eel_export_cfunction(m, 0, "__compile", 2, 0, 0, bi__compile);
 	eel_export_cfunction(m, 1, "__exports", 0, 1, 0, bi__exports);
 	eel_export_cfunction(m, 1, "__modules", 0, 0, 0, bi_getmt);
-	eel_export_cfunction(m, 0, "__clean_modules", 0, 0, 0, bi_clean_modules);
+	eel_export_cfunction(m, 0, "__clean_modules", 0, 0, 0,
+			bi_clean_modules);
 
 	/* Utilities for variadics */
 	eel_export_cfunction(m, 1, "vacall", 2, 2, 0, bi_vacall);

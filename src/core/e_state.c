@@ -370,15 +370,6 @@ EEL_vm *eel_open(int argc, const char *argv[])
 
 	eel_set_path(vm, NULL);	/* Set default path */
 
-	/* Compile EEL built-in library */
-	if(eel_builtin_init(vm))
-	{
-		eel_msg(es, EEL_EM_IERROR,
-				"Could not initialize built-in library!\n");
-		es_close(es);
-		return NULL;
-	}
-
 	/* Install system module */
 	if(eel_system_init(vm, argc, argv))
 	{
@@ -388,20 +379,36 @@ EEL_vm *eel_open(int argc, const char *argv[])
 		return NULL;
 	}
 
-	/* Install math module */
-	if(eel_math_init(vm))
-	{
-		eel_msg(es, EEL_EM_IERROR,
-				"Could not initialize built-in math module!\n");
-		es_close(es);
-		return NULL;
-	}
-
 	/* Install io module */
 	if(eel_io_init(vm))
 	{
 		eel_msg(es, EEL_EM_IERROR,
 				"Could not initialize built-in io module!\n");
+		es_close(es);
+		return NULL;
+	}
+
+
+	/*
+	 * Compile EEL built-in library
+	 *
+	 * NOTE: We need to inject 'io' and 'system' before 'eelbil' now, as
+	 *       'eelbil' needs them for module loading!
+	 */
+	if(eel_builtin_init(vm))
+	{
+		eel_perror(vm, 1);
+		eel_msg(es, EEL_EM_IERROR,
+				"Could not initialize built-in library!\n");
+		es_close(es);
+		return NULL;
+	}
+
+	/* Install math module */
+	if(eel_math_init(vm))
+	{
+		eel_msg(es, EEL_EM_IERROR,
+				"Could not initialize built-in math module!\n");
 		es_close(es);
 		return NULL;
 	}
@@ -556,7 +563,8 @@ static void es_close(EEL_state *es)
 		return;
 	VMP->is_closing = 1;
 	DBGK2(printf("eel_close(): Running $.cleanup and deleting environment.\n");)
-	eel_callnf(vm, es->eellib, "__cleanup", NULL);
+	if(es->eellib)
+		eel_callnf(vm, es->eellib, "__cleanup", NULL);
 	DBGK2(printf("eel_close(): Garbage collecting remaining modules.\n");)
 	while(eel_clean_modules(vm))
 		;

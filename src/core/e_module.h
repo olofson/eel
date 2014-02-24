@@ -73,13 +73,6 @@ TODO: to minimize duplication of data.
 EEL_MAKE_CAST(EEL_module);
 void eel_cmodule_register(EEL_vm *vm);
 
-/* Load a file as a module, but don't compile or initialize it. */
-EEL_object *eel_load_nc(EEL_vm *vm, const char *filename, EEL_sflags flags);
-
-/* Load a string as a module, but don't compile or initialize it. */
-EEL_object *eel_load_buffer_nc(EEL_vm *vm,
-		const char *source, unsigned len, EEL_sflags flags);
-
 /* Count references to compiler generated objects */
 int eel_module_countref(EEL_object *mo);
 

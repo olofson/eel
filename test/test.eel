@@ -59,15 +59,15 @@ export function main<args>
 	run("array");
 	run("table");
 	run("vector");
-	run("math");
+	run("mathtest");
 	run("compile");
 	run("nonexist");
 	run("diskfile");
 	run("memfile");
 	run("wordcount");
 	run("wordcount2");
-	run("dir");
-	run("dsp");
+	run("dirtest");
+	run("dsptest");
 	run("weakref");
 	run("randomoop");
 	run("envtest");

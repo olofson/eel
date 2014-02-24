@@ -93,7 +93,9 @@ static void usage(const char *exename)
 			exename);
 	fprintf(stderr, "| Switches:  -c        Compile only; don't run\n");
 	fprintf(stderr, "|            -e        Fail on compiler warnings\n");
+#if 0
 	fprintf(stderr, "|            -o <file> Write binary to \"file\"\n");
+#endif
 	fprintf(stderr, "|-           -l        List symbol tree\n");
 	fprintf(stderr, "|--          -a        List VM assembly code\n");
 	fprintf(stderr, "|---         -s        Read input from stdin\n");
@@ -152,7 +154,9 @@ int main(int argc, const char *argv[])
 #else
 	const char *name = NULL;
 #endif
+#if 0
 	const char *outname = NULL;
+#endif
 	int eelargc;
 	const char **eelargv;
 
@@ -200,6 +204,7 @@ int main(int argc, const char *argv[])
 			  case 'a':
 				flags |= EEL_SF_LISTASM;
 				break;
+#if 0
 			  case 'o':
 				if(argc < i + 1)
 				{
@@ -210,6 +215,7 @@ int main(int argc, const char *argv[])
 				++i;
 				outname = argv[i];
 				break;
+#endif
 			  case 'h':
 			  default:
 				usage(argv[0]);
@@ -331,6 +337,7 @@ int main(int argc, const char *argv[])
 	else
 		result = 0;
 
+#if 0
 	if(outname)
 	{
 		/* Serialize compiled module to file */
@@ -342,6 +349,7 @@ int main(int argc, const char *argv[])
 					eel_x_name(vm, x));
 		}
 	}
+#endif
 
 	eel_perror(vm, 0);
 

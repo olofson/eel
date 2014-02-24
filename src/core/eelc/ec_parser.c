@@ -317,6 +317,7 @@ static void procreturn(EEL_state *es)
 }
 
 
+#if 0
 /* filelist() item handler for include'. */
 static void include_handler(EEL_state *es, int flags)
 {
@@ -373,7 +374,7 @@ static void include_handler(EEL_state *es, int flags)
 	eel_lexer_invalidate(es);
 	eel_lex(es, 0);
 }
-
+#endif
 
 /*
  * Add object 'o' to the 'objects' array of the current module.
@@ -468,7 +469,7 @@ static void forward_exports(EEL_object *from, EEL_object *to, int symcheck)
 static void import_handler(EEL_state *es, int forward)
 {
 	char *modname = strdup(es->lval.v.s.buf);
-	EEL_object *m = eel_import(es->vm, modname);
+	EEL_object *m = eel_load(es->vm, modname, 0);
 	if(!m)
 	{
 		char mn[256];
@@ -3900,6 +3901,7 @@ static int statement2(EEL_state *es)
 		es->context->bio->noprecedence = 1;
 		expect(es, ';', NULL);
 		return TK(STATEMENT);
+#if 0
 	  /* KW_INCLUDE filelist ';' */
 	  case TK_KW_INCLUDE:
 		eel_lex(es, 0);
@@ -3907,6 +3909,7 @@ static int statement2(EEL_state *es)
 		expect(es, ';', "Missing ';' after 'include' statement!");
 		DBGH(printf("## statement: KW_INCLUDE filelist ';'\n");)
 		return TK(STATEMENT);
+#endif
 	  /* [KW_EXPORT] KW_IMPORT filelist ';' */
 	  case TK_KW_EXPORT:
 		eel_lex(es, 0);

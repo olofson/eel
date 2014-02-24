@@ -590,6 +590,10 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 	DBG4D(printf("Calling C function '%s'\n", eel_o2s(f->common.name));)
 	switch_function(vm, fo);
 	x = f->c.cb(vm);
+
+	/* C functions can call EEL code and caused heap reallocations...! */
+	cf = b2callframe(vm, vm->base);
+
 #if 1
 	if(x)
 		stack_clear(vm);

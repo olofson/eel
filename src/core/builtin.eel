@@ -24,8 +24,13 @@
 // 3. This notice may not be removed or altered from any source distribution.
 ///////////////////////////////////////////////////////////////////////////
 
-module	eelbil;
-export import "eelbil_c";
+module builtin;
+export import "builtin_c";
+
+// For __load_eel_module()
+import "system";
+import "io";
+
 
 //////////////////////////////////////////////////////////////////////////
 // Static variables
@@ -61,9 +66,139 @@ export function eel_version
 	return _eel_version;
 }
 
-export function eelbil_version
+export function builtin_version
 {
 	return _lib_version;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+// Module loading and compiling
+//
+
+// Compile a string of EEL source code into a module
+export function compile(s)[flags, filename, modname]
+{
+print("--- compile 1\n");
+	local m = module [];
+print("--- compile 1.1\n");
+	if specified flags
+		local f = flags;
+	else
+		f = 0;
+	m.__source = s;
+print("--- compile 1.2\n");
+	if specified filename
+		local fn = filename;
+	else
+		fn = nil;
+	if specified modname
+		local mn = modname;
+	else
+		mn = nil;
+print("--- compile 2 ", fn, "/", mn, "\n");
+	if fn
+		m.__filename = fn;
+	else
+		m.__filename = "script from " + ((string)typeof s) + ", " +
+				(string)sizeof s + " bytes";
+	if mn
+		m.__modname = mn;
+	else
+		m.__modname = m.__filename;
+print("--- compile 3\n");
+	if not (f & SF_NOCOMPILE)
+	{
+		__compile(m, f);
+print("--- compile 4\n");
+		if not (f & SF_NOINIT)
+			m.__init_module();
+print("--- compile 5\n");
+	}
+	return m;
+}
+
+
+// Default EEL script module loader
+export function __load_eel_module(fullpath, flags)
+{
+	local f = file [fullpath, "rb"];
+	local buf = read(f, sizeof f);
+	return compile(buf, flags, fullpath);
+}
+
+$.__load_eel_module = __load_eel_module;
+
+
+// Default module loader; try paths, extensions etc...
+export function __load_via_path_modules(modname, flags)
+{
+// TODO: There are a bunch of combinations that can be ruled out
+// TODO: right away by looking at the format of 'modname'...
+	function try_load(p, f)
+	{
+		local ldeel = $.__load_eel_module;
+		try
+			if copy(p, sizeof p - 4) != ".eel"
+				return ldeel(p + ".eel", f);
+		try
+			if copy(p, sizeof p - 4) != ".ess"
+				return ldeel(p + ".ess", f);
+		try
+			return ldeel(p, f);
+		try
+			if copy(p, sizeof p - sizeof SOEXT) != SOEXT
+				return __load_binary(p + SOEXT, f);
+		try
+			return __load_binary(p, f);
+		return nil;
+	}
+	local modpaths = $.path_modules;
+	for local i = 0, sizeof modpaths - 1
+	{
+		if sizeof modpaths[i]
+			local m = try_load(modpaths[i] + DIRSEP + modname, flags);
+		else
+			m = try_load(modname, flags);
+		if m
+			return m;
+	}
+	throw __exports().XMODULELOAD;
+}
+
+
+export function __load_injected_module(modname, flags)
+{
+	return $.injected_modules[modname](flags);
+}
+
+
+// Default module loaders
+$.module_loaders = [
+	__get_loaded_module,	// Try to grab a loaded shared module
+	__load_injected_module,	// See if it's an injected module
+	__load_via_path_modules	// Try to load from disk
+];
+
+
+// Try to load a module, using the installed module loaders
+export function load(modname)[flags]
+{
+	local x = $.module_loaders;
+	if specified flags
+		local f = flags;
+	else
+		f = 0;
+	for local i = 0, sizeof x - 1
+		try
+//			return x[i](modname, f);
+		{
+			print("trying ", x[i], "(", modname, ")...\n");
+			local m = x[i](modname, f);
+			print("  got: ", m, "\n");
+			return m;
+		}
+	throw __exports().XMODULELOAD;
 }
 
 
