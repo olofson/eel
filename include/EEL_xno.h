@@ -140,6 +140,7 @@ extern "C" {
   EEL_DEFEX(XCOMPILE,		"Compile error")\
   EEL_DEFEX(XSYNTAX,		"Unspecified syntax error")\
   EEL_DEFEX(XNOTFOUND,		"Object not found (call by name)")\
+  EEL_DEFEX(XMODULELOAD,	"Module loading failed")\
   EEL_DEFEX(XMODULEINIT,	"Module initialization failed")\
   EEL_DEFEX(XCANTSETMETHOD,	"Could not set (meta)method")\
 \

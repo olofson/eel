@@ -66,6 +66,7 @@ export function eelbil_version
 	return _lib_version;
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 // Returns a table containing info about exception 'x';
 //	code:		Integer exception code
