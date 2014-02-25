@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_object.h - EEL Object
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -414,9 +414,10 @@ static inline void eel_v_own(EEL_value *value)
 {
 	if(value->type == EEL_TOBJREF)
 		eel_own(value->objref.v);
-#ifdef DEBUG
+#ifdef EEL_VM_CHECKING
 	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
-		fprintf(stderr, "INTERNAL ERROR: eel_v_own(): ILLEGAL value!\n");
+		fprintf(stderr, "INTERNAL ERROR: eel_v_own(): ILLEGAL value! "
+				"(Source: %d)", value->integer.v);
 #endif
 }
 

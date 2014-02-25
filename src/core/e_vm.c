@@ -451,7 +451,10 @@ static inline EEL_xno push_frame(EEL_vm *vm, unsigned cleansize, unsigned frames
 	{
 		int i;
 		for(i = 0; i < framesize; ++i)
+		{
 			vm->heap[base + i].type = EEL_TILLEGAL;
+			vm->heap[base + i].integer.v = 1002;
+		}
 	}
 #endif
 
@@ -510,7 +513,10 @@ static inline EEL_xno call_eel(EEL_vm *vm, EEL_object *fo, int result, int level
 		cf->result = result;
 #ifdef EEL_VM_CHECKING
 		if(cf->result >= 0)
+		{
 			vm->heap[cf->result].type = EEL_TILLEGAL;
+			vm->heap[cf->result].integer.v = 1003;
+		}
 #endif
 	}
 	else
@@ -615,7 +621,9 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 #ifdef EEL_VM_CHECKING
 		if((EEL_nontypes)vm->heap[cf->result].type == EEL_TILLEGAL)
 		{
-			eel_vmdump(vm, "C function forgot to return a result!");
+			eel_vmdump(vm, "C function forgot to return a result! "
+					"(Value source: %d)",
+					vm->heap[cf->result].integer.v);
 			return EEL_XVMCHECK;
 		}
 #endif
@@ -2698,7 +2706,15 @@ static inline void reset_args(EEL_vm *vm)
 {
 	stack_clear(vm);
 //fprintf(stderr, "reset_args(): vm->base = %d\n", vm->base);
+#if 0
+/*
+ * FIXME: Why!? Do we have any business touching this at all? Isn't this
+ * supposed to be uninitialized space, where we're going to construct a
+ * callframe...? What we know for a fact is that previous activities can leave
+ * garbage here!
+ */
 	eel_v_disown_nz(vm->heap + vm->base);
+#endif
 	vm->heap[vm->base].type = EEL_TNIL;
 }
 
@@ -2720,8 +2736,8 @@ EEL_xno eel_vargf(EEL_vm *vm, const char *fmt, va_list args)
 		  {
 			int *resv = va_arg(args, int *);
 			/*
-			 * We put a 'true' here to tell eel_call() that we expect
-			 * a result! (Anything non-nil will do.)
+			 * We put a 'true' here to tell eel_call() that we
+			 * expect a result! (Anything non-nil will do.)
 			 */
 			vm->heap[vm->base].type = EEL_TBOOLEAN;;
 			vm->heap[vm->base].integer.v = 1;

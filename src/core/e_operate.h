@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_operate.h - Operations on values and objects
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2012 David Olofson
+ * Copyright 2005-2007, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -1438,6 +1438,7 @@ static inline EEL_xno eel_operate(EEL_value *left, int binop, EEL_value *right,
 		EEL_xno x;
 		EEL_value rv;
 		rv.type = EEL_TILLEGAL;
+		EEL_VMCHECK(rv.integer.v = 1004;)
 		x = eel__operate(left, binop, right, &rv);
 		if(x)
 			return x;
@@ -1456,6 +1457,7 @@ static inline EEL_xno eel_ipoperate(EEL_value *left, int binop, EEL_value *right
 		EEL_xno x;
 		EEL_value rv;
 		rv.type = EEL_TILLEGAL;
+		EEL_VMCHECK(rv.integer.v = 1005;)
 		x = eel__ipoperate(left, binop, right, &rv);
 		if(x)
 			return x;

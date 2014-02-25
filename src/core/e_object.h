@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_object.h - EEL Object (Internal)
 ---------------------------------------------------------------------------
- * Copyright 2004-2007, 2009-2012 David Olofson
+ * Copyright 2004-2007, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -457,7 +457,8 @@ static inline void eel_v_disown_nz(EEL_value *value)
 #ifdef EEL_VM_CHECKING
 	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
 	{
-		fprintf(stderr, "INTERNAL ERROR: eel_v_disown_nz(): ILLEGAL value!\n");
+		fprintf(stderr, "INTERNAL ERROR: eel_v_disown_nz(): ILLEGAL "
+				"value! (Source: %d)\n", value->integer.v);
 		DBGZ2(abort();)
 	}
 #endif
@@ -523,7 +524,8 @@ static inline void eel_v_limbo(EEL_value *v)
 #ifdef EEL_VM_CHECKING
 	if((EEL_nontypes)v->type == EEL_TILLEGAL)
 	{
-		fprintf(stderr, "INTERNAL ERROR: eel_v_limbo(): ILLEGAL value!\n");
+		fprintf(stderr, "INTERNAL ERROR: eel_v_limbo(): ILLEGAL value!"
+				" (Source: %d)\n", v->integer.v);
 		DBGZ2(abort();)
 	}
 #endif
@@ -588,7 +590,7 @@ static inline void eel_v_receive(EEL_value *v)
 #ifdef EEL_VM_CHECKING
 	if((EEL_nontypes)v->type == EEL_TILLEGAL)
 	{
-		fprintf(stderr, "INTERNAL ERROR: eel_v_receive(): ILLEGAL value!\n");
+		fprintf(stderr, "INTERNAL ERROR: eel_v_receive(): ILLEGAL value! (Source: %d)\n", v->integer.v);
 		DBGZ2(abort();)
 	}
 #endif
@@ -616,7 +618,8 @@ static inline void eel_v_grab(EEL_value *v)
 #ifdef EEL_VM_CHECKING
 	if((EEL_nontypes)v->type == EEL_TILLEGAL)
 	{
-		fprintf(stderr, "INTERNAL ERROR: eel_v_grab(): ILLEGAL value!\n");
+		fprintf(stderr, "INTERNAL ERROR: eel_v_grab(): ILLEGAL value! "
+				"(Source: %d)\n", v->integer.v);
 		DBGZ2(abort();)
 	}
 #endif

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_object.c - EEL Object
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010, 2012 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -197,6 +197,7 @@ EEL_xno eel_o_construct(EEL_vm *vm, EEL_types type,
 	if(x)
 	{
 		result->type = EEL_TILLEGAL;
+		result->integer.v = 1001;
 		return x;
 	}
 	if((EEL_classes)type == EEL_CVECTOR)	/* Does this all the time... */
