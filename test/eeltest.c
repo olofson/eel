@@ -19,7 +19,7 @@ int main(int argc, const char *argv[])
 		fprintf(stderr, "Could not initialize EEL!\n");
 		return 1;
 	}
-	m = eel_load(vm, "test.eel", 0);
+	m = eel_load(vm, "hello.eel", 0);
 	if(!m)
 	{
 		fprintf(stderr, "Could not load script!\n");
