@@ -190,15 +190,22 @@ export function load(modname)[flags]
 	else
 		f = 0;
 	for local i = 0, sizeof x - 1
+	{
+		local load_error = nil;
 		try
-//			return x[i](modname, f);
 		{
-			print("trying ", x[i], "(", modname, ")...\n");
 			local m = x[i](modname, f);
-			print("  got: ", m, "\n");
-			return m;
+			if typeof m == module
+				return m;
+			load_error = "load(): " + x[i].name + "(\"" +
+					(string)modname + "\"" + ", " +
+					(string)f + ") returned " + (string)m +
+					" instead of a module";
 		}
-	throw __exports().XMODULELOAD;
+		if load_error
+			throw load_error;
+	}
+	throw "load(): Module \"" + (string)modname + "\" not found";
 }
 
 
