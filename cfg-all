@@ -2,14 +2,6 @@
 SOURCEDIR=$(pwd)
 BUILDDIR=$SOURCEDIR/build
 
-# FIXME: This doesn't belong here...
-echo
-echo "=== Generating builtin.c from builtin.eel ==="
-cd $SOURCEDIR/src/core
-sed -f text2c.sed builtin.eel > builtin.c
-cd $SOURCEDIR
-echo "-- Done!"
-
 if [ ! -e $BUILDDIR ]; then
 	mkdir $BUILDDIR
 fi

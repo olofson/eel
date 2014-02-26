@@ -79,15 +79,12 @@ export function builtin_version
 // Compile a string of EEL source code into a module
 export function compile(s)[flags, filename, modname]
 {
-print("--- compile 1\n");
 	local m = module [];
-print("--- compile 1.1\n");
 	if specified flags
 		local f = flags;
 	else
 		f = 0;
 	m.__source = s;
-print("--- compile 1.2\n");
 	if specified filename
 		local fn = filename;
 	else
@@ -96,7 +93,6 @@ print("--- compile 1.2\n");
 		local mn = modname;
 	else
 		mn = nil;
-print("--- compile 2 ", fn, "/", mn, "\n");
 	if fn
 		m.__filename = fn;
 	else
@@ -106,14 +102,11 @@ print("--- compile 2 ", fn, "/", mn, "\n");
 		m.__modname = mn;
 	else
 		m.__modname = m.__filename;
-print("--- compile 3\n");
 	if not (f & SF_NOCOMPILE)
 	{
 		__compile(m, f);
-print("--- compile 4\n");
 		if not (f & SF_NOINIT)
 			m.__init_module();
-print("--- compile 5\n");
 	}
 	return m;
 }
