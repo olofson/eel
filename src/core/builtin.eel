@@ -182,7 +182,8 @@ $.module_loaders = [
 
 
 // Try to load a module, using the installed module loaders
-export function load(modname)[flags]
+//export function load(modname)[flags]
+function _load(modname)[flags]
 {
 	local x = $.module_loaders;
 	if specified flags
@@ -206,6 +207,14 @@ export function load(modname)[flags]
 			throw load_error;
 	}
 	throw "load(): Module \"" + (string)modname + "\" not found";
+}
+
+export function load(modname)[flags]
+{
+	if specified flags
+		return _load(modname, flags);
+	else
+		return _load(modname);
 }
 
 
