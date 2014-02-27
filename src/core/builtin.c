@@ -199,7 +199,7 @@
 "\t\tif load_error\n"
 "\t\t\tthrow load_error;\n"
 "\t}\n"
-"\tthrow \"load(): Module \\\"\" + (string)modname + \"\\\" not found\";\n"
+"\tthrow \"load(): Could not load module \\\"\" + (string)modname + \"\\\"\";\n"
 "}\n"
 "\n"
 "export function load(modname)[flags]\n"

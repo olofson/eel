@@ -199,7 +199,7 @@ function _load(modname)[flags]
 		if load_error
 			throw load_error;
 	}
-	throw "load(): Module \"" + (string)modname + "\" not found";
+	throw "load(): Could not load module \"" + (string)modname + "\"";
 }
 
 export function load(modname)[flags]
