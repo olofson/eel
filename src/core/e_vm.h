@@ -512,8 +512,8 @@ typedef enum EEL_opcodes
  *
  *	Above the actual VM registers of the frame is the
  *	argument stack. This is actually a dynamic array of
- *	EEL values, and is used for passing argumets to
- *	functions, and initializers to construcors.
+ *	EEL values, and is used for passing arguments to
+ *	functions, and initializers to constructors.
  *
  * Calling C functions from EEL:
  *	The register frame in place when the VM calls a C

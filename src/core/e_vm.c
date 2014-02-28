@@ -569,11 +569,26 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 	DBG4E(cf->magic = EEL_CALLFRAME_MAGIC_C;)
 	vm->heap[vm->base].type = EEL_TNIL;
 
-	/* Grab result ref */
+	/*
+	 * Grab result ref
+	 *
+	 * NOTE: This differs from the call_eel() version, as C functions
+	 *       aren't expected to check if the result is desired. (The VM
+	 *       RETURNR instruction checks cf->result before copying.)
+	 *
+	 * FIXME: We should probably remove this special case. Substantial
+	 *        optimizations are often possible when results are ignored,
+	 *        especially in API bindings that need to wrap everything in
+	 *        managed objects!
+	 */
 	if(result >= 0)
 		cf->result = result;
 	else
 		cf->result = vm->base;
+#ifdef EEL_VM_CHECKING
+	vm->heap[cf->result].type = EEL_TILLEGAL;
+	vm->heap[cf->result].integer.v = 1006;
+#endif
 
 	cf->flags = 0;
 	cf->f = fo;
@@ -680,7 +695,7 @@ static int call_catcher(EEL_vm *vm, EEL_object *catcher)
 	}
 #endif
 /*
-TODO: Fast shortcut instead of dummy/empty cathers!
+TODO: Fast shortcut instead of dummy/empty catchers!
 */
 	/*
 	 * This is basically an ordinary function call, except
@@ -809,9 +824,15 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 	  {
 		/* Leave current function from within try or except block */
 		int base = vm->base;
-		while(base)
+		EEL_callframe *cf = b2callframe(vm, base);
+		int result = cf->result;
+
+		/*
+		 * Find the first frame that is NOT a try block or catcher.
+		 * (Try blocks can be nested...!)
+		 */
+		while(1)
 		{
-			EEL_callframe *cf = b2callframe(vm, base);
 #ifdef EEL_VM_CHECKING
 			if(!cf->f)
 			{
@@ -819,87 +840,72 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 				return EEL_XVMCHECK;
 			}
 #endif
-			/* Check for exception handler */
 			if(!(cf->flags & (EEL_CFF_TRYBLOCK | EEL_CFF_CATCHER)))
-			{
-				int result;
-				DBG5(printf(".------------------------------\n");)
-				DBG5(printf("| XRETURN causes function '%s' "
-						"to return.\n",
-						eel_o2s(o2EEL_function(cf->f)->common.name));)
-				DBG5(printf("|------------------------------\n");)
-				/*
-				 * Unroll, clean up etc...
-				 */
-				unwind(vm, base);
-				VMP->exception.type = EEL_TNIL;
-				clean(vm, (unsigned char *)(vm->heap + cf->cleantab), 0);
-				limbo_clean(vm, cf);
-				/*
-				 * Get result index, if any.
-				 */
-				result = cf->result;
-				/*
-				 * Prepare to continue execution in caller.
-				 */
-				vm->base = cf->r_base;
-				vm->pc = cf->r_pc;
-				stack_clear(vm);
-				vm->sbase = cf->r_sbase;
-				vm->sp = cf->r_sp;
-/*FIXME: Is this extra stack_clear() correct, and does it cover all cases...? */
-				stack_clear(vm);
-				if(result >= 0)
-				{
-					/* Caller receives result! */
-					DBGK4(printf("Expecting result in heap[%d].\n",
-							result);)
-#ifdef EEL_VM_CHECKING
-					if((EEL_nontypes)vm->heap[result].type ==
-							EEL_TILLEGAL)
-					{
-						eel_vmdump(vm, "Exception block "
-							"forgot to return a result!");
-						return EEL_XVMCHECK;
-					}
-#endif
-					eel_v_receive(vm->heap + result);
-				}
-				if(!vm->base)
-					return EEL_XEND;
 				break;
-			}
 			base = cf->r_base;
+			cf = b2callframe(vm, base);
 		}
+
+		DBG5(printf(".------------------------------\n");)
+		DBG5(printf("| XRETURN causes function '%s' to return.\n",
+				eel_o2s(o2EEL_function(cf->f)->common.name));)
+		DBG5(printf("|------------------------------\n");)
+
+		/* Unroll, clean up etc... */
+		unwind(vm, base);
+		VMP->exception.type = EEL_TNIL;
+		clean(vm, (unsigned char *)(vm->heap + cf->cleantab), 0);
+		limbo_clean(vm, cf);
+
+		/* Prepare to continue execution in caller. */
+		vm->base = cf->r_base;
+		vm->pc = cf->r_pc;
+		stack_clear(vm);
+		vm->sbase = cf->r_sbase;
+		vm->sp = cf->r_sp;
+		stack_clear(vm);
+
+		if(!o2EEL_function(cf->f)->common.flags & EEL_FF_CFUNC)
+			reload_context(vm, vms);
+
+		if(result >= 0)
+		{
+			/* Caller receives result! */
+			DBGK4(printf("Expecting result in heap[%d].\n",
+					result);)
+#ifdef EEL_VM_CHECKING
+			if((EEL_nontypes)vm->heap[result].type == EEL_TILLEGAL)
+			{
+				eel_vmdump(vm, "Exception block forgot to "
+						"return a result!");
+						return EEL_XVMCHECK;
+			}
+#endif
+			if(!o2EEL_function(cf->f)->common.flags & EEL_FF_CFUNC)
+				eel_v_receive(vm->heap + result);
+		}
+
+		if(!vm->base)
+			return EEL_XEND;
 		break;
 	  }
 	  default:
 	  {
 		/* Try to find the nearest try...except catcher. */
 		int base = vm->base;
-//printf("---------- finding catcher... base: %d\n", base);
 		while(base)
 		{
 			EEL_callframe *cf = b2callframe(vm, base);
 
 			/* Nothing more to unwind? */
 			if(!cf->f)
-{
-//printf("----------   No function!\n");
 				break;
-}
 
 			if(o2EEL_function(cf->f)->common.flags & EEL_FF_CFUNC)
-{
-//printf("----------   C function!\n");
 				break;
-}
 
 			if(cf->flags & EEL_CFF_UNTRY)
-{
-//printf("----------   EEL_CFF_UNTRY!\n");
 				break;
-}
 
 			/* Check for exception handler */
 			if(cf->catcher && x != EEL_XINTERNAL)
@@ -919,14 +925,12 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 					return x;
 				}
 				reload_context(vm, vms);
+
 				/* Cleaning for exception value. */
-//printf("### cleantab: %p\n", vms->ctab);
 				vms->ctab[++vms->ctab[0]] = 0;
 				return 0;
 			}
 			base = cf->r_base;
-
-//printf("----------   next: %d\n", base);
 		}
 
 		/* No handler! Give up and dump. */

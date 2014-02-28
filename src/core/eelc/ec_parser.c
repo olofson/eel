@@ -4178,9 +4178,8 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 		eel_ierror(es, "Compiler failed to start the lexer!");
 
 	/* Named module? */
-	if((es->token == TK_SYM_CLASS) &&
-			((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) ==
-					EEL_CMODULE))
+	if((es->token == TK_SYM_CLASS) && ((EEL_classes)eel_class_typeid(
+			es->lval.v.symbol->v.object) == EEL_CMODULE))
 	{
 		eel_lex(es, 0);
 		if(TK_NAME != es->token)

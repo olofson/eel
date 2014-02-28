@@ -258,7 +258,7 @@ FIXME: and of suitable types!
 
 /* Resource management */
 #define	PSDBG(x) 	/* String pool analysis when closing */
-#define	DBG1(x)		/* Module loading and unloading */
+#define	DBG1(x)	x	/* Module loading and unloading */
 #define	DBG11(x) 	/* eel_s_add_exports() messages */
 #define	DBG12(x) 	/* Module garbage collection */
 #define	DBGK(x) 	/* Refcount checking (Memory not freed!) */

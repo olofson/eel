@@ -1,4 +1,9 @@
 
+* Why aren't modules loaded with load() unloaded?
+
+* SDL isn't exactly crash proof... For example, if we use 2D API calls on an
+  OpenGL state, we get segfaults!
+
 * Should we just treat Audiality handles like plain integers, as in the C
   API, or should we wrap them and wire them to EEL memory management?
 
