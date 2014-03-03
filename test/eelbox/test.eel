@@ -1,7 +1,7 @@
-///////////////////////////////////////////////
+/////////////////////////////////////////////////
 // Temporary EELBox Test Suite
-// Copyright 2002-2005, 2010 David Olofson
-///////////////////////////////////////////////
+// Copyright 2002-2005, 2010, 2014 David Olofson
+/////////////////////////////////////////////////
 
 import "SDL";
 
@@ -44,6 +44,8 @@ export function main<args>
 	run("balls.eel");
 	run("balls2.eel");
  	run("pigs.eel");
+ 	run("pigs2.eel");
+ 	run("pigs3.eel");
 	run("texttest.eel");
 	run("guitest.eel");
 	run("beep.eel");

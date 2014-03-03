@@ -1,5 +1,10 @@
 /////////////////////////////////////////////
-// pigs.eel - Bouncing Pigs
+// pigs3.eel - Bouncing Pigs
+//
+// Optimizations:
+//	* Local cache variable for pigs[i]
+//	* Using vectors instead of a tables
+//
 // Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
@@ -7,6 +12,13 @@ import "math";
 import "SDL";
 import "SDL_image" as IMG;
 import "text" as text;
+
+constant X = 0;
+constant Y = 1;
+constant DX = 2;
+constant DY = 3;
+constant FRAME = 4;
+constant DFRAME = 5;
 
 static rng = table [
 	.im	139968,
@@ -57,12 +69,15 @@ export function main<args>
 	// Initialize pigs
 	local pigs = [];
 	for local i = 0, npigs - 1
-		pigs[i] = table[.x	rnd(640 - 64),
-				.y	rnd(300),
-				.dx	rnd(400) - 200,
-				.dy	0,
-				.frame	0,
-				.dframe	rnd(100) - 50];
+	{
+		local p, pigs[i] = vector [];
+		p[X] = rnd(640 - 64);
+		p[Y] = rnd(300);
+		p[DX] = rnd(400) - 200;
+		p[DY] = 0;
+		p[FRAME] = 0;
+		p[DFRAME] = rnd(100) - 50;
+	}
 
 	local dr = Rect[];
 	local lt, local fps_start, local fps_total_start = GetTicks();
@@ -81,40 +96,41 @@ export function main<args>
 
 		for local i = 0, npigs - 1
 		{
+			local p = pigs[i];
 			// Draw pig
-			dr.x = pigs[i].x;
-			dr.y = pigs[i].y;
-			BlitSurface(pig[(integer)pigs[i].frame], nil, nil, dr);
+			dr.x = p[X];
+			dr.y = p[Y];
+			BlitSurface(pig[(integer)p[FRAME]], nil, nil, dr);
 
 			// Move pig
-			pigs[i].dy += 300 * dt;
-			pigs[i].x += pigs[i].dx * dt;
-			pigs[i].y += pigs[i].dy * dt;
-			pigs[i].frame += pigs[i].dframe * dt;
+			p[DY] += 300 * dt;
+			p[X] += p[DX] * dt;
+			p[Y] += p[DY] * dt;
+			p[FRAME] += p[DFRAME] * dt;
 
 			// anim wrap
-			if pigs[i].frame < 0
-				pigs[i].frame = 12 - (-pigs[i].frame % 12);
+			if p[FRAME] < 0
+				p[FRAME] = 12 - (-p[FRAME] % 12);
 			else
-				pigs[i].frame %= 12;
+				p[FRAME] %= 12;
 
 			// x bounce
-			if pigs[i].x < 0
+			if p[X] < 0
 			{
-				pigs[i].dx = -pigs[i].dx;
-				pigs[i].x = -pigs[i].x;
+				p[DX] = -p[DX];
+				p[X] = -p[X];
 			}
-			else if pigs[i].x > (640 - 64)
+			else if p[X] > (640 - 64)
 			{
-				pigs[i].dx = -pigs[i].dx;
-				pigs[i].x -= pigs[i].x - (640 - 64);
+				p[DX] = -p[DX];
+				p[X] -= p[X] - (640 - 64);
 			}
 
 			// y bounce
-			if pigs[i].y > (480 - 48)
+			if p[Y] > (480 - 48)
 			{
-				pigs[i].dy = -pigs[i].dy;
-				pigs[i].y -= pigs[i].y - (480 - 48);
+				p[DY] = -p[DY];
+				p[Y] -= p[Y] - (480 - 48);
 			}
 		}
 

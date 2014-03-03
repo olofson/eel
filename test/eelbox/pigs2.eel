@@ -1,5 +1,9 @@
 /////////////////////////////////////////////
-// pigs.eel - Bouncing Pigs
+// pigs2.eel - Bouncing Pigs
+//
+// Optimizations:
+//	* Local cache variable for pigs[i]
+//
 // Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
@@ -81,40 +85,41 @@ export function main<args>
 
 		for local i = 0, npigs - 1
 		{
+			local p = pigs[i];
 			// Draw pig
-			dr.x = pigs[i].x;
-			dr.y = pigs[i].y;
-			BlitSurface(pig[(integer)pigs[i].frame], nil, nil, dr);
+			dr.x = p.x;
+			dr.y = p.y;
+			BlitSurface(pig[(integer)p.frame], nil, nil, dr);
 
 			// Move pig
-			pigs[i].dy += 300 * dt;
-			pigs[i].x += pigs[i].dx * dt;
-			pigs[i].y += pigs[i].dy * dt;
-			pigs[i].frame += pigs[i].dframe * dt;
+			p.dy += 300 * dt;
+			p.x += p.dx * dt;
+			p.y += p.dy * dt;
+			p.frame += p.dframe * dt;
 
 			// anim wrap
-			if pigs[i].frame < 0
-				pigs[i].frame = 12 - (-pigs[i].frame % 12);
+			if p.frame < 0
+				p.frame = 12 - (-p.frame % 12);
 			else
-				pigs[i].frame %= 12;
+				p.frame %= 12;
 
 			// x bounce
-			if pigs[i].x < 0
+			if p.x < 0
 			{
-				pigs[i].dx = -pigs[i].dx;
-				pigs[i].x = -pigs[i].x;
+				p.dx = -p.dx;
+				p.x = -p.x;
 			}
-			else if pigs[i].x > (640 - 64)
+			else if p.x > (640 - 64)
 			{
-				pigs[i].dx = -pigs[i].dx;
-				pigs[i].x -= pigs[i].x - (640 - 64);
+				p.dx = -p.dx;
+				p.x -= p.x - (640 - 64);
 			}
 
 			// y bounce
-			if pigs[i].y > (480 - 48)
+			if p.y > (480 - 48)
 			{
-				pigs[i].dy = -pigs[i].dy;
-				pigs[i].y -= pigs[i].y - (480 - 48);
+				p.dy = -p.dy;
+				p.y -= p.y - (480 - 48);
 			}
 		}
 
