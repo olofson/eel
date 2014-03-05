@@ -190,10 +190,9 @@ static inline int get_figure(EEL_state *es, int base)
 	if(n >= '0' && n <= '9')
 		n -= '0';
 	else if(n >= 'a' && n <= 'z')
-/* FIXME: This can't be right! */
-		n -= 'a';
+		n -= 'a' - 10;
 	else if(n >= 'A' && n <= 'Z')
-		n -= 'A';
+		n -= 'A' - 10;
 	else
 		return -1;
 	if(n >= base)
