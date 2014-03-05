@@ -99,16 +99,16 @@ export function main<args>
 	print("\n");
 
 	print("\nBitwise operations:\n");
-	a = 0x12345678&true;
-	a = 0x12345678&0x00ff00ff;
-	a = a<<8;
-	b = a&false;
-	c = false&a|(0x5555aaaa^0xf0f0f0f0);
+	a = 0x12345678 & true;
+	a = 0x12345678 & 0x00ff00ff;
+	a = a << 8;
+	b = a & false;
+	c = false & a | (0x5555aaaa ^ 0xf0f0f0f0);
 	c = c ror 4;
-	d = 0b110101000110101101101111><24;
+	d = 0b110101000110101101101111 >< 24;
 	verify("a", a, 0x34007800);
 	verify("b", b, 0);
-	verify("c", c, 0xaa5a55a5);
+	verify("c", c, (integer)0xaa5a55a5);
 	verify("d", d, 0b111101101101011000101011);
 
 	print("\nArithmetic tests done.\n");

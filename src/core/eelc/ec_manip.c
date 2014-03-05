@@ -71,7 +71,7 @@ static void m_release(EEL_manipulator *m)
 
 
 /*----------------------------------------------------------
-	Manipulater list/tree building API
+	Manipulator list/tree building API
 ----------------------------------------------------------*/
 
 void eel_m_constant(EEL_mlist *ml, EEL_value *v)

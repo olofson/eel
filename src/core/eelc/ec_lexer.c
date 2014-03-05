@@ -477,7 +477,6 @@ int eel_lex(EEL_state *es, int flags)
 		sym = es->tokentab[c - ESS_TOKEN_BASE];
 		if(!sym)
 			eel_ierror(es, "Undefined ESS token %d!", c);
-//printf("%d ==> %p\t(%d, %d)\n", c, sym, ESS_TOKEN_BASE, ESS_TOKENS);
 		switch(sym->type)
 		{
 		  case EEL_SKEYWORD:	tk = sym->v.token; break;
@@ -655,23 +654,23 @@ FIXME: far back data must be kept!
 	  {
 		/* See if we can interpret this as an integer */
 		EEL_real fr = (EEL_integer)(es->lval.v.r);
-#if 1
 		EEL_real ufr = (EEL_uinteger)(es->lval.v.r);
-#endif
 		if(fr == es->lval.v.r)
 		{
 			es->lval.type = ELVT_INTEGER;
 			es->lval.v.i = (EEL_int32)fr;
 			return token(es, TK_INUM, 21);
 		}
-#if 1
 		else if(ufr == es->lval.v.r)
 		{
 			es->lval.type = ELVT_INTEGER;
 			es->lval.v.i = (EEL_uint32)ufr;
+			eel_cwarning(es, "Unsigned 32 bit numeric literal %u/"
+					"0x%x parsed as negative 32 bit "
+					"signed integer.", es->lval.v.i,
+					es->lval.v.i);
 			return token(es, TK_INUM, 22);
 		}
-#endif
 		/* else
 			fall through */
 	  }
