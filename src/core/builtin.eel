@@ -25,6 +25,9 @@
 ///////////////////////////////////////////////////////////////////////////
 
 module builtin;
+
+eelversion 0.3.7;
+
 export import "builtin_c";
 
 // For __load_eel_module()

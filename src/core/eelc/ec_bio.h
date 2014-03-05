@@ -41,9 +41,6 @@ typedef struct
 	int		lcc_pos;
 	int		lcc_line;
 	int		lcc_col;
-
-	/* FIXME: Temporary hack! */
-	int		noprecedence;	/* 1 == op precedence warnings off! */
 } EEL_bio;
 
 

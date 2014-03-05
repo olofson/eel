@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_parser.h - The EEL Parser/Compiler
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -184,7 +184,8 @@ struct EEL_context
 
 	/* Misc. */
 	EEL_ctxtypes	type;
-	int		flags;
+	unsigned	flags;
+	unsigned	sflags;
 	int		level;
 	void		*creator;
 

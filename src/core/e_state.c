@@ -241,7 +241,7 @@ EEL_vm *eel_open(int argc, const char *argv[])
 	eel_register_keyword(vm, "import", TK_KW_IMPORT);
 	eel_register_keyword(vm, "as", TK_KW_AS);
 	eel_register_keyword(vm, "end", TK_KW_END);
-/*HACK:*/eel_register_keyword(vm, "noprecedence", TK_KW_NOPRECEDENCE);
+	eel_register_keyword(vm, "eelversion", TK_KW_EELVERSION);
 
 	/* Flow control keywords */
 	eel_register_keyword(vm, "return", TK_KW_RETURN);

@@ -8,7 +8,7 @@ uuid: 66d307fc-a2c5-47cf-84fe-30e936cc2633
 patterns:
 - comment: Compiler directives
   name: storage.type
-  match: \b(include|module|import|as|end)\b
+  match: \b(include|module|import|as|end|eelversion)\b
 
 - comment: Keywords and instructions
   name: keyword.control

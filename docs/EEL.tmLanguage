@@ -14,7 +14,7 @@
 			<key>comment</key>
 			<string>Compiler directives</string>
 			<key>match</key>
-			<string>\b(include|module|import|as|end)\b</string>
+			<string>\b(include|module|import|as|end|eelversion)\b</string>
 			<key>name</key>
 			<string>storage.type</string>
 		</dict>

@@ -1,4 +1,9 @@
 
+* Memory management needs a cleanup...
+	* Why is eel_context_push() using eel_malloc(), for example? The
+	  compiler is NOT to be used in realtime context!
+	* Are we using eel_malloc() etc where intended?
+
 * Why aren't modules loaded with load() unloaded?
 
 * SDL isn't exactly crash proof... For example, if we use 2D API calls on an
@@ -19,8 +24,6 @@
 * Some string formatting tools would be nice...!
 	* Would be even nicer if the full range of bases of the compiler were
 	  supported as well.
-
-* Use macros for EEL_xno, like the Audiality 2 error codes!
 
 * Parser tool that takes an input stream (memory or file), a state object, an
   output stream, and one or more token and/or pattern matching tables, and

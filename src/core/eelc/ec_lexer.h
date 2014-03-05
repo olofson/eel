@@ -54,7 +54,7 @@ typedef enum
 	TK_KW_IMPORT,
 	TK_KW_AS,
 	TK_KW_END,
-/*HACK:*/TK_KW_NOPRECEDENCE,
+	TK_KW_EELVERSION,
 
 	TK_KW_RETURN,
 	TK_KW_IF,
@@ -255,9 +255,11 @@ typedef struct
 /* Qualifiers for eel_lex() */
 typedef enum
 {
-	ELF_REPORT_EOLN = 0x00000001,
-	ELF_LOCALS_ONLY = 0x00000002,
-	ELF_NO_OPERATORS = 0x00000004
+	ELF_REPORT_EOLN =	0x00000001,
+	ELF_LOCALS_ONLY =	0x00000002,
+	ELF_NO_OPERATORS =	0x00000004,
+	ELF_CHARACTERS =	0x00000008,
+	ELF_NO_SKIPWHITE =	0x00000010
 } EEL_lexflags;
 
 int eel_lexer_init(EEL_state *es);

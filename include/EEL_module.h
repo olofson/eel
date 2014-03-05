@@ -50,7 +50,9 @@ typedef enum
 	/* List VM asm code in the symbol tree */
 	EEL_SF_LISTASM =	0x00000008,
 	/* Turn compiler warnings into errors (give up after current module) */
-	EEL_SF_WERROR =		0x00000010
+	EEL_SF_WERROR =		0x00000010,
+	/* Disable the operator precedence warning introduced in 0.3.7 */
+	EEL_SF_NOPRECEDENCE =	0x00000020,
 } EEL_sflags;
 
 EELAPI(EEL_object *)eel_load_buffer(EEL_vm *vm,

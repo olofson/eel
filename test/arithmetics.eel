@@ -3,7 +3,7 @@
 // Copyright 2002-2005, 2014 David Olofson
 /////////////////////////////////////////////
 
-noprecedence;	// Suppress operator precedence warnings
+eelversion 0.3.7;
 
 procedure verify(name, val, correct)
 {

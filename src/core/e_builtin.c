@@ -689,6 +689,7 @@ static const EEL_lconstexp bi_constants[] =
 	{ "SF_LIST",		EEL_SF_LIST		},
 	{ "SF_LISTASM",		EEL_SF_LISTASM		},
 	{ "SF_WERROR",		EEL_SF_WERROR		},
+	{ "SF_NOPRECEDENCE",	EEL_SF_NOPRECEDENCE	},
 
 	{NULL, 0}
 };

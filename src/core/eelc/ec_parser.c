@@ -35,12 +35,6 @@
 #include "e_object.h"
 #include "e_table.h"
 
-/*
- * True if we're NOT supposed to warn when the old operator precedence would
- * have kicked in.
- */
-#define	EEL_NOPRECEDENCE(x)	((x)->context->bio->noprecedence)
-
 #if DBGH2(1)+0 == 1
 static inline int eel__tk(const char *tkn, int tkc, int line)
 {
@@ -317,65 +311,6 @@ static void procreturn(EEL_state *es)
 }
 
 
-#if 0
-/* filelist() item handler for include'. */
-static void include_handler(EEL_state *es, int flags)
-{
-	EEL_object *m;
-	if(es->include_depth > EEL_MAX_INCLUDE_DEPTH)
-	{
-		int id = es->include_depth;
-		es->include_depth = -1;
-		eel_cerror(es, "Circular include detected when trying to"
-				" include file \"%s\"! (Depth: %d)",
-				es->lval.v.s.buf, id);
-	}
-
-	m = eel_load_nc(es->vm, es->lval.v.s.buf, 0);
-	if(!m)
-		eel_cerror(es, "Couldn't include file \"%s\"! (Didn't load.)",
-				es->lval.v.s.buf);
-	o2EEL_module(m)->refsum = -1;
-
-	DBGD(printf(">>>>>>>> including file '%s' >>>>>>>>\n", es->lval.v.s.buf);)
-
-	eel_try(es)
-		eel_context_push(es, ECTX_BLOCK, es->lval.v.s.buf);
-	eel_except
-	{
-		eel_o_disown_nz(m);
-		eel_cerror(es, "Couldn't include file \"%s\"!",
-				es->lval.v.s.buf);
-	}
-
-	eel_try(es)
-	{
-		++es->include_depth;
-		eel_lexer_start(es, m);
-		if(block(es) != TK_EOF)
-			eel_cerror(es, "Expected EOF!");
-		--es->include_depth;
-	}
-	eel_except
-	{
-		eel_o_disown_nz(m);
-		if(es->include_depth == -1)
-			eel_cthrow(es);
-		else
-			eel_cerror(es, "Couldn't include file \"%s\"!",
-					es->lval.v.s.buf);
-	}
-
-	eel_context_pop(es);
-
-	DBGD(printf("<<<<<<<< leaving included file '%s' <<<<<<<<\n",
-			eel_module_filename(m));)
-	eel_o_disown_nz(m);
-	eel_lexer_invalidate(es);
-	eel_lex(es, 0);
-}
-#endif
-
 /*
  * Add object 'o' to the 'objects' array of the current module.
  * The module will gain ownership of the object, and the module
@@ -469,7 +404,7 @@ static void forward_exports(EEL_object *from, EEL_object *to, int symcheck)
 static void import_handler(EEL_state *es, int forward)
 {
 	char *modname = strdup(es->lval.v.s.buf);
-	EEL_object *m = eel_load(es->vm, modname, 0);
+	EEL_object *m = eel_load(es->vm, modname, es->context->sflags);
 	if(!m)
 	{
 		char mn[256];
@@ -2578,7 +2513,8 @@ static int expression3(EEL_state *es, int limit, EEL_mlist *left,
 		 * Warn whenever operator precedence would have made a
 		 * difference!
 		 */
-		if(!EEL_NOPRECEDENCE(es) && (limit >= 1000) &&
+		if(!(es->context->sflags & EEL_SF_NOPRECEDENCE) &&
+				(limit >= 1000) &&
 				((lpri <= (limit - 1000)) != (lpri <= limit)))
 			eel_cwarning(es, "EEL <= 0.3.6 would evaluate this "
 					"expression differently due to "
@@ -3236,17 +3172,6 @@ static int switchstat(EEL_state *es)
 
 	/* default section? */
 	eel_code_setjump(cdr, jump_else, eel_code_target(cdr));
-#if 0
-//FIXME: This should be taken out some time soon... Also note that this will
-//FIXME: NOT warn about accidental 'else' in an 'if' statement inside a 'switch',
-//FIXME: which is where the actual danger is...!
-	if(es->token == TK_KW_ELSE)
-	{
-		eel_cwarning(es, "Deprecated use of 'else' in 'switch' "
-				"statement! Please use 'default' instead.");
-		es->token = TK_KW_DEFAULT;
-	}
-#endif
 	if(es->token == TK_KW_DEFAULT)
 	{
 		eel_lex(es, 0);
@@ -3850,6 +3775,25 @@ static int untrystat(EEL_state *es)
 }
 
 
+/* Get a positive integer literal */
+static int get_version_figure(EEL_state *es)
+{
+	int v = -1;
+	eel_lex(es, ELF_CHARACTERS);
+	while(1)
+	{
+		if(es->token < '0' || es->token > '9')
+			return v;
+		if(v == -1)
+			v = 0;
+		else
+			v *= 10;
+		v += es->token - '0';
+		eel_lex(es, ELF_CHARACTERS | ELF_NO_SKIPWHITE);
+	}
+}
+
+
 /*----------------------------------------------------------
 	statement rule
 ----------------------------------------------------------*/
@@ -3859,7 +3803,7 @@ static int untrystat(EEL_state *es)
 		| EOF
 		| KW_END ';'
 		| ';'
-HACK:		| KW_NOPRECEDENCE ';'
+		| KW_EELVERSION x[.y[.z]] ';'
 		| KW_INCLUDE filelist ';'
 		| importstat
 TODO:		| KW_ALWAYS ':'
@@ -3890,26 +3834,85 @@ static int statement2(EEL_state *es)
 	  case TK_KW_END:
 		DBGH(printf("## statement: EOF\n");)
 		return TK(EOF);
+
 	  /* ';' */
 	  case ';':
 		eel_lex(es, 0);
 		DBGH(printf("## statement: ';'\n");)
 		return TK(STATEMENT);
-	  /* KW_NOPRECEDENCE ';' */
-	  case TK_KW_NOPRECEDENCE:
-		eel_lex(es, 0);
-		es->context->bio->noprecedence = 1;
+
+	  /* KW_EELVERSION x[.y[.z]] ';' */
+	  case TK_KW_EELVERSION:
+	  {
+	  	int major, minor, micro;
+	  	major = minor = micro = -1;
+		major = get_version_figure(es);
+		if(es->token == '.')
+			minor = get_version_figure(es);
+		if(es->token == '.')
+			micro = get_version_figure(es);
+
+		/* Check version number validity */
+		switch(major)
+		{
+		  case -1:
+			eel_cerror(es, "'eelversion' requires at least a major"
+					" version number!");
+		  case 0:
+			if((minor == -1) || (micro == -1))
+				eel_cerror(es, "'eelversion' requires a full "
+					"major.minor.micro version number for "
+					"0.x (beta) versions!");
+			if((minor < 3) || ((minor == 3) && (micro < 7)))
+				eel_cwarning(es, "This script was written for "
+					" EEL 0.3.6 or older, which means it "
+					"will most likely fail as a result of "
+					"relying on operator precedence!");
+			break;
+		  default:
+			if((minor & 1) && (micro == -1))
+				eel_cerror(es, "'eelversion' requires a full "
+					"major.minor.micro version number for "
+					"odd minor (development) versions!");
+			else if(!(minor & 1) && (micro != -1))
+				eel_cerror(es, "'eelversion' only allows "
+					"major.minor version numbers for "
+					"even minor (stable) versions!");
+			break;
+		}
+
+		/*
+		 * Disable operator precedence warnings if script claims to be
+		 * written for >=0.3.7.
+		 */
+		if(major > 0 || ((minor == 3) && (micro >= 7)) || (minor > 3))
+			es->context->sflags |= EEL_SF_NOPRECEDENCE;
+		else
+			es->context->sflags &= ~EEL_SF_NOPRECEDENCE;
+
+		if((major != EEL_MAJOR_VERSION) ||
+				(minor != EEL_MINOR_VERSION) ||
+				(micro != EEL_MICRO_VERSION))
+		{
+			char buf[32];
+			if(minor == -1)
+				snprintf(buf, sizeof(buf), "%d", major);
+			else if(micro == -1)
+				snprintf(buf, sizeof(buf), "%d.%d",
+						major, minor);
+			else
+				snprintf(buf, sizeof(buf), "%d.%d.%d",
+						major, minor, micro);
+			eel_cwarning(es, "This script was written for EEL "
+					"%s!\nCompatibility with EEL "
+					"%d.%d.%d unknown.", buf,
+					EEL_MAJOR_VERSION, EEL_MINOR_VERSION,
+					EEL_MICRO_VERSION);
+		}
 		expect(es, ';', NULL);
 		return TK(STATEMENT);
-#if 0
-	  /* KW_INCLUDE filelist ';' */
-	  case TK_KW_INCLUDE:
-		eel_lex(es, 0);
-		filelist(es, include_handler, 0);
-		expect(es, ';', "Missing ';' after 'include' statement!");
-		DBGH(printf("## statement: KW_INCLUDE filelist ';'\n");)
-		return TK(STATEMENT);
-#endif
+	  }
+
 	  /* [KW_EXPORT] KW_IMPORT filelist ';' */
 	  case TK_KW_EXPORT:
 		eel_lex(es, 0);
@@ -3920,18 +3923,21 @@ static int statement2(EEL_state *es)
 		}
 		fwimports = 1;
 		/* Fall through! */
+
 	  case TK_KW_IMPORT:
 		eel_lex(es, 0);
 		filelist(es, import_handler, fwimports);
 		expect(es, ';', "Missing ';' after 'import' statement!");
 		DBGH(printf("## statement: KW_IMPORT filelist ';'\n");)
 		return TK(STATEMENT);
+
 	  /* Some nice error checking */
 	  case TK_SYM_CLASS:
 	  	if((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) !=
 				EEL_CMODULE)
 			break;
 		eel_cerror(es, "Cannot declare a module within a module!");
+
 	  /* throwstat */
 	  case TK_KW_THROW:
 	  {
@@ -3959,6 +3965,7 @@ static int statement2(EEL_state *es)
 		expect(es, ';', NULL);
 		return TK(STATEMENT);
 	  }
+
 	  /* retrystat */
 	  case TK_KW_RETRY:
 		eel_lex(es, 0);
@@ -4153,7 +4160,7 @@ static void declare_environment(EEL_state *es)
 }
 
 
-static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags flags)
+static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 {
 	int res;
 	int shared_module = 0;
@@ -4173,6 +4180,7 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	eel_context_push(es, ECTX_MODULE, NULL);
 	es->context->symtab->v.object = mo;
 	eel_o_own(es->context->symtab->v.object);	/* For symtab */
+	es->context->sflags = sflags;
 
 	if(eel_lexer_start(es, mo) < 0)
 		eel_ierror(es, "Compiler failed to start the lexer!");
@@ -4222,8 +4230,8 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	/* Leave module context and remove symbols */
 	mst = es->context->symtab;
 	eel_context_pop(es);
-	if(flags & EEL_SF_LIST)
-		eel_s_dump(es->vm, NULL, flags & EEL_SF_LISTASM);
+	if(sflags & EEL_SF_LIST)
+		eel_s_dump(es->vm, NULL, sflags & EEL_SF_LISTASM);
 	eel_s_free(es, mst);
 
 	eel_lexer_invalidate(es);
@@ -4250,7 +4258,7 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 }
 
 
-void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags flags)
+void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 {
 	EEL_xno x;
 	EEL_value filename;
@@ -4277,14 +4285,11 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	else
 		filename.type = EEL_TNIL;
 
-	if(flags & EEL_SF_WERROR)
-		++es->werror;
-
 	es->include_depth = 0;
 /* FIXME: 'x' might be clobbered by setjmp()/longjmp()... */
 	x = 0;
 	eel_try(es)
-		compile2(es, mo, flags);
+		compile2(es, mo, sflags);
 	eel_except
 		x = 1;
 
@@ -4292,12 +4297,11 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags flags)
 	if(filename.type != EEL_TNIL)
 		eel_table_delete(es->modnames, &filename);
 
-	if(!x && es->werror)
+	/* Turn warnings into errors */
+	if(!x && (sflags & EEL_SF_WERROR))
 		x = eel_warning_count(es);
 
-	if(flags & EEL_SF_WERROR)
-		--es->werror;
-
+	/* Throw if there were errors! */
 	if(x)
 		eel_cthrow(es);
 }

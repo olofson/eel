@@ -190,6 +190,7 @@ static inline int get_figure(EEL_state *es, int base)
 	if(n >= '0' && n <= '9')
 		n -= '0';
 	else if(n >= 'a' && n <= 'z')
+/* FIXME: This can't be right! */
 		n -= 'a';
 	else if(n >= 'A' && n <= 'Z')
 		n -= 'A';
@@ -463,7 +464,10 @@ int eel_lex(EEL_state *es, int flags)
 	es->ls[0].pos = eel_bio_tell(bio);
 	es->lval.type = ELVT_NONE;	/* Init new state */
 
-	c = skipwhite(es, (flags & ELF_REPORT_EOLN));
+	if(flags & ELF_NO_SKIPWHITE)
+		c = lex_getchar(es);
+	else
+		c = skipwhite(es, (flags & ELF_REPORT_EOLN));
 	if(c < 0)
 		return token(es, TK_EOF, 1);
 
@@ -497,8 +501,11 @@ int eel_lex(EEL_state *es, int flags)
 		}
 		es->lval.type = ELVT_SYMREF;
 		es->lval.v.symbol = sym;
-		return token(es, tk, 2);
+		return token(es, tk, 3);
 	}
+
+	if((flags & ELF_CHARACTERS) && (c > ' ') && (c <= 127))
+		return token(es, c, 4);
 
 	/*
 	 * (Multi)character literal (cast to integer)
@@ -523,12 +530,12 @@ int eel_lex(EEL_state *es, int flags)
 		free(es->lval.v.s.buf);
 		es->lval.type = ELVT_INTEGER;
 		es->lval.v.i = val;
-		return token(es, TK_INUM, 3);
+		return token(es, TK_INUM, 5);
 	}
 
 	/* String literal */
 	if(c == '"')
-		return token(es, parse_string(es, '"'), 4);
+		return token(es, parse_string(es, '"'), 6);
 
 	/* Char starts an identifier or keyword => read the name. */
 	while(isalpha(c) || (c == '_') || (c == '$'))
@@ -588,12 +595,12 @@ int eel_lex(EEL_state *es, int flags)
 			  case EEL_SOPERATOR:	tk = TK_SYM_OPERATOR; break;
 			  default:		tk = TK_SYMBOL; break;
 			}
-			return token(es, tk, 5);
+			return token(es, tk, 7);
 		}
 		else
 		{
 			eel_lval_copy_string(&es->lval, es->lexbuf, len);
-			return token(es, TK_NAME, 6);
+			return token(es, TK_NAME, 8);
 		}
 	}
 
@@ -609,7 +616,7 @@ FIXME: far back data must be kept!
 		int removed_eq = 0;
 		int len;
 		if(check_weakassign(es, c))
-			return token(es, TK_WEAKASSIGN, 7);
+			return token(es, TK_WEAKASSIGN, 9);
 		len = grab_operator(es, c);
 		while(len)
 		{
@@ -625,14 +632,14 @@ FIXME: far back data must be kept!
 				es->lval.type = ELVT_SYMREF;
 				es->lval.v.symbol = sym;
 				if(sym->v.op->flags & EOPF_NOSHORT)
-					return token(es, TK_SYM_OPERATOR, 8);
+					return token(es, TK_SYM_OPERATOR, 10);
 				else if(removed_eq)
 				{
 					lex_getchar(es);
-					return token(es, TK_SYM_SHORTOP, 9);
+					return token(es, TK_SYM_SHORTOP, 11);
 				}
 				else
-					return token(es, TK_SYM_OPERATOR, 10);
+					return token(es, TK_SYM_OPERATOR, 12);
 			}
 			--len;
 			removed_eq = (es->lexbuf[len] == '=');
@@ -649,25 +656,29 @@ FIXME: far back data must be kept!
 	  {
 		/* See if we can interpret this as an integer */
 		EEL_real fr = (EEL_integer)(es->lval.v.r);
+#if 1
 		EEL_real ufr = (EEL_uinteger)(es->lval.v.r);
+#endif
 		if(fr == es->lval.v.r)
 		{
 			es->lval.type = ELVT_INTEGER;
 			es->lval.v.i = (EEL_int32)fr;
 			return token(es, TK_INUM, 21);
 		}
+#if 1
 		else if(ufr == es->lval.v.r)
 		{
 			es->lval.type = ELVT_INTEGER;
 			es->lval.v.i = (EEL_uint32)ufr;
 			return token(es, TK_INUM, 22);
 		}
+#endif
 		/* else
 			fall through */
 	  }
 	  case EEL_XREALNUMBER:
 		es->lval.type = ELVT_REAL;
-		return token(es, TK_RNUM, 24);
+		return token(es, TK_RNUM, 14);
 	  case EEL_XNONUMBER:
 		c = eel_bio_last(bio);
 		break;
@@ -686,7 +697,7 @@ FIXME: far back data must be kept!
 	}
 
 	/* Return character as token */
-	return token(es, c, 9);
+	return token(es, c, 15);
 }
 
 

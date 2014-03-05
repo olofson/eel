@@ -110,7 +110,6 @@ FIXME: 'path' probably belongs in the VM...
 	EEL_emessage	*firstmsg, *lastmsg;
 	int		include_depth;	/* Circular include detection */
 	EEL_object	*modnames;	/* Circular import detection */
-	int		werror;		/* Warnings ==> errors (recursive!) */
 
 	/* Misc */
 	EEL_sbuffer	*firstfsb, *lastfsb;	/* Free sbuffers */
