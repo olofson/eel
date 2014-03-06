@@ -3,7 +3,7 @@
 // Copyright 2006, 2014 David Olofson
 //////////////////////////////////////////
 
-noprecedence;	// Weird looking expressions ahead! You have been warned... ;-)
+eelversion 0.3.7;
 
 import "math";
 import "SDL" as SDL;

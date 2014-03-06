@@ -3,7 +3,7 @@
 // Copyright 2006, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
-noprecedence;
+eelversion 0.3.7;
 
 import "SDL", "math";
 
