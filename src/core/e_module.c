@@ -341,8 +341,8 @@ static EEL_xno m_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_module *m = o2EEL_module(eo);
 /*
-FIXME: Should probably keep the source in exports.__source, but makes it
-entirely possible that the buffer is changed or moved while compiling!
+FIXME: Should probably just use exports.__source, but if it's a dstring, it may
+       change while compiling!
 */
 	const char *s = eel_v2s(op1);
 	if(s && (strcmp(s, "__source") == 0))
@@ -357,12 +357,10 @@ entirely possible that the buffer is changed or moved while compiling!
 			return EEL_XMEMORY;
 		memcpy(m->source, s, m->len);
 		m->source[m->len] = 0;
-#if defined(EEL_VM_CHECKING) && (DBGM2(1)+0 == 1)
-		// Otherwise, we'll get an internal error in checking mode,
-		// because it thinks we should take ownership of the string...
-		eel_v_own(op2);
-#endif /* EEL_VM_CHECKING */
+#if !(defined(EEL_VM_CHECKING) && (DBGM(1)+0 == 1))
+		// Need to hold on to it; checks in eel_o__metamethod()...
 		return 0;
+#endif
 	}
 #ifdef EEL_VM_CHECKING
 	if(!m->exports)

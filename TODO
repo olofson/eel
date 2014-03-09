@@ -1,9 +1,6 @@
 
 * Don't actually use THROW for RETX*...
 
-* Fix the eel_ierror() in eel_o__metamethod(); there are some cases where we
-  intentionally SETINDEX without proper refcounting...
-
 * Memory management needs a cleanup...
 	* Why is eel_context_push() using eel_malloc(), for example? The
 	  compiler is NOT to be used in realtime context!
