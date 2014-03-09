@@ -779,7 +779,8 @@ static void dump_constants(EEL_state *es, EEL_function *f, int indent)
 	int i;
 	const char *tmp;
 	char *inds = malloc(indent+2);
-	memset(inds, ' ', indent);
+	if(indent)
+		memset(inds, ' ', indent);
 	inds[indent+1] = 0;
 	for(i = 0; i <= indent; i += S_TAB)
 		inds[i] = '|';
@@ -797,7 +798,8 @@ static void dump_code(EEL_state *es, EEL_object *fo, int indent)
 	EEL_function *f = o2EEL_function(fo);
 	int i;
 	char *inds = malloc(indent+2);
-	memset(inds, ' ', indent);
+	if(indent)
+		memset(inds, ' ', indent);
 	inds[indent+1] = 0;
 	for(i = 0; i <= indent; i += S_TAB)
 		inds[i] = '|';
@@ -822,7 +824,6 @@ static void st_dump(EEL_state *es, EEL_symbol *st, int code, int indent)
 	int i, wrap;
 	const char *tmp;
 	char *inds = malloc(indent + 2);
-	memset(inds, ' ', indent + 2);
 	for(i = 0; i <= indent; i += S_TAB)
 		inds[i] = '|';
 	inds[indent + 1] = 0;

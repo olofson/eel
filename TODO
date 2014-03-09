@@ -1,8 +1,6 @@
 
 * Don't actually use THROW for RETX*...
 
-* Eliminate the annoying warnings about zero-length memset()!
-
 * Fix the eel_ierror() in eel_o__metamethod(); there are some cases where we
   intentionally SETINDEX without proper refcounting...
 
