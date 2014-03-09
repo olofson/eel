@@ -242,7 +242,7 @@ static EEL_xno bi__get_loaded_module(EEL_vm *vm)
 }
 
 
-static EEL_xno bi__load_binary(EEL_vm *vm)
+static EEL_xno bi__load_binary_module(EEL_vm *vm)
 {
 	return EEL_XNOTIMPLEMENTED;
 }
@@ -747,7 +747,8 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 	/* Run-time EEL module management */
 	eel_export_cfunction(m, 1, "__get_loaded_module", 2, 0, 0,
 			bi__get_loaded_module);
-	eel_export_cfunction(m, 1, "__load_binary", 2, 0, 0, bi__load_binary);
+	eel_export_cfunction(m, 1, "__load_binary_module", 2, 0, 0,
+			bi__load_binary_module);
 	eel_export_cfunction(m, 0, "__compile", 2, 0, 0, bi__compile);
 	eel_export_cfunction(m, 1, "__exports", 0, 1, 0, bi__exports);
 	eel_export_cfunction(m, 1, "__modules", 0, 0, 0, bi_getmt);

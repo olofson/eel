@@ -48,6 +48,7 @@ static EEL_xno find_function(EEL_object *m, const char *name,
 	if((EEL_classes)f.objref.v->type != EEL_CFUNCTION)
 		return EEL_XWRONGTYPE;
 	*fo = f.objref.v;
+	eel_disown(*fo); /* Not going away until the module is unloaded... */
 	return EEL_XOK;
 }
 

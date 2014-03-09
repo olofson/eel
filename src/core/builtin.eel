@@ -124,6 +124,7 @@ export function __load_eel_module(fullpath, flags)
 }
 
 $.__load_eel_module = __load_eel_module;
+$.__load_binary_module = __load_binary_module;
 
 
 // Default module loader; try paths, extensions etc...
@@ -134,6 +135,7 @@ export function __load_via_path_modules(modname, flags)
 	function try_load(p, f)
 	{
 		local ldeel = $.__load_eel_module;
+		local ldbin = $.__load_binary_module;
 		try
 			if copy(p, sizeof p - 4) != ".eel"
 				return ldeel(p + ".eel", f);
@@ -144,9 +146,9 @@ export function __load_via_path_modules(modname, flags)
 			return ldeel(p, f);
 		try
 			if copy(p, sizeof p - sizeof SOEXT) != SOEXT
-				return __load_binary(p + SOEXT, f);
+				return ldbin(p + SOEXT, f);
 		try
-			return __load_binary(p, f);
+			return ldbin(p, f);
 		return nil;
 	}
 	local modpaths = $.path_modules;

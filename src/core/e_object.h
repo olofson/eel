@@ -63,8 +63,9 @@
 #include "e_error.h"
 #include "e_config.h"
 
-#if (DBGK(1)+0 == 1) || (DBGL(1)+0 == 1) || defined (EEL_CLEAN_COPY) ||	\
-		defined(EEL_VM_CHECKING)
+#if (DBGK(1)+0 == 1) || (DBGL(1)+0 == 1) || (DBGK3(1)+0 == 1) ||	\
+		(DBGK4(1)+0 == 1) || (DBG7(1)+0 == 1) ||		\
+		defined(EEL_CLEAN_COPY) || defined(EEL_VM_CHECKING)
 # include <stdio.h>
 #endif
 
@@ -321,7 +322,7 @@ void eel_o__dealloc(EEL_object *o);
 /*
  * Destroy 'object' instantly. Note that any objects owned
  * by 'object' may be thrown in the garbage list to be
- * destroyed later, rather than being destoyed instantly.
+ * destroyed later, rather than being destroyed instantly.
  */
 EEL_xno eel_o__destruct(EEL_object *object);
 

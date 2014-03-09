@@ -9,7 +9,7 @@ fi
 # MinGW32 cross build using MXE (http://mxe.cc/)
 if [ -z $MXEPATH ]; then
 	# This is where Dave keeps his MXE.
-	MXEPATH=~/src/other/mxe
+	MXEPATH=~/src/mxe
 fi
 
 create_build_dir() {

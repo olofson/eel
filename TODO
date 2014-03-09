@@ -1,13 +1,15 @@
 
+* Don't actually use THROW for RETX*...
+
+* Eliminate the annoying warnings about zero-length memset()!
+
+* Fix the eel_ierror() in eel_o__metamethod(); there are some cases where we
+  intentionally SETINDEX without proper refcounting...
+
 * Memory management needs a cleanup...
 	* Why is eel_context_push() using eel_malloc(), for example? The
 	  compiler is NOT to be used in realtime context!
 	* Are we using eel_malloc() etc where intended?
-
-* Why aren't modules loaded with load() unloaded?
-
-* SDL isn't exactly crash proof... For example, if we use 2D API calls on an
-  OpenGL state, we get segfaults!
 
 * Should we just treat Audiality handles like plain integers, as in the C
   API, or should we wrap them and wire them to EEL memory management?

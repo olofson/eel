@@ -137,9 +137,9 @@ static inline EEL_xno eel_o__metamethod(EEL_object *object,
 	x = cd->mmethods[mm](object, op1, op2);
 	DBGM(if(!x && (mm != EEL_MM_DELETE) && (op2->type == EEL_TOBJREF) &&
 			(old_owns == VMP->owns))
-		eel_ierror(VMP->state, "Metamethod %s::%s received or returned "
-				" an object, but no one inc'ed any refcount!\n",
-				eel_typename(vm, object->type),
+		eel_ierror(VMP->state, "Metamethod %s::%s received or "
+				"returned an object, but no one inc'ed any "
+				"refcount!\n", eel_typename(vm, object->type),
 				eel_mm_name(mm));)
 	return x;
 #else

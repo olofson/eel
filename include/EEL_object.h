@@ -30,7 +30,7 @@
 	 *	   EEL will free the object struct automatically after
 	 *	a destructor is finished, or a constructor fails, so
 	 *	eel_o_free() should only be used under special
-	 *	cicumstances. (See e_string.h for an example.)
+	 *	circumstances. (See e_string.h for an example.)
 	 */
 
 #ifndef EEL_OBJECT_H
@@ -124,8 +124,8 @@ typedef enum
 				 */
 	EEL_MM_SERIALIZE,	/* Serialize all contained data and write it
 				 * to the provided stream. The generated data
-				 * must contain all information that is required
-				 * to reconstruct the instance.
+				 * must contain all information required to
+				 * reconstruct the instance.
 				 * In:	op1 -> target stream
 				 * Out:	op2 -> number of bytes written
 				 *	       (EEL integer)
@@ -414,7 +414,7 @@ static inline void eel_v_own(EEL_value *value)
 {
 	if(value->type == EEL_TOBJREF)
 		eel_own(value->objref.v);
-#ifdef EEL_VM_CHECKING
+#ifdef DEBUG
 	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
 		fprintf(stderr, "INTERNAL ERROR: eel_v_own(): ILLEGAL value! "
 				"(Source: %d)", value->integer.v);

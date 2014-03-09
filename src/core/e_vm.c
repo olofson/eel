@@ -540,15 +540,16 @@ static inline EEL_xno call_eel(EEL_vm *vm, EEL_object *fo, int result, int level
 	cf->catcher = NULL;
 	vm->pc = 0;
 
-	DBG4B(printf(".--- Entering function --------\n");)
+	DBG4B(printf(".--- ");)
+#if (DBG4B(1)+0 == 1) || (DBG4D(1)+0 == 1)
+	printf("Entering EEL function '%s'\n", eel_o2s(f->common.name));
+#endif
 	DBG4B(printf("|     heap = %p\n", vm->heap);)
 	DBG4B(printf("|     base = %d\n", vm->base);)
 	DBG4B(printf("| cleantab = %d\n", cf->cleantab);)
 	DBG4B(printf("|------------------------------\n");)
 	DBG4B(printf("|   r_base = %d\n", cf->r_base);)
 	DBG4B(printf("'------------------------------\n");)
-
-	DBG4D(printf("Entering EEL function '%s'\n", eel_o2s(f->common.name));)
 
 	switch_function(vm, fo);
 	return 0;
@@ -742,9 +743,9 @@ static void unwind(EEL_vm *vm, int target)
 			clean(vm, (unsigned char *)(vm->heap + cf->cleantab), 0);
 			limbo_clean(vm, cf);
 		}
+		stack_clear(vm);
 		vm->base = cf->r_base;
 		vm->pc = cf->r_pc;
-		stack_clear(vm);
 		vm->sbase = cf->r_sbase;
 		vm->sp = cf->r_sp;
 		DBG5(printf("'------------------------------\n");)
@@ -851,42 +852,32 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 				eel_o2s(o2EEL_function(cf->f)->common.name));)
 		DBG5(printf("|------------------------------\n");)
 
+		/* The actual RETURN: */
+		base = cf->r_base;
+		cf = b2callframe(vm, base);
+
 		/* Unroll, clean up etc... */
 		unwind(vm, base);
-		VMP->exception.type = EEL_TNIL;
-		clean(vm, (unsigned char *)(vm->heap + cf->cleantab), 0);
-		limbo_clean(vm, cf);
-
-		/* Prepare to continue execution in caller. */
-		vm->base = cf->r_base;
-		vm->pc = cf->r_pc;
-		stack_clear(vm);
-		vm->sbase = cf->r_sbase;
-		vm->sp = cf->r_sp;
 		stack_clear(vm);
 
-		if(!o2EEL_function(cf->f)->common.flags & EEL_FF_CFUNC)
-			reload_context(vm, vms);
-
-		if(result >= 0)
-		{
-			/* Caller receives result! */
-			DBGK4(printf("Expecting result in heap[%d].\n",
-					result);)
+		DBGK4(if(result >= 0)
+			printf("Expecting result in heap[%d].\n", result);)
 #ifdef EEL_VM_CHECKING
-			if((EEL_nontypes)vm->heap[result].type == EEL_TILLEGAL)
-			{
-				eel_vmdump(vm, "Exception block forgot to "
-						"return a result!");
-						return EEL_XVMCHECK;
-			}
-#endif
-			if(!o2EEL_function(cf->f)->common.flags & EEL_FF_CFUNC)
-				eel_v_receive(vm->heap + result);
+		if((result >= 0) && (EEL_nontypes)vm->heap[result].type ==
+				EEL_TILLEGAL)
+		{
+			eel_vmdump(vm, "Exception block forgot to return a "
+					"result!");
+			return EEL_XVMCHECK;
 		}
-
-		if(!vm->base)
+#endif
+		if(!vm->base || (o2EEL_function(
+				cf->f)->common.flags & EEL_FF_CFUNC))
 			return EEL_XEND;
+
+		reload_context(vm, vms);
+		if(result >= 0)
+			eel_v_receive(vm->heap + result);
 		break;
 	  }
 	  default:
@@ -958,6 +949,7 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 	DBG5(printf("|    pc = %d\n", vm->pc);)
 	DBG5(printf("|    sp = %d\n", vm->sp);)
 	DBG5(printf("'------------------------------\n");)
+/*FIXME:???*/
 	if(!vms->code)
 		return EEL_XEND;
 	else
@@ -1466,7 +1458,6 @@ EEL_xno eel_run(EEL_vm *vm)
 		XCHECK(check_args(vm, f));
 		XCHECK(call_f(vm, f, -1, 0));
 		reload_context(vm, &vms);
-//		RESCHEDULE;
 
 	  EEL_ICALLR
 		EEL_object *f;
@@ -1475,7 +1466,6 @@ EEL_xno eel_run(EEL_vm *vm)
 		XCHECK(check_args(vm, f));
 		XCHECK(call_f(vm, f, vm->base + B, 0));
 		reload_context(vm, &vms);
-//		RESCHEDULE;
 
 	  EEL_ICCALL
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
@@ -1489,7 +1479,6 @@ EEL_xno eel_run(EEL_vm *vm)
 #endif
 		XCHECK(call_f(vm, f->e.constants[B].objref.v, -1, A));
 		reload_context(vm, &vms);
-//		RESCHEDULE;
 
 	  EEL_ICCALLR
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
@@ -1503,7 +1492,6 @@ EEL_xno eel_run(EEL_vm *vm)
 #endif
 		XCHECK(call_f(vm, f->e.constants[C].objref.v, vm->base + B, A));
 		reload_context(vm, &vms);
-//		RESCHEDULE;
 
 	  EEL_IRETURN
 		clean(vm, CLEANTABLE, 0);
@@ -1527,7 +1515,6 @@ EEL_xno eel_run(EEL_vm *vm)
 			RETURN(EEL_XEND);
 		reload_context(vm, &vms);
 		DBG6(printf("<=== (Returned to function %p)\n", CALLFRAME->f);)
-//		RESCHEDULE;
 
 	  EEL_IRETURNR
 		int ri = CALLFRAME->result;
@@ -1558,7 +1545,6 @@ EEL_xno eel_run(EEL_vm *vm)
 		DBG6(printf("<=== (Returned to function %p)\n", CALLFRAME->f);)
 		if(ri >=0)
 			eel_v_receive(vm->heap + ri);
-//		RESCHEDULE;
 
 	  /* Memory management */
 	  EEL_ICLEAN

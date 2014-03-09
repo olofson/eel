@@ -466,71 +466,92 @@ static void strnquote(char *dst, const char *src, int maxlen, int srclen)
 }
 
 
-/* NOTE: Uses eel_salloc()! */
+static const char *o_stringrep(EEL_object *o,
+		const char *cname, const char *name, int size)
+{
+	EEL_vm *vm = o->vm;
+	EEL_state *es = VMP->state;
+	char *buf = eel_salloc(es);
+	int pos = 0;
+	pos += snprintf(buf + pos, EEL_SBUFSIZE - pos,
+			"<%s", cname ? cname : "object");
+	if(name)
+		pos += snprintf(buf + pos, EEL_SBUFSIZE - pos, " %s", name);
+	if(pos >= EEL_SBUFSIZE)
+		return buf;
+	if((EEL_classes)o->type == EEL_CSTRING)
+		pos += snprintf(buf + pos, EEL_SBUFSIZE - pos,
+				", hash: 0x%x", o2EEL_string(o)->hash);
+	if(pos >= EEL_SBUFSIZE)
+		return buf;
+	if(size >= 0)
+		pos += snprintf(buf + pos, EEL_SBUFSIZE - pos,
+				", size: %d", size);
+	if(pos >= EEL_SBUFSIZE)
+		return buf;
+	pos += snprintf(buf + pos, EEL_SBUFSIZE - pos, ", %p, rc: %d%s%s>",
+			o, o->refcount, o->weakrefs ? " WEAKREFS" : "",
+			eel_in_limbo(o) ? " LIMBO" : "");
+	return buf;
+}
+
 const char *eel_o_stringrep(EEL_object *o)
 {
 	EEL_vm *vm = o->vm;
 	EEL_state *es = VMP->state;
 	EEL_object *n;
-	char *buf = eel_salloc(es);
 	switch((EEL_classes)o->type)
 	{
 	  case EEL_CVALUE:
 	  case EEL_COBJECT:
 	  case EEL_CVECTOR:
-		snprintf(buf, EEL_SBUFSIZE,
-				"<virtual base class '%s' (%p; rc: %d)>",
-				eel_typename(vm, o->type),
-				o, o->refcount);
-		return buf;
+		return o_stringrep(o, "virtual base class",
+				eel_typename(vm, o->type), -1);
 	  case EEL_CCLASS:
 		n = o2EEL_classdef(o)->name;
-		snprintf(buf, EEL_SBUFSIZE, "<class '%s' (%p; rc: %d)>",
-				n ? eel_o2s(n) : "<unnamed>",
-				o, o->refcount);
-		return buf;
+		return o_stringrep(o, "class", n ? eel_o2s(n) : "<unnamed>",
+				-1);
 	  case EEL_CFUNCTION:
 		n = o2EEL_function(o)->common.name;
-		snprintf(buf, EEL_SBUFSIZE, "<function '%s' (%p; rc: %d)>",
-				n ? eel_o2s(n) : "<unnamed>",
-				o, o->refcount);
-		return buf;
+		return o_stringrep(o, "function", n ? eel_o2s(n) : "<unnamed>",
+				-1);
 	  case EEL_CMODULE:
 	  {
 	  	const char *s;
 	  	if(o2EEL_module(o)->exports && VMP->strings)
-			s = eel_module_modname(o);
+	  	{
+			if(!(s = eel_module_modname(o)))
+				s = "<unnamed>";
+	  	}
 		else
 			s = "<cannot get name>";
-		snprintf(buf, EEL_SBUFSIZE, "<module '%s' (%p; rc: %d)>",
-				s ? s : "<unnamed>", o, o->refcount);
-		return buf;
+		return o_stringrep(o, "module", s, -1);
 	  }
 	  case EEL_CSTRING:
 	  {
+	  	const char *res;
 		EEL_string *ps = o2EEL_string(o);
 		char *s = eel_salloc(es);
 		if(ps->buffer)
 			strnquote(s, ps->buffer, EEL_SBUFSIZE, ps->length);
 		else
 			snprintf(s, EEL_SBUFSIZE, "<no buffer!>");
-		snprintf(buf, EEL_SBUFSIZE, "<string %s (%p; %x; rc: %d)>",
-				s, o, ps->hash, o->refcount);
+		res = o_stringrep(o, "string", s, ps->length);
 		eel_sfree(es, s);
-		return buf;
+		return res;
 	  }
 	  case EEL_CDSTRING:
 	  {
+	  	const char *res;
 		EEL_dstring *ds = o2EEL_dstring(o);
 		char *s = eel_salloc(es);
 		if(ds->buffer)
 			strnquote(s, ds->buffer, EEL_SBUFSIZE, ds->length);
 		else
 			snprintf(s, EEL_SBUFSIZE, "<no buffer!>");
-		snprintf(buf, EEL_SBUFSIZE, "<dstring %s (%p; rc: %d)>",
-				s, o, o->refcount);
+		res = o_stringrep(o, "dstring", s, ds->length);
 		eel_sfree(es, s);
-		return buf;
+		return res;
 	  }
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -540,34 +561,29 @@ const char *eel_o_stringrep(EEL_object *o)
 	  case EEL_CVECTOR_S32:
 	  case EEL_CVECTOR_F:
 	  case EEL_CVECTOR_D:
-		snprintf(buf, EEL_SBUFSIZE, "<%s of %d elements"
-				" (%p; rc: %d)>",
-				eel_typename(vm, o->type),
-				o2EEL_vector(o)->length,
-				o, o->refcount);
-		return buf;
+		return o_stringrep(o, eel_typename(vm, o->type), NULL,
+				o2EEL_vector(o)->length);
 	  case EEL_CARRAY:
-		snprintf(buf, EEL_SBUFSIZE, "<array of %d values (%p; rc: %d)>",
-				o2EEL_array(o)->length, o, o->refcount);
-		return buf;
+		return o_stringrep(o, "array", NULL, o2EEL_array(o)->length);
 	  case EEL_CTABLE:
-		snprintf(buf, EEL_SBUFSIZE, "<table of %d entries (%p; rc: %d)>",
-				o2EEL_table(o)->length, o, o->refcount);
-		return buf;
+		return o_stringrep(o, "table", NULL, o2EEL_table(o)->length);
 	  case EEL__CUSER:
 	  default:
 		break;
 	}
 	if(es->classes)
-	{
-		n = o2EEL_classdef(es->classes[o->type])->name;
-		snprintf(buf, EEL_SBUFSIZE, "<object %p of class %s (rc: %d)>",
-			 	o, eel_o2s(n), o->refcount);
-	}
+		return o_stringrep(o, eel_o2s(
+				o2EEL_classdef(es->classes[o->type])->name),
+				NULL, -1);
 	else
-		snprintf(buf, EEL_SBUFSIZE, "<object %p of class #%d (rc: %d)>",
-			 	o, o->type, o->refcount);
-	return buf;
+	{
+	  	const char *res;
+		char *s = eel_salloc(es);
+		snprintf(s, EEL_SBUFSIZE, "object of class #%d", o->type);
+		res = o_stringrep(o, s, NULL, -1);
+		eel_sfree(es, s);
+		return res;
+	}
 }
 
 

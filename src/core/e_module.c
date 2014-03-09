@@ -152,7 +152,6 @@ EEL_object *eel_load(EEL_vm *vm, const char *modname, EEL_sflags flags)
 		return NULL;
 	if(!EEL_IS_OBJREF(vm->heap[res].type))
 		return NULL;
-	eel_o_own(vm->heap[res].objref.v);
 	return vm->heap[res].objref.v;
 }
 
@@ -160,7 +159,6 @@ EEL_object *eel_load(EEL_vm *vm, const char *modname, EEL_sflags flags)
 /*----------------------------------------------------------
 	EEL module class
 ----------------------------------------------------------*/
-
 
 
 static EEL_xno m_construct(EEL_vm *vm, EEL_types type,
@@ -359,7 +357,7 @@ entirely possible that the buffer is changed or moved while compiling!
 			return EEL_XMEMORY;
 		memcpy(m->source, s, m->len);
 		m->source[m->len] = 0;
-#ifdef EEL_VM_CHECKING
+#if defined(EEL_VM_CHECKING) && (DBGM2(1)+0 == 1)
 		// Otherwise, we'll get an internal error in checking mode,
 		// because it thinks we should take ownership of the string...
 		eel_v_own(op2);
