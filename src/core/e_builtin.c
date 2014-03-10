@@ -481,7 +481,7 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 		  case SE_ERR_DDEBUSY:
 			return EEL_XFILEOPENED;
 		  case SE_ERR_SHARE:
-			return EEL_XDEVICEERROR;
+			return EEL_XSHARINGVIOLATION;
 		}
 		return EEL_XDEVICEERROR;
 	}

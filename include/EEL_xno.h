@@ -124,6 +124,7 @@ extern "C" {
   EEL_DEFEX(XDEVICEOPENED,	"Device is already open")\
   EEL_DEFEX(XDEVICECLOSED,	"Device is closed")\
   EEL_DEFEX(XDEVICEERROR,	"Unspecified device I/O error")\
+  EEL_DEFEX(XSHARINGVIOLATION, "Sharing violation")\
   EEL_DEFEX(XTHREADCREATE,	"Could not create thread")\
   EEL_DEFEX(XBUFOVERFLOW,	"Buffer overflow")\
 \
