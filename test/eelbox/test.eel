@@ -55,6 +55,7 @@ export function main<args>
 	run("gltest.eel");
 	run("glballs.eel");
 	run("zstest.eel");
+	run("audiality.eel");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{

@@ -237,8 +237,6 @@ procedure check_input(dt)
 		  {
 			leave_intro();
 			switch ev.sym
-			  case SDL.KESCAPE
-				running = false;
 			  case SDL.KF1
 				graph = 0;
 			  case SDL.KF2
@@ -295,7 +293,12 @@ procedure check_input(dt)
 				ks[ev.sym] = 1;
 		  }
 		  case SDL.KEYUP
+		  {
 			ks[ev.sym] = 0;
+			switch ev.sym
+			  case SDL.KESCAPE
+				running = false;
+		  }
 		  case SDL.VIDEORESIZE
 		  {
 			screenw = 10 >| ev.w;
