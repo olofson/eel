@@ -72,18 +72,21 @@ static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 		return EEL_XDEVICEOPEN;
 	if(initc >= 5)
 	{
-		A2_errors ae;
-		const char *ad = eel_v2s(initv + 4);
-		if(!ad)
+		const char *adname = eel_v2s(initv + 4);
+		if(adname)
 		{
-			a2_CloseConfig(cfg);
-			return EEL_XDEVICEOPEN;
-		}
-		ae = a2_AddDriver(cfg, a2_NewDriver(A2_AUDIODRIVER, ad));
-		if(ae)
-		{
-			a2_CloseConfig(cfg);
-			return ea2_translate_error(ae);
+			A2_errors ae;
+			A2_driver *ad = a2_NewDriver(A2_AUDIODRIVER, adname);
+			if(!ad)
+			{
+				a2_CloseConfig(cfg);
+				return EEL_XNOTFOUND;
+			}
+			if((ae = a2_AddDriver(cfg, ad)))
+			{
+				a2_CloseConfig(cfg);
+				return ea2_translate_error(ae);
+			}
 		}
 	}
 	/* Hand it over to the state, so we don't have to keep track of it! */
