@@ -821,6 +821,7 @@ static void st_dump(EEL_state *es, EEL_symbol *st, int code, int indent)
 	int i, wrap;
 	const char *tmp;
 	char *inds = malloc(indent + 2);
+	memset(inds, ' ', indent + 2);
 	for(i = 0; i <= indent; i += S_TAB)
 		inds[i] = '|';
 	inds[indent + 1] = 0;
