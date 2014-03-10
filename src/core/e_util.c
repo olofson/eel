@@ -269,12 +269,9 @@ const char *eel_v2s(EEL_value *v)
 	switch(v->type)
 	{
 	  case EEL_TNIL:
-		return "nil";
+	  case EEL_TBOOLEAN:
 	  case EEL_TREAL:
 	  case EEL_TINTEGER:
-		return NULL;
-	  case EEL_TBOOLEAN:
-		return v->integer.v ? "true" : "false";
 	  case EEL_TTYPEID:
 		return NULL;
 	  case EEL_TOBJREF:

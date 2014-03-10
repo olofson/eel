@@ -120,9 +120,7 @@ static inline void eel_s2v(EEL_vm *vm, EEL_value *v, const char *s)
  * The returned string is only valid until re-entering the VM!
  *
  * NOTE:
- *	This will *not* cast non-string values to strings,
- *	except in special (simple) cases like nil, boolean
- *	values and enum values.
+ *	This will *not* cast non-string values to strings!
  */
 EELAPI(const char *)eel_v2s(EEL_value *v);
 
