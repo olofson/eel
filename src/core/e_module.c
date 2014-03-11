@@ -99,8 +99,10 @@ EEL_object *eel_load_buffer(EEL_vm *vm,
 	EEL_object *m = eel_load_buffer_nc(vm, source, len, flags);
 	if(!m)
 		return NULL;
+#if 0
 	eel_clear_errors(es);
 	eel_clear_warnings(es);
+#endif
 	eel_try(es)
 	{
 		EEL_xno x;
@@ -144,8 +146,10 @@ EEL_object *eel_load(EEL_vm *vm, const char *modname, EEL_sflags flags)
 {
 	EEL_state *es = VMP->state;
 	int res;
+#if 0
 	eel_clear_errors(VMP->state);
 	eel_clear_warnings(VMP->state);
+#endif
 	if(!es->eellib)
 		return eel_get_loaded_module(vm, modname); /* Bootstrap! */
 	if(eel_callnf(vm, es->eellib, "load", "Rsi", &res, modname, flags))
