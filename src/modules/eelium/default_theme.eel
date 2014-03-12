@@ -5,12 +5,12 @@
 
 module default_theme;
 
-import "ebgui";
 import "SDL" as SDL;
-import "recttools" as RT;
-import "text" as text;
 import "math";
-import "drawtools";
+import "eelium/ebgui";
+import "eelium/recttools" as RT;
+import "eelium/text" as text;
+import "eelium/drawtools";
 
 // Theme constructor
 export function Create

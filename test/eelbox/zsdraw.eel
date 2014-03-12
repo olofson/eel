@@ -6,8 +6,8 @@
 import "math";
 import "SDL" as SDL;
 import "ZeeSpace" as zs;
-import "ebgui" as gui;
-import "drawtools" as dt;
+import "eelium/ebgui" as gui;
+import "eelium/drawtools" as dt;
 
 constant HANDLESIZE = 10;
 

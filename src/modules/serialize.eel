@@ -1,0 +1,260 @@
+   ////////////////////////////////////////////////////////////
+  // serialize.eel - (De)serialize EEL structures as EEL code
+ // Copyright 2011, 2014 David Olofson
+////////////////////////////////////////////////////////////
+
+module serialize;
+
+import "io";
+
+
+// Flags for serialize()
+export constant SERIALIZE_DROP_UNKNOWN = 0x00000001;
+
+
+// Binary format type IDs.
+//
+//	CHANGING THESE BREAKS OLD FILES!!!
+//	(Adding new ones is safe in one direction, obviously.)
+//
+constant BIN_UNKNOWN =	0;
+constant BIN_NIL =	1;
+constant BIN_INTEGER =	2;
+constant BIN_REAL =	3;
+constant BIN_BOOLEAN =	4;	// True
+constant BIN_BOOLEANF =	5;	// False
+constant BIN_STRING =	6;
+constant BIN_DSTRING =	7;
+constant BIN_TABLE =	8;
+constant BIN_ARRAY =	9;
+constant BIN_VECTOR_D =	10;
+
+
+procedure write_value_eel(buf, v, indent, flags)
+{
+	switch typeof v
+	  case nil, integer, real, boolean
+		buf.+ (dstring)v;
+	  case string, dstring
+	  {
+		buf.+ "\"";
+		buf.+ v;
+		buf.+ "\"";
+	  }
+	  case vector_d
+	  {
+		buf.+ "vector [";
+		for local j = 0, sizeof v - 1
+		{
+			buf.+ (string)v[j];
+			if j < (sizeof v - 1)
+				buf.+ ", ";
+		}
+		buf.+ "]";
+	  }
+	  case table
+	  {
+		local i2 = indent + "\t";
+		buf.+ "table [\n";
+		for local i = 0, sizeof v - 1
+		{
+			local tk, local tv = key(v, i), index(v, i);
+			buf.+ i2;
+			buf.+ "(";
+			write_value_eel(buf, tk, i2, flags);
+			buf.+ ", ";
+			write_value_eel(buf, tv, i2, flags);
+			buf.+ ")";
+			if i < (sizeof v - 1)
+				buf.+ ",";
+			buf.+ "\n";
+		}
+		buf.+ indent;
+		buf.+ "]";
+	  }
+	  case array
+	  {
+		local i2 = indent + "\t";
+		buf.+ "[\n";
+		for local i = 0, sizeof v - 1
+		{
+			buf.+ i2;
+			write_value_eel(buf, v[i], i2, flags);
+			if i < (sizeof v - 1)
+				buf.+ ",";
+			buf.+ "\n";
+		}
+		buf.+ indent;
+		buf.+ "]";
+	  }
+	  default
+	  	if not (flags & SERIALIZE_DROP_UNKNOWN)
+			throw "serialize(): Value of unsupported type '" +
+					(string)typeof v + "'!";
+}
+
+
+procedure write_typed(buf, type)[val]
+{
+	local s = dstring [type];
+	if specified val
+		write(buf, s, val);
+	else
+		write(buf, s);
+}
+
+procedure write_value_bin(buf, v, flags)
+{
+	switch typeof v
+	  case nil
+		write_typed(buf, BIN_NIL);
+	  case integer
+		write_typed(buf, BIN_INTEGER, v);
+	  case real
+		write_typed(buf, BIN_REAL, v);
+	  case boolean
+		if v
+			write_typed(buf, BIN_BOOLEAN);
+		else
+			write_typed(buf, BIN_BOOLEANF);
+	  case string
+	  {
+		write_typed(buf, BIN_STRING);
+		write(buf, sizeof v, v);
+	  }
+	  case dstring
+	  {
+		write_typed(buf, BIN_DSTRING);
+		write(buf, sizeof v, v);
+	  }
+	  case vector_d
+	  {
+		write_typed(buf, BIN_VECTOR_D);
+		write(buf, sizeof v);
+		for local j = 0, sizeof v - 1
+			write(buf, v[j]);
+	  }
+	  case table
+	  {
+		write_typed(buf, BIN_TABLE);
+		write(buf, sizeof v);
+		for local i = 0, sizeof v - 1
+		{
+			write_value_bin(buf, key(v, i), flags);
+			write_value_bin(buf, index(v, i), flags);
+		}
+	  }
+	  case array
+	  {
+		write_typed(buf, BIN_ARRAY);
+		write(buf, sizeof v);
+		for local i = 0, sizeof v - 1
+			write_value_bin(buf, v[i], flags);
+	  }
+	  default
+	  	if not (flags & SERIALIZE_DROP_UNKNOWN)
+			throw "serialize(): Value of unsupported type '" +
+					(string)typeof v + "'!";
+}
+
+
+function read_value_bin(mf)
+{
+	local type = read(mf, 1)[0];
+	switch type
+	  case BIN_NIL
+		return nil;
+	  case BIN_INTEGER
+		return read(mf, integer);
+	  case BIN_REAL
+		return read(mf, real);
+	  case BIN_BOOLEAN
+		return true;
+	  case BIN_BOOLEANF
+		return false;
+	  case BIN_STRING, BIN_UNKNOWN
+		return (string)read(mf, read(mf, integer));
+	  case BIN_DSTRING
+		return read(mf, read(mf, integer));
+	  case BIN_TABLE
+	  {
+		local t = table [];
+		local items = read(mf, integer);
+		for local i = 0, items - 1
+			t[read_value_bin(mf)] = read_value_bin(mf);
+		return t;
+	  }
+	  case BIN_ARRAY
+	  {
+		local a = [];
+		local items = read(mf, integer);
+		for local i = 0, items - 1
+			a.+ read_value_bin(mf);
+		return a;
+	  }
+	  case BIN_VECTOR_D
+	  {
+		local v = vector_d [];
+		local items = read(mf, integer);
+		for local i = 0, items - 1
+			v.+ read(mf, real);
+		return v;
+	  }
+	throw "deserialize(): Unknown type code " + (string)type + "!";
+}
+
+
+export function serialize(v)[_format, _flags]
+{
+	if specified _format
+		local format = _format;
+	else
+		format = "eel";
+	if specified _flags
+		local flags = _flags;
+	else
+		flags = 0;
+	switch format
+	  case "eel"
+	  {
+		local buf = dstring [];
+		write_value_eel(buf, v, "", flags);
+		return buf;
+	  }
+	  case "bin"
+	  {
+		local buf = memfile [];
+		write_value_bin(buf, v, flags);
+		return buf.buffer;
+	  }
+	throw "serialize(): Unknown format '" + format + "'!";
+}
+
+
+export function deserialize(buf)[_format]
+{
+	if specified _format
+		local format = _format;
+	else
+		format = "eel";
+	switch format
+	  case "eel"
+	  {
+		local b = dstring [];
+		b.+ 	"export function __deserialize\n"
+			"{\n"
+			"	return ";
+		b.+	buf;
+		b.+	";\n"
+			"}\n";
+		return compile(b).__deserialize();
+	  }
+	  case "bin"
+	  {
+		local mf = memfile [buf];
+		return read_value_bin(mf);
+	  }
+	  default
+		throw "deserialize(): Unknown format '" + _format + "'!";
+	return nil;
+}

@@ -11,7 +11,7 @@
 import "math";
 import "SDL";
 import "SDL_image" as IMG;
-import "text" as text;
+import "eelium/text" as text;
 
 constant X = 0;
 constant Y = 1;

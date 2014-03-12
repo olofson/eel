@@ -79,6 +79,7 @@ static EEL_xno init_env_table(EEL_state *es)
 	/* Module paths */
 	XCHECK(eel_o_construct(es->vm, EEL_CARRAY, NULL, 0, &a));
 	XCHECK(array_sadd(a.objref.v, "."));
+	XCHECK(array_sadd(a.objref.v, "./modules"));
 	XCHECK(array_sadd(a.objref.v, EEL_MODULE_DIR));
 	XCHECK(array_sadd(a.objref.v, ""));
 	XCHECK(eel_setsindex(es->environment, "path_modules", &a));

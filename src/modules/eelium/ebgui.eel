@@ -7,9 +7,9 @@ module ebgui;
 
 import "math";
 import "SDL" as SDL;
-import "recttools" as RT;
-import "line" as line;
-export import "ebguidefs";
+import "eelium/recttools" as RT;
+import "eelium/line" as line;
+export import "eelium/ebguidefs";
 
 
 static system_unicode = SDL.EnableUNICODE(true);
@@ -69,7 +69,7 @@ static user_theme;
 export function DefaultTheme
 {
 //	return default_theme_cons();
-	return load("default_theme").Create();
+	return load("eelium/default_theme").Create();
 }
 
 

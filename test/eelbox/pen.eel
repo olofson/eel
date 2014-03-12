@@ -1,9 +1,9 @@
 /////////////////////////////////////////////
 // pen.eel - Simple pen class for drawing
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math", "line";
+import "SDL", "math", "eelium/line";
 
 export function create(screen)[buffer]
 {

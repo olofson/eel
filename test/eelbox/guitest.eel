@@ -4,8 +4,8 @@
 ////////////////////////////////////////////////////////
 
 import "SDL" as SDL;
-import "ebgui" as ebgui;
 import "math";
+import "eelium/ebgui" as ebgui;
 
 static do_exit = false;
 static askexit_up = false;

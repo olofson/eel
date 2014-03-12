@@ -17,4 +17,4 @@
 
 #cmakedefine	EEL_HAVE_EELBOX
 
-#define	EEL_MODULE_DIR	"/usr/lib/EEL"
+#define	EEL_MODULE_DIR	"@EEL_MODULE_DIR@"

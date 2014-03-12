@@ -10,7 +10,7 @@
 import "math";
 import "SDL";
 import "SDL_image" as IMG;
-import "text" as text;
+import "eelium/text" as text;
 
 static rng = table [
 	.im	139968,
