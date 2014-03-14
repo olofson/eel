@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_function.c - EEL Function Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2004-2005, 2009, 2011-2012 David Olofson
+ * Copyright 2004-2005, 2009, 2011-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -58,6 +58,7 @@ static EEL_xno f_destruct(EEL_object *eo)
 		int i;
 		eel_free(vm, f->e.lines);
 		eel_free(vm, f->e.code);
+		eel_free(vm, f->e.argdefaults);
 		DBGN(printf("--- Freeing constants of '%s' ---\n",
 				eel_o2s(f->common.name));)
 		for(i = 0; i < f->e.nconstants; ++i)
@@ -181,6 +182,10 @@ int eel_function_compare(EEL_function *f1, EEL_function *f2)
 		return 0;
 	if(f1->common.name != f1->common.name)
 		return 0;
+/*
+FIXME: Do we compare default argument values as well here, or at least verify
+FIXME: that the functions HAVE default values in the same positions?
+*/
 	return 1;
 }
 

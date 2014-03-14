@@ -7,21 +7,22 @@
 //		included by e_builtin.c. If changes are made to
 //		this file, EEL must be rebuilt and reinstalled!
 //
-// This software is provided 'as-is', without any express or implied warranty.
-// In no event will the authors be held liable for any damages arising from the
-// use of this software.
+// This software is provided 'as-is', without any express or implied
+// warranty. In no event will the authors be held liable for any damages
+// arising from the use of this software.
 //
 // Permission is granted to anyone to use this software for any purpose,
-// including commercial applications, and to alter it and redistribute it
-// freely, subject to the following restrictions:
+// including commercial applications, and to alter it and redistribute
+// it freely, subject to the following restrictions:
 //
-// 1. The origin of this software must not be misrepresented; you must not
-//    claim that you wrote the original software. If you use this software
-//    in a product, an acknowledgment in the product documentation would be
-//    appreciated but is not required.
-// 2. Altered source versions must be plainly marked as such, and must not be
-//    misrepresented as being the original software.
-// 3. This notice may not be removed or altered from any source distribution.
+// 1. The origin of this software must not be misrepresented; you must
+//    not claim that you wrote the original software. If you use this
+//    software in a product, an acknowledgment in the product
+//    documentation would be appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must
+//    not be misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source
+//    distribution.
 ///////////////////////////////////////////////////////////////////////////
 
 module builtin;
@@ -80,35 +81,23 @@ export function builtin_version
 //
 
 // Compile a string of EEL source code into a module
-export function compile(s)[flags, filename, modname]
+export function compile(s)[flags = 0, filename = nil, modname = nil]
 {
 	local m = module [];
-	if specified flags
-		local f = flags;
-	else
-		f = 0;
 	m.__source = s;
-	if specified filename
-		local fn = filename;
-	else
-		fn = nil;
-	if specified modname
-		local mn = modname;
-	else
-		mn = nil;
-	if fn
-		m.__filename = fn;
+	if filename
+		m.__filename = filename;
 	else
 		m.__filename = "script from " + ((string)typeof s) + ", " +
 				(string)sizeof s + " bytes";
-	if mn
-		m.__modname = mn;
+	if modname
+		m.__modname = modname;
 	else
 		m.__modname = m.__filename;
-	if not (f & SF_NOCOMPILE)
+	if not (flags & SF_NOCOMPILE)
 	{
-		__compile(m, f);
-		if not (f & SF_NOINIT)
+		__compile(m, flags);
+		if not (flags & SF_NOINIT)
 			m.__init_module();
 	}
 	return m;
@@ -155,7 +144,8 @@ export function __load_via_path_modules(modname, flags)
 	for local i = 0, sizeof modpaths - 1
 	{
 		if sizeof modpaths[i]
-			local m = try_load(modpaths[i] + DIRSEP + modname, flags);
+			local m = try_load(modpaths[i] + DIRSEP + modname,
+					flags);
 		else
 			m = try_load(modname, flags);
 		if m
@@ -180,25 +170,21 @@ $.module_loaders = [
 
 
 // Try to load a module, using the installed module loaders
-export function load(modname)[flags]
+export function load(modname)[flags = 0]
 {
 	local x = $.module_loaders;
-	if specified flags
-		local f = flags;
-	else
-		f = 0;
 	for local i = 0, sizeof x - 1
 	{
 		local load_error = nil;
 		try
 		{
-			local m = x[i](modname, f);
+			local m = x[i](modname, flags);
 			if typeof m == module
 				return m;
 			load_error = "load(): " + x[i].name + "(\"" +
 					(string)modname + "\"" + ", " +
-					(string)f + ") returned " + (string)m +
-					" instead of a module";
+					(string)flags + ") returned " +
+					(string)m + " instead of a module";
 		}
 		if load_error
 			throw load_error;
@@ -236,12 +222,8 @@ try
 //////////////////////////////////////////////////////////////////////////
 // Deep cloning tool
 //
-export function deepclone(src)[_level]
+export function deepclone(src)[level = 0]
 {
-	if specified _level
-		local level = _level + 1;
-	else
-		level = 0;
 	if level > 1000
 		throw "deepclone(): Infinite recursion aborted!";
 	switch typeof src
@@ -249,14 +231,14 @@ export function deepclone(src)[_level]
 	  {
 		local a = [];
 		for local i = 0, sizeof src - 1
-			a[i] = deepclone(src[i], level);
+			a[i] = deepclone(src[i], level + 1);
 		return a;
 	  }
 	  case table
 	  {
 		local t = table [];
 		for local i = 0, sizeof src - 1
-			t[key(src, i)] = deepclone(index(src, i), level);
+			t[key(src, i)] = deepclone(index(src, i), level + 1);
 		return t;
 	  }
 	  default
@@ -267,12 +249,8 @@ export function deepclone(src)[_level]
 //////////////////////////////////////////////////////////////////////////
 // Deep comparison tool
 //
-export function deepcompare(l, r)[_level]
+export function deepcompare(l, r)[level = 0]
 {
-	if specified _level
-		local level = _level + 1;
-	else
-		level = 0;
 	if level > 1000
 		throw "deepcompare(): Infinite recursion aborted!";
 	switch typeof l
@@ -283,7 +261,7 @@ export function deepcompare(l, r)[_level]
 		if sizeof l != sizeof r
 			return false;
 		for local i = 0, sizeof l - 1
-			if not deepcompare(l[i], r[i], level)
+			if not deepcompare(l[i], r[i], level + 1)
 				return false;
 		return true;
 	  }
@@ -296,7 +274,7 @@ export function deepcompare(l, r)[_level]
 		for local i = 0, sizeof l - 1
 		{
 			local k = key(l, i);
-			if not deepcompare(l[k], r[k], level)
+			if not deepcompare(l[k], r[k], level + 1)
 				return false;
 		}
 		return true;

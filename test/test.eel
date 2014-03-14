@@ -43,6 +43,7 @@ export function main<args>
 	run("callback");
 	run("exceptions");
 	run("varargs");
+	run("argdefault");
 	run("nesting");
 	run("scope");
 	run("loops");

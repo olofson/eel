@@ -176,14 +176,18 @@
 #define	EEL_IPHARGI	EEL_I(PHARGI, A)	/* push args[A]; */
 #define	EEL_IPHARGI2	EEL_I(PHARGI2, AB)	/* push args[A]; push args[B]; */
 #define	EEL_ISETARGI	EEL_I(SETARGI, AB)	/* args[B] = R[A]; */
+#if 0
 #define	EEL_IGETARG	EEL_I(GETARG, AB)	/* R[A] = args[R[B]]; */
 #define	EEL_ISETARG	EEL_I(SETARG, AB)	/* args[R[B]] = R[A]; */
+#endif
 
 /* Tuple argument access */
 #define	EEL_IGETTARGI	EEL_I(GETTARGI, ABC)	/* R[A] = tupargs[R[C]][B]; */
+#if 0
 #define	EEL_ISETTARGI	EEL_I(SETTARGI, ABC)	/* tupargs[R[C]][B] = R[A]; */
 #define	EEL_IGETTARG	EEL_I(GETTARG, ABC)	/* R[A] = tupargs[R[C]][R[B]]; */
 #define	EEL_ISETTARG	EEL_I(SETTARG, ABC)	/* tupargs[R[C]][R[B]] = R[A]; */
+#endif
 
 /* Upvalue argument access */
 #define	EEL_IGETUVARGI	EEL_I(GETUVARGI, ABC)	/* R[A] = (args uvlevel C)[B]; */
@@ -191,7 +195,9 @@
 
 /* Upvalue tuple argument access */
 #define	EEL_IGETUVTARGI	EEL_I(GETUVTARGI, ABCD)	/* R[A] = (tupargs uvlevel D)[R[C]][B]; */
+#if 0
 #define	EEL_ISETUVTARGI	EEL_I(SETUVTARGI, ABCD)	/* (tupargs uvlevel D)[R[C]][B] = R[A]; */
+#endif
 
 /* Operators */
 #define	EEL_IBOP	EEL_I(BOP, ABCD)	/* R[A] = R[B] op[C] R[D]; */
@@ -285,9 +291,7 @@
 	EEL_IINDSETI	EEL_IINDGETI	EEL_IINDSET	EEL_IINDGET	\
 	EEL_IINDSETC	EEL_IINDGETC					\
 	EEL_IGETARGI	EEL_IPHARGI	EEL_IPHARGI2	EEL_ISETARGI	\
-	EEL_IGETARG	EEL_ISETARG					\
-	EEL_IGETTARGI	EEL_ISETTARGI	EEL_IGETTARG	EEL_ISETTARG	\
-	EEL_ISETUVARGI	EEL_IGETUVARGI	EEL_ISETUVTARGI	EEL_IGETUVTARGI	\
+	EEL_IGETTARGI	EEL_IGETUVARGI	EEL_ISETUVARGI	EEL_IGETUVTARGI	\
 	EEL_IBOP	EEL_IPHBOP	EEL_IIPBOP			\
 	EEL_IBOPS	EEL_IIPBOPS					\
 	EEL_IBOPI	EEL_IPHBOPI	EEL_IIPBOPI			\

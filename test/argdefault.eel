@@ -1,0 +1,137 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+procedure verify(f, result, correct)
+{
+	print("  ", f.name, " returned \"", result,"\" ; should be \"", correct);
+	if result == correct
+		print("\" PASS\n");
+	else
+	{
+		print("\" FAIL\n");
+		throw "Incorrect result!";
+	}
+}
+
+function optional[a = "A", b = "B", c = "C"]
+{
+	return a + b + c;
+}
+
+function tuple<a = "A", b = "B", c = "C">
+{
+	return a[0] + b[0] + c[0] + a[1] + b[1] + c[1];
+}
+
+function req_optional(req)[a = "A", b = "B", c = "C"]
+{
+	return req + a + b + c;
+}
+
+function req_tuple(req)<a = "A", b = "B", c = "C">
+{
+	return req + a[0] + b[0] + c[0] + a[1] + b[1] + c[1];
+}
+
+function optional_uv[a = "A", b = "B", c = "C"]
+{
+	function f()
+	{
+		return upvalue a + upvalue b + upvalue c;
+	}
+	return f();
+}
+
+function tuple_uv<a = "A", b = "B", c = "C">
+{
+	function f()
+	{
+		upvalue a, upvalue b, upvalue c;
+		return a[0] + b[0] + c[0] + a[1] + b[1] + c[1];
+	}
+	return f();
+}
+
+function req_optional_uv(req)[a = "A", b = "B", c = "C"]
+{
+	function f()
+	{
+		return upvalue req + upvalue a + upvalue b + upvalue c;
+	}
+	return f();
+}
+
+function req_tuple_uv(req)<a = "A", b = "B", c = "C">
+{
+	function f()
+	{
+		upvalue req, upvalue a, upvalue b, upvalue c;
+		return req + a[0] + b[0] + c[0] + a[1] + b[1] + c[1];
+	}
+	return f();
+}
+
+/*
+TODO:
+function optional_tuple[a = "x", b = "y"]<c = "z", d = "u">
+{
+	return a + b + c + d;
+}
+*/
+
+export function main<args>
+{
+	print("Argument default value tests:\n");
+
+	print("------------------------------------------\n");
+	verify(optional, optional("a", "b", "c"), "abc");
+	verify(optional, optional("a", "b"), "abC");
+	verify(optional, optional("a"), "aBC");
+	verify(optional, optional(), "ABC");
+	print("------------------------------------------\n");
+	verify(tuple, tuple("a", "b", "c", "x", "y", "z"), "abcxyz");
+	verify(tuple, tuple("a", "b", "c"), "abcABC");
+	verify(tuple, tuple(), "ABCABC");
+	print("------------------------------------------\n");
+	verify(req_optional, req_optional("R", "a", "b", "c"), "Rabc");
+	verify(req_optional, req_optional("R", "a", "b"), "RabC");
+	verify(req_optional, req_optional("R", "a"), "RaBC");
+	verify(req_optional, req_optional("R"), "RABC");
+	print("------------------------------------------\n");
+	verify(req_tuple, req_tuple("R", "a", "b", "c", "x", "y", "z"),
+			"Rabcxyz");
+	verify(req_tuple, req_tuple("R", "a", "b", "c"), "RabcABC");
+	verify(req_tuple, req_tuple("R"), "RABCABC");
+/*
+TODO: Maybe? This isn't allowed currently; tuples must be complete!
+	verify(tuple, tuple("a", "b", "c", "x", "y"), "abcxyC");
+	verify(tuple, tuple("a", "b", "c", "x"), "abcxBC");
+	verify(tuple, tuple("a", "b"), "abCABC");
+	verify(tuple, tuple("a"), "aBCABC");
+*/
+	print("------------------------------------------\n");
+	verify(optional_uv, optional_uv("a", "b", "c"), "abc");
+	verify(optional_uv, optional_uv("a", "b"), "abC");
+	verify(optional_uv, optional_uv("a"), "aBC");
+	verify(optional_uv, optional_uv(), "ABC");
+	print("------------------------------------------\n");
+	verify(tuple_uv, tuple_uv("a", "b", "c", "x", "y", "z"), "abcxyz");
+	verify(tuple_uv, tuple_uv("a", "b", "c"), "abcABC");
+	verify(tuple_uv, tuple_uv(), "ABCABC");
+	print("------------------------------------------\n");
+	verify(req_optional_uv, req_optional_uv("R", "a", "b", "c"), "Rabc");
+	verify(req_optional_uv, req_optional_uv("R", "a", "b"), "RabC");
+	verify(req_optional_uv, req_optional_uv("R", "a"), "RaBC");
+	verify(req_optional_uv, req_optional_uv("R"), "RABC");
+	print("------------------------------------------\n");
+	verify(req_tuple_uv, req_tuple_uv("R", "a", "b", "c", "x", "y", "z"),
+			"Rabcxyz");
+	verify(req_tuple_uv, req_tuple_uv("R", "a", "b", "c"), "RabcABC");
+	verify(req_tuple_uv, req_tuple_uv("R"), "RABCABC");
+	print("------------------------------------------\n");
+
+	print("Argument default value tests done.\n");
+	return 0;
+}

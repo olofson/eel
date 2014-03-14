@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_symtab.h - Symbol Table/Tree
 ---------------------------------------------------------------------------
- * Copyright 2000, 2002, 2004-2006, 2009, 2011 David Olofson
+ * Copyright 2000, 2002, 2004-2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -217,6 +217,7 @@ struct EEL_symbol
 		{
 			EEL_varkinds	kind;
 			int		location;	/* Heap/stack/... */
+			int		defindex;	/* Constant index */
 		} var;
 
 		/* CONSTANT */

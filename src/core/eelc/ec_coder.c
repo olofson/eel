@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_coder.c - EEL VM Code Generation Tools
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -447,20 +447,23 @@ static const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 		snprintf(buf, BS, "ARGS[%d], ARGS[%d]", A, B);
 	  EEL_ISETARGI
 		snprintf(buf, BS, "R%d, ARGS[%d]", A, B);
+#if 0
 	  EEL_IGETARG
 		snprintf(buf, BS, "ARGS[R%d], R%d", B, A);
 	  EEL_ISETARG
 		snprintf(buf, BS, "R%d, ARGS[R%d]", A, B);
-
+#endif
 	  /* Tuple argument access */
 	  EEL_IGETTARGI
 		snprintf(buf, BS, "TUPARGS[R%d][%d], R%d", C, B, A);
+#if 0
 	  EEL_ISETTARGI
 		snprintf(buf, BS, "R%d, TUPARGS[R%d][%d]", A, C, B);
 	  EEL_IGETTARG
 		snprintf(buf, BS, "TUPARGS[R%d][R%d], R%d", C, B, A);
 	  EEL_ISETTARG
 		snprintf(buf, BS, "R%d, TUPARGS[R%d][R%d]", A, C, B);
+#endif
 
 	  /* Upvalue argument access */
 	  EEL_IGETUVARGI
@@ -471,8 +474,10 @@ static const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 	  /* Upvalue tuple argument access */
 	  EEL_IGETUVTARGI
 		snprintf(buf, BS, "TUPARGS[R%d][%d]^%d, R%d", C, B, D, A);
+#if 0
 	  EEL_ISETUVTARGI
 		snprintf(buf, BS, "R%d, TUPARGS[R%d][%d]^%d", A, C, B, D);
+#endif
 
 	  /* Operators */
 	  EEL_IBOP
@@ -1683,7 +1688,7 @@ int eel_codeAB(EEL_coder *cdr, EEL_opcodes op, int a, int b)
 		break;
 	  case EEL_OMOVE_AB:
 	  case EEL_OGETARGI_AB:
-	  case EEL_OGETARG_AB:
+/*	  case EEL_OGETARG_AB:*/
 	  case EEL_ONEG_AB:
 	  case EEL_OBNOT_AB:
 	  case EEL_ONOT_AB:
@@ -1730,7 +1735,7 @@ int eel_codeABC(EEL_coder *cdr, EEL_opcodes op, int a, int b, int c)
 	  case EEL_OINDGETI_ABC:
 	  case EEL_OINDGET_ABC:
 	  case EEL_OGETTARGI_ABC:
-	  case EEL_OGETTARG_ABC:
+/*	  case EEL_OGETTARG_ABC:*/
 	  case EEL_OGETUVARGI_ABC:
 	  case EEL_OCAST_ABC:
 		EEL_REGUSE(op, a, EEL_RUTEMPORARY, "A")

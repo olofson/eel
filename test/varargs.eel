@@ -119,6 +119,19 @@ function fixed_tuple(a)<b, c>
 	return r;
 }
 
+/*
+TODO:
+function fixed_optional_tuple(a)[b]<c, d>
+{
+	local r = a;
+	if specified b
+		r = r + b;
+	for local t = 0, tuples - 1
+		r = r + c[t] + d[t];
+	return r;
+}
+*/
+
 export function main<args>
 {
 	print("Varargs tests:\n");

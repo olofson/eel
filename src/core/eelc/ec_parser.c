@@ -90,23 +90,6 @@ static void check_constructor(EEL_state *es, EEL_classes type)
 }
 
 
-/* Check that 'al' has at least 'min' and at most 'max' arguments. */
-static void check_argc(EEL_mlist *al, int min, int max)
-{
-	EEL_state *es = al->coder->state;
-	if(min > 0)
-		if(al->length < min)
-			eel_cerror(es, "Too few arguments! "
-					"(Got %d; expected at least %d)",
-					al->length, min);
-	if(max > 0)
-		if(al->length > max)
-			eel_cerror(es, "Too many arguments!"
-					"(Got %d; expected at most %d)",
-					al->length, max);
-}
-
-
 /* Make sure we have 'token' as the current token. */
 static void expect(EEL_state *es, int token, const char *errmsg, ...)
 {
@@ -543,6 +526,7 @@ static int declare_func(EEL_state *es, const char *name, EEL_mlist *al,
  */
 static void declare_func_args(EEL_state *es, int has_result)
 {
+	int tupdefs = 0;
 	EEL_symbol *s;
 	EEL_finder ef;
 	EEL_function *f = o2EEL_function(es->context->coder->f);
@@ -563,18 +547,58 @@ static void declare_func_args(EEL_state *es, int has_result)
 			++f->common.reqargs;
 			break;
 		  case EVK_OPTARG:
-			s->v.var.location = f->common.optargs;
+		  	/*
+		  	 * NOTE: This requires that all required arguments have
+		  	 * been handled before we get to the optional ones!
+		  	 */
+			s->v.var.location = f->common.reqargs +
+					f->common.optargs;
 			++f->common.optargs;
+			if(s->v.var.defindex >= 0)
+				f->common.flags |= EEL_FF_OPTDEFAULTS;
 			break;
 		  case EVK_TUPARG:
 			s->v.var.location = f->common.tupargs;
 			++f->common.tupargs;
+			if(s->v.var.defindex >= 0)
+			{
+				f->common.flags |= EEL_FF_TUPDEFAULTS;
+				++tupdefs;
+			}
 			break;
 		}
 	if(f->common.results)
 		f->common.flags |= EEL_FF_RESULTS;
 	if(f->common.reqargs || f->common.optargs || f->common.tupargs)
 		f->common.flags |= EEL_FF_ARGS;
+	if(tupdefs && (f->common.tupargs != tupdefs))
+		eel_cerror(es, "Incomplete set of defaults for tuple!");
+	if(f->common.flags & (EEL_FF_OPTDEFAULTS | EEL_FF_TUPDEFAULTS))
+	{
+		int *ad = f->e.argdefaults = malloc((f->common.optargs +
+				f->common.tupargs) * sizeof(int));
+		if(!ad)
+			eel_serror(es, "Could not allocate argument defaults "
+					"array!");
+		eel_finder_init(es, &ef, es->context->symtab, ESTF_TYPES);
+		while((s = eel_finder_go(&ef)))
+			switch((EEL_varkinds)s->v.var.kind)
+			{
+			  case EVK_STACK:
+			  case EVK_STATIC:
+			  case EVK_ARGUMENT:
+				break;
+			  case EVK_OPTARG:
+				ad[s->v.var.location - f->common.reqargs] =
+						s->v.var.defindex;
+				break;
+			  case EVK_TUPARG:
+				ad[f->common.optargs + s->v.var.location -
+						f->common.optargs] =
+						s->v.var.defindex;
+				break;
+			}
+	}
     DBGF({
 	printf("-- function '%s' has ", eel_o2s(es->context->symtab->name));
 	printf("%d results, ", f->common.results);
@@ -602,7 +626,8 @@ TODO: compile time!
 static EEL_symbol *declare_var(EEL_state *es, const char *name, EEL_varkinds kind)
 {
 	EEL_coder *cdr = es->context->coder;
-	EEL_symbol *s = eel_s_add(es, es->context->symtab, name, EEL_SVARIABLE);
+	EEL_symbol *s = eel_s_add(es, es->context->symtab, name,
+			EEL_SVARIABLE);
 	if(!s)
 		eel_serror(es, "Could not create symbol for new variable!");
 	s->v.var.kind = kind;
@@ -1573,7 +1598,8 @@ static void check_specified(EEL_state *es, EEL_symbol *s, EEL_mlist *al)
 			eel_cerror(es, "Expected index expression!");
 		}
 		expect(es, ']', "Missing ']'!");
-		check_argc(ind, 1, 1);
+		if(ind->length != 1)
+			eel_cerror(es, "Expected exactly one expression!");
 		r = eel_m_result(al);
 		eel_m_read(eel_ml_get(ind, 0), r);
 		eel_codeAB(cdr, EEL_OTSPEC_AB, r, r);
@@ -2793,7 +2819,8 @@ static int constdeclstat(EEL_state *es)
 	  case TK_VOID:
 		eel_cerror(es, "Expected constant expression!");
 	}
-	check_argc(val, 1, 1);
+	if(val->length != 1)
+		eel_cerror(es, "Expected exactly one expression!");
 	if(!eel_m_is_constant(eel_ml_get(val, 0)))
 		eel_cerror(es, "Cannot evaluate constant value of expression!");
 	cs = eel_s_add(es, es->context->symtab, cname, EEL_SCONSTANT);
@@ -2887,7 +2914,9 @@ static int body(EEL_state *es, int flags)
 /*
 	argdef:
 		NAME
-		| TYPENAME NAME
+		| NAME '=' simplexp ';'
+		{ expression must be constant, compile time evaluated }
+TODO:		| TYPENAME NAME
 		;
 
 	argdeflist:
@@ -2895,6 +2924,34 @@ static int body(EEL_state *es, int flags)
 		| argdef ',' argdeflist
 		;
  */
+
+static void argdefault(EEL_state *es, EEL_symbol *s)
+{
+	EEL_value v;
+	EEL_coder *cdr = es->context->coder;
+	EEL_mlist *val = eel_ml_open(cdr);
+	eel_lex(es, 0);
+	switch(simplexp(es, val, 1))
+	{
+	  case TK_WRONG:
+		eel_cerror(es, "Expression does not generate a value!");
+	  case TK_VOID:
+		eel_cerror(es, "Expected constant expression!");
+	}
+	if(val->length != 1)
+		eel_cerror(es, "Expected exactly one expression!");
+	if(!eel_m_is_constant(eel_ml_get(val, 0)))
+		eel_cerror(es, "Cannot evaluate constant value of expression!");
+	eel_m_get_constant(eel_ml_get(val, 0), &v);
+	eel_ml_close(val);
+	s->v.var.defindex = eel_coder_add_constant(cdr, &v);
+	eel_v_disown(&v);
+	DBGF(fprintf(stderr, "Default value for argument '%s': %s (C%d)\n",
+			eel_o2s(s->name), eel_v_stringrep(es->vm, &v),
+			s->v.var.defindex);)
+	eel_relex(es, ELF_LOCALS_ONLY | ELF_NO_OPERATORS);
+}
+
 static int argdeflist(EEL_state *es, EEL_varkinds kind)
 {
 /*
@@ -2905,11 +2962,12 @@ TODO: error? (Shadowing arguments definitely should be.)
 	int first = 1;
 	while(1)
 	{
+		EEL_symbol *s;
 		switch(es->token)
 		{
 		  case TK_NAME:
 		  {
-			declare_var(es, es->lval.v.s.buf, kind);
+			s = declare_var(es, es->lval.v.s.buf, kind);
 			DBGH(printf("## argdeflist: NAME\n");)
 			eel_lex(es, ELF_LOCALS_ONLY | ELF_NO_OPERATORS);
 			break;
@@ -2917,8 +2975,8 @@ TODO: error? (Shadowing arguments definitely should be.)
 		  case TK_SYM_CLASS:
 			eel_cerror(es, "Typed arguments not yet implemented!");
 		  case TK_SYM_VARIABLE:
-			eel_cerror(es, "There already is a result or argument"
-					" named '%s'!",
+			eel_cerror(es, "There already is an argument named "
+					"'%s'!",
 					eel_o2s(es->lval.v.symbol->name));
 		  case TK_SYMBOL:
 		  case TK_SYM_CONSTANT:
@@ -2926,18 +2984,21 @@ TODO: error? (Shadowing arguments definitely should be.)
 		  case TK_SYM_OPERATOR:
 		  case TK_SYM_PARSER:
 		  case TK_SYM_BODY:
-			eel_cerror(es, "Result/argument name '%s'"
-					" is taken by %s.",
+			eel_cerror(es, "Argument name '%s' is taken by %s.",
 					eel_o2s(es->lval.v.symbol->name),
 					eel_symbol_is(es->lval.v.symbol));
 		  default:
 			if(first)
 				return TK(WRONG);
 			else
-				eel_cerror(es, "Incorrect result/argument"
-						" declaration.");
+				eel_cerror(es, "Incorrect argument "
+						"declaration.");
 		}
 		first = 0;
+		if(es->token == '=')
+			argdefault(es, s);
+		else
+			s->v.var.defindex = -1;
 		if(es->token != ',')
 			return TK(ARGDEFLIST);
 		eel_lex(es, ELF_LOCALS_ONLY | ELF_NO_OPERATORS);
@@ -3001,7 +3062,8 @@ static int ifstat(EEL_state *es)
 	  case TK_WRONG:
 		eel_cerror(es, "Expected an expression!");
 	}
-	check_argc(expr, 1, 1);
+	if(expr->length != 1)
+		eel_cerror(es, "Expected exactly one expression!");
 	r = eel_m_direct_read(eel_ml_get(expr, 0));
 	if(r >= 0)
 		jump_false = eel_codeAsBx(cdr, EEL_OJUMPZ_AsBx, r, 0);
@@ -3155,7 +3217,8 @@ static int switchstat(EEL_state *es)
 	  case TK_WRONG:
 		eel_cerror(es, "Expected an expression!");
 	}
-	check_argc(expr, 1, 1);
+	if(expr->length != 1)
+		eel_cerror(es, "Expected exactly one expression!");
 	r = eel_m_direct_read(eel_ml_get(expr, 0));
 	if(r >= 0)
 		jump_else = eel_codeABxsCx(cdr, EEL_OSWITCH_ABxsCx, r, jtabc, 0);
@@ -3235,7 +3298,8 @@ static int whilestat(EEL_state *es)
 	  case TK_WRONG:
 		eel_cerror(es, "Expected a test expression!");
 	}
-	check_argc(expr, 1, 1);
+	if(expr->length != 1)
+		eel_cerror(es, "Expected exactly one expression!");
 	switch(eel_m_direct_bool(eel_ml_get(expr, 0)))
 	{
 	  case 0:
@@ -3347,7 +3411,8 @@ static int dostat(EEL_state *es)
 	  case TK_WRONG:
 		eel_cerror(es, "Expected a test expression!");
 	}
-	check_argc(expr, 1, 1);
+	if(expr->length != 1)
+		eel_cerror(es, "Expected exactly one expression!");
 	r = eel_m_direct_read(eel_ml_get(expr, 0));
 	if(r >= 0)
 		loopjump = eel_codeAsBx(cdr, jumpins, r, 0);

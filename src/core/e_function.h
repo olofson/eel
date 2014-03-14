@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_function.h - EEL Function Class
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009, 2011 David Olofson
+ * Copyright 2004-2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -44,12 +44,14 @@ typedef enum
 {
 	EEL_FF_CFUNC =		0x0001,
 	EEL_FF_ARGS =		0x0002,
-	EEL_FF_RESULTS =	0x0004,
-	EEL_FF_DECLARATION =	0x0008,
-	EEL_FF_ROOT =		0x0010,
-	EEL_FF_EXPORT =		0x0020,
-	EEL_FF_UPVALUES =	0x0040,
-	EEL_FF_XBLOCK =		0x0080
+	EEL_FF_OPTDEFAULTS =	0x0004,
+	EEL_FF_TUPDEFAULTS =	0x0008,
+	EEL_FF_RESULTS =	0x0010,
+	EEL_FF_DECLARATION =	0x0020,
+	EEL_FF_ROOT =		0x0040,
+	EEL_FF_EXPORT =		0x0080,
+	EEL_FF_UPVALUES =	0x0100,
+	EEL_FF_XBLOCK =		0x0200
 } EEL_funcflags;
 
 /* Common fields */
@@ -88,6 +90,9 @@ typedef union
 /* FIXME: Use an EEL_array instead! (Or maybe an EEL_table...?) */
 		unsigned short	nconstants;
 		EEL_value	*constants;
+
+		/* Argument defaults (constant indexes) */
+		int		*argdefaults;	/* size: optargs or tupargs */
 
 		/* Code */
 /* FIXME: Use an EEL_dstring or EEL_vector! */

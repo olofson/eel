@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_manip.c - Argument Manipulator
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -1005,7 +1005,6 @@ static void push_constant(EEL_manipulator *m)
 void eel_m_read(EEL_manipulator *m, int r)
 {
 	EEL_coder *cdr = m->coder;
-	EEL_function *f = o2EEL_function(cdr->f);
 	switch(m->kind)
 	{
 	  case EEL_MVOID:
@@ -1049,17 +1048,13 @@ void eel_m_read(EEL_manipulator *m, int r)
 		break;
 	  case EEL_MARGUMENT:
 	  case EEL_MOPTARG:
-	  {
-		int arg = m->v.argument.arg;
-		if(m->kind == EEL_MOPTARG)
-			arg += f->common.reqargs;
 		if(m->v.argument.level)
-			eel_codeABC(cdr, EEL_OGETUVARGI_ABC, r, arg,
+			eel_codeABC(cdr, EEL_OGETUVARGI_ABC, r,
+					m->v.argument.arg,
 					m->v.argument.level);
 		else
-			eel_codeAB(cdr, EEL_OGETARGI_AB, r, arg);
+			eel_codeAB(cdr, EEL_OGETARGI_AB, r, m->v.argument.arg);
  		break;
-	  }
 	  case EEL_MTUPARG:
 		eel_cerror(cdr->state, "Tried to read tuparg array '%s'! "
 				"(Can only be indexed.)",
@@ -1169,7 +1164,6 @@ FIXME: enforce evaluation of unused values when there are side effects.
 void eel_m_write(EEL_manipulator *m, int r)
 {
 	EEL_coder *cdr = m->coder;
-	EEL_function *f = o2EEL_function(cdr->f);
 	switch(m->kind)
 	{
 	  case EEL_MVOID:
@@ -1219,17 +1213,13 @@ FIXME: Is this actually an internal error now...?
 		break;
 	  case EEL_MARGUMENT:
 	  case EEL_MOPTARG:
-	  {
-		int arg = m->v.argument.arg;
-		if(m->kind == EEL_MOPTARG)
-			arg += f->common.reqargs;
 		if(m->v.argument.level)
-			eel_codeABC(cdr, EEL_OSETUVARGI_ABC, r, arg,
+			eel_codeABC(cdr, EEL_OSETUVARGI_ABC, r,
+					m->v.argument.arg,
 					m->v.argument.level);
 		else
-			eel_codeAB(cdr, EEL_OSETARGI_AB, r, arg);
+			eel_codeAB(cdr, EEL_OSETARGI_AB, r, m->v.argument.arg);
 		break;
-	  }
 	  case EEL_MTUPARG:
 		eel_cerror(cdr->state, "Tried to write to tuparg array '%s'! "
 				"(Can only be indexed.)",

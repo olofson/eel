@@ -1,4 +1,16 @@
 
+* Overwriting an existing environment variable in envtest.eel;
+  "setenv(TESTVAR, "new_test_value", false);" succeeds under Wine 1.4.1.
+  This should fail, regardless of platform!
+
+* Run some VM profiling to see which instructions are actually used!
+
+* Shouldn't INDGETI etc use EEL_IS_OBJREF instead of switch()...?
+
+* try ( <expression> : <fallback> )
+
+* var bestValue = points?.FirstOrDefault()?.X ?? -1;
+
 * Don't actually use THROW for RETX*...
 
 * Memory management needs a cleanup...
@@ -42,8 +54,6 @@
 * EEL probably has the same bug that I reinvented in Audiality 2: If the
   last token is invalid (after Unlex() usually), the start position is
   bogus, and should not be used!
-
-* var bestValue = points?.FirstOrDefault()?.X ?? -1;
 
 * OS threads!
 	* To avoid complexity and runtime performance impact, handle

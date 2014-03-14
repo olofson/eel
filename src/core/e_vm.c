@@ -957,6 +957,35 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 }
 
 
+/*
+ * Return default value (pointer to constant) for optional argument 'arg', or
+ * NULL if there is no default value for that argument.
+ */
+static inline EEL_value *get_optarg_default(EEL_callframe *cf, unsigned arg)
+{
+	EEL_function *f = o2EEL_function(cf->f);
+	arg -= f->common.reqargs;
+	if(f->e.argdefaults && (arg < f->common.optargs) &&
+			(f->e.argdefaults[arg] >= 0))
+		return &f->e.constants[f->e.argdefaults[arg]];
+	return NULL;
+}
+
+
+/*
+ * Return default value (pointer to constant) for tuple position 'pos', or
+ * NULL if there is no default value for that position.
+ */
+static inline EEL_value *get_tuparg_default(EEL_callframe *cf, unsigned pos)
+{
+	EEL_function *f = o2EEL_function(cf->f);
+	if(f->e.argdefaults && (pos < f->common.tupargs) &&
+			(f->e.argdefaults[pos] >= 0))
+		return &f->e.constants[f->e.argdefaults[pos]];
+	return NULL;
+}
+
+
 #define	XCHECK(fn)			\
 	({				\
 		EEL_xno xxx = (fn);	\
@@ -971,16 +1000,12 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 #define	CALLFRAME	(vms.cf)
 #define	CODE		(vms.code)
 #define	CLEANTABLE	(vms.ctab)
-#ifdef EEL_NOCLEAN
-#  define	ADDCLEAN(x)
-#else
-#  define	ADDCLEAN(x)							\
+#define	ADDCLEAN(x)							\
 	({								\
 		DBG6(printf("Added R[%d] to cleaning table;"		\
 				" position %d.\n", x, CLEANTABLE[0]+1);)\
 		CLEANTABLE[++CLEANTABLE[0]] = x;			\
 	})
-#endif
 #define CHECK_STACK(n)					\
 ({							\
 	int res = grow_heap(vm, vm->sp + n);		\
@@ -1413,6 +1438,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		++vm->sp;
 
 	  EEL_IPHARGS
+		/* NOTE: This does NOT push default values! */
 		if(CALLFRAME->argc)
 		{
 			int i;
@@ -1424,6 +1450,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		}
 
 	  EEL_IPUSHTUP
+		/* NOTE: We don't deal with default values here either. */
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		int argc = CALLFRAME->argc - f->common.reqargs;
 #ifdef EEL_VM_CHECKING
@@ -1432,7 +1459,7 @@ EEL_xno eel_run(EEL_vm *vm)
 #  if 0
 		/*
 		 * This is actually ok - but the compiler should only allow it
-		 * when using the 'tuples' keyword, or when there tuple size is
+		 * when using the 'tuples' keyword, or when the tuple size is
 		 * one, as anything else would be most confusing!
 		 */
 		if(f->common.tupargs > 1)
@@ -1567,17 +1594,16 @@ EEL_xno eel_run(EEL_vm *vm)
 		R[A].integer.v /= f->common.tupargs;
 
 	  EEL_ISPEC
-		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		R[B].type = EEL_TBOOLEAN;
-		R[B].integer.v = A + f->common.reqargs < CALLFRAME->argc;
+		R[B].integer.v = A < CALLFRAME->argc;
 
 	  EEL_ITSPEC
 		/*
 		 * NOTE:
 		 *	As it's illegal to pass incomplete tuples, there is no
-		 *	need to check which actual argument we're talking about!
-		 *	The compiler can just discard that information and pass
-		 *	the tuple index to this instruction.
+		 *	need to check which actual argument we're talking
+		 *	about! The compiler can just discard that information
+		 *	and pass the tuple index to this instruction.
 		 */
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		int tupc = CALLFRAME->argc;
@@ -1619,12 +1645,8 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  /* Register variables */
 	  EEL_IINIT
-#ifdef EEL_NOCLEAN
-		eel_v_qcopy(&R[A], &R[B]);
-#else
 		eel_v_copy(&R[A], &R[B]);
 		ADDCLEAN(A);
-#endif
 
 	  EEL_IINITI
 		R[A].type = EEL_TINTEGER;
@@ -1641,24 +1663,16 @@ EEL_xno eel_run(EEL_vm *vm)
 		ADDCLEAN(A);
 
 	  EEL_IASSIGN
-#ifdef EEL_NOCLEAN
-		eel_v_qcopy(&R[A], &R[B]);
-#else
 		eel_v_disown_nz(&R[A]);
 		eel_v_copy(&R[A], &R[B]);
-#endif
 
 	  EEL_IASSIGNI
-#ifndef EEL_NOCLEAN
 		eel_v_disown_nz(&R[A]);
-#endif
 		R[A].type = EEL_TINTEGER;
 		R[A].integer.v = B;
 
 	  EEL_IASNNIL
-#ifndef EEL_NOCLEAN
 		eel_v_disown_nz(&R[A]);
-#endif
 		R[A].type = EEL_TNIL;
 
 	  EEL_IASSIGNC
@@ -1684,11 +1698,7 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_ISETVAR
 		eel_v_disown_nz(&SV[B]);
-#ifdef EEL_NOCLEAN
-		eel_v_qcopy(&R[B], &R[A]);
-#else
 		eel_v_copy(&SV[B], &R[A]);
-#endif
 
 	  /* Indexed access (array/table)  */
 	  EEL_IINDGETI
@@ -1783,28 +1793,40 @@ EEL_xno eel_run(EEL_vm *vm)
 	  /* Argument access */
 	  EEL_IGETARGI
 		EEL_value *arg;
-		if(B >= CALLFRAME->argc)
+		if(B < CALLFRAME->argc)
+		{
+			arg = vm->heap + CALLFRAME->argv + B;
+			eel_v_qcopy(&R[A], arg);
+			eel_v_grab(&R[A]);
+		}
+		else if((arg = get_optarg_default(CALLFRAME, B)))
+			eel_v_qcopy(&R[A], arg);
+		else
 			THROW(EEL_XHIGHINDEX);
-		arg = vm->heap + CALLFRAME->argv + B;
-		eel_v_qcopy(&R[A], arg);
-		eel_v_grab(&R[A]);
 
 	  EEL_IPHARGI
 		EEL_value *arg;
-		if(A >= CALLFRAME->argc)
+		if(A < CALLFRAME->argc)
+			arg = vm->heap + CALLFRAME->argv + A;
+		else if(!(arg = get_optarg_default(CALLFRAME, A)))
 			THROW(EEL_XHIGHINDEX);
-		arg = vm->heap + CALLFRAME->argv + A;
 		CHECK_STACK(1);
 		eel_v_copy(S, arg);
 		++vm->sp;
 
 	  EEL_IPHARGI2
-		EEL_value *args = vm->heap + CALLFRAME->argv;
-		if((A >= CALLFRAME->argc) || (B >= CALLFRAME->argc))
+		EEL_value *argA, *argB;
+		if(A < CALLFRAME->argc)
+			argA = vm->heap + CALLFRAME->argv + A;
+		else if(!(argA = get_optarg_default(CALLFRAME, A)))
+			THROW(EEL_XHIGHINDEX);
+		if(B < CALLFRAME->argc)
+			argB = vm->heap + CALLFRAME->argv + B;
+		else if(!(argB = get_optarg_default(CALLFRAME, B)))
 			THROW(EEL_XHIGHINDEX);
 		CHECK_STACK(2);
-		eel_v_copy(S, args + A);
-		eel_v_copy(S + 1, args + B);
+		eel_v_copy(S, argA);
+		eel_v_copy(S + 1, argB);
 		vm->sp += 2;
 
 	  EEL_ISETARGI
@@ -1814,17 +1836,22 @@ EEL_xno eel_run(EEL_vm *vm)
 		arg = vm->heap + CALLFRAME->argv + B;
 		eel_v_disown_nz(arg);
 		eel_v_copy(arg, &R[A]);
-
+#if 0
 	  EEL_IGETARG
 		EEL_value *arg;
 		int ind = eel_get_indexval(vm, &R[B]);
 		if(ind < 0)
 			THROW(EEL_XWRONGTYPE);
-		if(ind >= CALLFRAME->argc)
+		if(ind < CALLFRAME->argc)
+		{
+			arg = vm->heap + CALLFRAME->argv + ind;
+			eel_v_qcopy(&R[A], arg);
+			eel_v_grab(&R[A]);
+		}
+		else if((arg = get_optarg_default(&vms, ind)))
+			eel_v_qcopy(&R[A], arg);
+		else
 			THROW(EEL_XHIGHINDEX);
-		arg = vm->heap + CALLFRAME->argv + ind;
-		eel_v_qcopy(&R[A], arg);
-		eel_v_grab(&R[A]);
 
 	  EEL_ISETARG
 		EEL_value *arg;
@@ -1836,12 +1863,13 @@ EEL_xno eel_run(EEL_vm *vm)
 		arg = vm->heap + CALLFRAME->argv + ind;
 		eel_v_disown_nz(arg);
 		eel_v_copy(arg, &R[A]);
-
+#endif
 	  /* Tuple argument access */
 	  EEL_IGETTARGI
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		EEL_value *arg;
 		int tup = eel_get_indexval(vm, &R[C]);
+		int argi = B + f->common.reqargs + tup * f->common.tupargs;
 		if(tup < 0)
 			THROW(EEL_XWRONGTYPE);
 #ifdef EEL_VM_CHECKING
@@ -1850,13 +1878,17 @@ EEL_xno eel_run(EEL_vm *vm)
 		if(B >= f->common.tupargs)
 			DUMP(EEL_XVMCHECK, "GETTARGI with out-of-range tuple member!");
 #endif
-		B += f->common.reqargs + tup * f->common.tupargs;
-		if(B >= CALLFRAME->argc)
+		if(argi < CALLFRAME->argc)
+		{
+			arg = vm->heap + CALLFRAME->argv + argi;
+			eel_v_qcopy(&R[A], arg);
+			eel_v_grab(&R[A]);
+		}
+		else if((arg = get_tuparg_default(CALLFRAME, B)))
+			eel_v_qcopy(&R[A], arg);
+		else
 			THROW(EEL_XHIGHINDEX);
-		arg = vm->heap + CALLFRAME->argv + B;
-		eel_v_qcopy(&R[A], arg);
-		eel_v_grab(&R[A]);
-
+#if 0
 	  EEL_ISETTARGI
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		EEL_value *arg;
@@ -1915,7 +1947,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		arg = vm->heap + CALLFRAME->argv + ind;
 		eel_v_disown_nz(arg);
 		eel_v_copy(arg, &R[A]);
-
+#endif
 	  /* Upvalue argument access */
 	  EEL_IGETUVARGI
 		EEL_value *arg;
@@ -1924,11 +1956,16 @@ EEL_xno eel_run(EEL_vm *vm)
 		if(!cf)
 			THROW(EEL_XUPVALUE);
 #endif
-		if(B >= cf->argc)
+		if(B < cf->argc)
+		{
+			arg = vm->heap + cf->argv + B;
+			eel_v_qcopy(&R[A], arg);
+			eel_v_grab(&R[A]);
+		}
+		else if((arg = get_optarg_default(cf, B)))
+			eel_v_qcopy(&R[A], arg);
+		else
 			THROW(EEL_XHIGHINDEX);
-		arg = vm->heap + cf->argv + B;
-		eel_v_qcopy(&R[A], arg);
-		eel_v_grab(&R[A]);
 
 	  EEL_ISETUVARGI
 		EEL_value *arg;
@@ -1945,10 +1982,13 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  /* Upvalue tuple argument access */
 	  EEL_IGETUVTARGI
-		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		EEL_value *arg;
 		EEL_callframe *cf = b2callframe(vm, get_uv_base(vm, D));
+		EEL_function *f = o2EEL_function(cf->f);
 		int tup = eel_get_indexval(vm, &R[C]);
+		int argi = B + f->common.reqargs + tup * f->common.tupargs;
+		if(tup < 0)
+			THROW(EEL_XWRONGTYPE);
 #ifdef EEL_VM_CHECKING
 		if(!cf)
 			THROW(EEL_XUPVALUE);
@@ -1957,15 +1997,17 @@ EEL_xno eel_run(EEL_vm *vm)
 		if(B >= f->common.tupargs)
 			DUMP(EEL_XVMCHECK, "GETUVTARGI with out-of-range tuple member!");
 #endif
-		if(tup < 0)
-			THROW(EEL_XWRONGTYPE);
-		B += f->common.reqargs + tup * f->common.tupargs;
-		if(B >= cf->argc)
+		if(argi < cf->argc)
+		{
+			arg = vm->heap + cf->argv + argi;
+			eel_v_qcopy(&R[A], arg);
+			eel_v_grab(&R[A]);
+		}
+		else if((arg = get_tuparg_default(cf, B)))
+			eel_v_qcopy(&R[A], arg);
+		else
 			THROW(EEL_XHIGHINDEX);
-		arg = vm->heap + cf->argv + B;
-		eel_v_qcopy(&R[A], arg);
-		eel_v_grab(&R[A]);
-
+#if 0
 	  EEL_ISETUVTARGI
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		EEL_value *arg;
@@ -1987,7 +2029,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		arg = vm->heap + cf->argv + B;
 		eel_v_disown_nz(arg);
 		eel_v_copy(arg, &R[A]);
-
+#endif
 	  /* Operators */
 	  EEL_IBOP
 		XCHECK(eel_operate(&R[B], C, &R[D], &R[A]));
