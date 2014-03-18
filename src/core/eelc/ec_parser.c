@@ -593,8 +593,7 @@ static void declare_func_args(EEL_state *es, int has_result)
 						s->v.var.defindex;
 				break;
 			  case EVK_TUPARG:
-				ad[f->common.optargs + s->v.var.location -
-						f->common.optargs] =
+				ad[f->common.optargs + s->v.var.location] =
 						s->v.var.defindex;
 				break;
 			}
@@ -1128,15 +1127,16 @@ static int call(EEL_state *es, EEL_mlist *al)
 				eel_o2s(s->name));
 	if(f->common.tupargs)
 	{
-		if((args->length - f->common.reqargs) % f->common.tupargs)
+		if((args->length >= f->common.reqargs + f->common.optargs) &&
+				((args->length - f->common.reqargs -
+				f->common.optargs) % f->common.tupargs))
 			eel_cerror(es, "Incorrect number of arguments"
 					" to function '%s'!"
 					" (Incomplete tuple.)",
 					eel_o2s(s->name));
 	}
-	else if(((f->common.optargs != 255) &&
-			(args->length > f->common.reqargs + f->common.optargs)) ||
-			(!f->common.optargs && (args->length > f->common.reqargs)))
+	else if((f->common.optargs != 255) && (args->length >
+			f->common.reqargs + f->common.optargs))
 		eel_cerror(es, "Too many arguments to function '%s'!",
 				eel_o2s(s->name));
 
@@ -1212,24 +1212,6 @@ static int getargs(EEL_state *es)
 }
 
 
-static int funcargs_check(EEL_state *es)
-{
-	/*
-	 * At this point, we're expecting a function body
-	 * or something, but NOT any more argument lists.
-	 * The switch below is only for nice error messages.
-	 */
-	switch(es->token)
-	{
-	  case '(':	/* required */
-	  case '[':	/* optional */
-	  case '<':	/* tuple */
-		eel_cerror(es, "Too many argument lists, or illegal "
-				"combination of argument lists!");
-	}
-	return TK(FUNCARGS);
-}
-
 /*
 	funcargs:
 		'(' argdeflist ')'
@@ -1237,49 +1219,53 @@ static int funcargs_check(EEL_state *es)
 		| '<' argdeflist '>'
 		| '(' argdeflist ')' '[' argdeflist ']'
 		| '(' argdeflist ')' '<' argdeflist '>'
+		| '(' argdeflist ')' '[' argdeflist ']' '<' argdeflist '>'
 		;
 */
 static int funcargs(EEL_state *es)
 {
+	int have_req = 0;
+	int have_opt = 0;
+	int have_tup = 0;
 	eel_unlex(es);
 	eel_lex(es, ELF_NO_OPERATORS);
-
-	/* Get first/single list */
-	switch(es->token)
+	while(1)
 	{
-	  case '(':	/* required */
-		getargs(es);
-		break;
-	  case '[':	/* optional */
-	  case '<':	/* tuple */
-		getargs(es);
 		switch(es->token)
 		{
 		  case '(':	/* required */
-			eel_cerror(es, "Required arguments must come first!");
+			if(have_req)
+				eel_cerror(es, "Required arguments already "
+						"specified!");
+			if(have_opt || have_tup)
+				eel_cerror(es, "Required arguments must be "
+						"specified first!");
+			have_req = 1;
+			break;
 		  case '[':	/* optional */
+			if(have_opt)
+				eel_cerror(es, "Optional arguments already "
+						"specified!");
+			if(have_tup)
+				eel_cerror(es, "Optional arguments must be "
+						"specified before tuple "
+						"arguments!");
+			have_opt = 1;
+			break;
 		  case '<':	/* tuple */
-			eel_cerror(es, "Cannot have both optional and"
-					" tuple arguments!");
+			if(have_tup)
+				eel_cerror(es, "Tuple arguments already "
+						"specified!");
+			have_tup = 1;
+			break;
+		  default:
+		  	if(have_req || have_opt || have_tup)
+				return TK(FUNCARGS);	/* Have >=1 lists! */
+			else
+				return TK(WRONG);	/* No arguments! */
 		}
-		return funcargs_check(es);
-	  default:
-		return TK(WRONG);
-	}
-
-	/*
-	 * We have a "required list". If there's a second
-	 * argument list, it must be optional or tuple.
-	 */
-	switch(es->token)
-	{
-	  case '(':	/* required */
-		eel_cerror(es, "Required arguments already specified!");
-	  case '[':	/* optional */
-	  case '<':	/* tuple */
 		getargs(es);
 	}
-	return funcargs_check(es);
 }
 
 

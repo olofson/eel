@@ -328,12 +328,13 @@ static inline EEL_xno check_args(EEL_vm *vm, EEL_object *fo)
 		return EEL_XFEWARGS;
 	if(f->common.tupargs)
 	{
-		if((argc - f->common.reqargs) % f->common.tupargs)
+		if((argc >= f->common.reqargs + f->common.optargs) &&
+				((argc - f->common.reqargs -
+				f->common.optargs) % f->common.tupargs))
 			return EEL_XTUPLEARGS;
 	}
-	else if(((f->common.optargs != 255) &&
-			(argc > f->common.reqargs + f->common.optargs)) ||
-			(!f->common.optargs && (argc > f->common.reqargs)))
+	else if((f->common.optargs != 255) &&
+			(argc > f->common.reqargs + f->common.optargs))
 		return EEL_XMANYARGS;
 	return 0;
 }
@@ -964,13 +965,12 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 static inline EEL_value *get_optarg_default(EEL_callframe *cf, unsigned arg)
 {
 	EEL_function *f = o2EEL_function(cf->f);
+	int *defs = f->e.argdefaults;
 	arg -= f->common.reqargs;
-	if(f->e.argdefaults && (arg < f->common.optargs) &&
-			(f->e.argdefaults[arg] >= 0))
-		return &f->e.constants[f->e.argdefaults[arg]];
+	if(f->e.argdefaults && (arg < f->common.optargs) && (defs[arg] >= 0))
+		return &f->e.constants[defs[arg]];
 	return NULL;
 }
-
 
 /*
  * Return default value (pointer to constant) for tuple position 'pos', or
@@ -979,9 +979,9 @@ static inline EEL_value *get_optarg_default(EEL_callframe *cf, unsigned arg)
 static inline EEL_value *get_tuparg_default(EEL_callframe *cf, unsigned pos)
 {
 	EEL_function *f = o2EEL_function(cf->f);
-	if(f->e.argdefaults && (pos < f->common.tupargs) &&
-			(f->e.argdefaults[pos] >= 0))
-		return &f->e.constants[f->e.argdefaults[pos]];
+	int *defs = f->e.argdefaults + f->common.optargs;
+	if(f->e.argdefaults && (pos < f->common.tupargs) && (defs[pos] >= 0))
+		return &f->e.constants[defs[pos]];
 	return NULL;
 }
 
@@ -1869,7 +1869,8 @@ EEL_xno eel_run(EEL_vm *vm)
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		EEL_value *arg;
 		int tup = eel_get_indexval(vm, &R[C]);
-		int argi = B + f->common.reqargs + tup * f->common.tupargs;
+		int argi = B + f->common.reqargs + f->common.optargs +
+				tup * f->common.tupargs;
 		if(tup < 0)
 			THROW(EEL_XWRONGTYPE);
 #ifdef EEL_VM_CHECKING
@@ -1986,7 +1987,8 @@ EEL_xno eel_run(EEL_vm *vm)
 		EEL_callframe *cf = b2callframe(vm, get_uv_base(vm, D));
 		EEL_function *f = o2EEL_function(cf->f);
 		int tup = eel_get_indexval(vm, &R[C]);
-		int argi = B + f->common.reqargs + tup * f->common.tupargs;
+		int argi = B + f->common.reqargs + f->common.optargs +
+				tup * f->common.tupargs;
 		if(tup < 0)
 			THROW(EEL_XWRONGTYPE);
 #ifdef EEL_VM_CHECKING

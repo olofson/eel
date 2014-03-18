@@ -15,27 +15,37 @@ procedure verify(f, result, correct)
 	}
 }
 
-function optional[a = "A", b = "B", c = "C"]
+function opt[a = "A", b = "B", c = "C"]
 {
 	return a + b + c;
 }
 
-function tuple<a = "A", b = "B", c = "C">
+function tup<a = "A", b = "B", c = "C">
 {
 	return a[0] + b[0] + c[0] + a[1] + b[1] + c[1];
 }
 
-function req_optional(req)[a = "A", b = "B", c = "C"]
+function req_opt(req)[a = "A", b = "B", c = "C"]
 {
 	return req + a + b + c;
 }
 
-function req_tuple(req)<a = "A", b = "B", c = "C">
+function req_tup(req)<a = "A", b = "B", c = "C">
 {
 	return req + a[0] + b[0] + c[0] + a[1] + b[1] + c[1];
 }
 
-function optional_uv[a = "A", b = "B", c = "C"]
+function opt_tup[a = "A", b = "B"]<c = "C", d = "D">
+{
+	return a + b + c[0] + d[0] + c[1] + d[1];
+}
+
+function req_opt_tup(req)[a = "A", b = "B"]<c = "C", d = "D">
+{
+	return req + a + b + c[0] + d[0] + c[1] + d[1];
+}
+
+function opt_uv[a = "A", b = "B", c = "C"]
 {
 	function f()
 	{
@@ -44,7 +54,7 @@ function optional_uv[a = "A", b = "B", c = "C"]
 	return f();
 }
 
-function tuple_uv<a = "A", b = "B", c = "C">
+function tup_uv<a = "A", b = "B", c = "C">
 {
 	function f()
 	{
@@ -54,7 +64,7 @@ function tuple_uv<a = "A", b = "B", c = "C">
 	return f();
 }
 
-function req_optional_uv(req)[a = "A", b = "B", c = "C"]
+function req_opt_uv(req)[a = "A", b = "B", c = "C"]
 {
 	function f()
 	{
@@ -63,7 +73,7 @@ function req_optional_uv(req)[a = "A", b = "B", c = "C"]
 	return f();
 }
 
-function req_tuple_uv(req)<a = "A", b = "B", c = "C">
+function req_tup_uv(req)<a = "A", b = "B", c = "C">
 {
 	function f()
 	{
@@ -73,63 +83,84 @@ function req_tuple_uv(req)<a = "A", b = "B", c = "C">
 	return f();
 }
 
-/*
-TODO:
-function optional_tuple[a = "x", b = "y"]<c = "z", d = "u">
+function opt_tup_uv[a = "A", b = "B"]<c = "C", d = "D">
 {
-	return a + b + c + d;
+	function f()
+	{
+		upvalue a, upvalue b, upvalue c, upvalue d;
+		return a + b + c[0] + d[0] + c[1] + d[1];
+	}
+	return f();
 }
-*/
+
+function req_opt_tup_uv(req)[a = "A", b = "B"]<c = "C", d = "D">
+{
+	function f()
+	{
+		upvalue req, upvalue a, upvalue b, upvalue c, upvalue d;
+		return req + a + b + c[0] + d[0] + c[1] + d[1];
+	}
+	return f();
+}
 
 export function main<args>
 {
 	print("Argument default value tests:\n");
 
+	print("\nLocal arguments:\n");
 	print("------------------------------------------\n");
-	verify(optional, optional("a", "b", "c"), "abc");
-	verify(optional, optional("a", "b"), "abC");
-	verify(optional, optional("a"), "aBC");
-	verify(optional, optional(), "ABC");
+	verify(opt, opt("a", "b", "c"), "abc");
+	verify(opt, opt("a", "b"), "abC");
+	verify(opt, opt("a"), "aBC");
+	verify(opt, opt(), "ABC");
 	print("------------------------------------------\n");
-	verify(tuple, tuple("a", "b", "c", "x", "y", "z"), "abcxyz");
-	verify(tuple, tuple("a", "b", "c"), "abcABC");
-	verify(tuple, tuple(), "ABCABC");
+	verify(tup, tup("a", "b", "c", "x", "y", "z"), "abcxyz");
+	verify(tup, tup("a", "b", "c"), "abcABC");
+	verify(tup, tup(), "ABCABC");
 	print("------------------------------------------\n");
-	verify(req_optional, req_optional("R", "a", "b", "c"), "Rabc");
-	verify(req_optional, req_optional("R", "a", "b"), "RabC");
-	verify(req_optional, req_optional("R", "a"), "RaBC");
-	verify(req_optional, req_optional("R"), "RABC");
+	verify(req_opt, req_opt("R", "a", "b", "c"), "Rabc");
+	verify(req_opt, req_opt("R", "a", "b"), "RabC");
+	verify(req_opt, req_opt("R", "a"), "RaBC");
+	verify(req_opt, req_opt("R"), "RABC");
 	print("------------------------------------------\n");
-	verify(req_tuple, req_tuple("R", "a", "b", "c", "x", "y", "z"),
+	verify(req_tup, req_tup("R", "a", "b", "c", "x", "y", "z"),
 			"Rabcxyz");
-	verify(req_tuple, req_tuple("R", "a", "b", "c"), "RabcABC");
-	verify(req_tuple, req_tuple("R"), "RABCABC");
-/*
-TODO: Maybe? This isn't allowed currently; tuples must be complete!
-	verify(tuple, tuple("a", "b", "c", "x", "y"), "abcxyC");
-	verify(tuple, tuple("a", "b", "c", "x"), "abcxBC");
-	verify(tuple, tuple("a", "b"), "abCABC");
-	verify(tuple, tuple("a"), "aBCABC");
-*/
+	verify(req_tup, req_tup("R", "a", "b", "c"), "RabcABC");
+	verify(req_tup, req_tup("R"), "RABCABC");
 	print("------------------------------------------\n");
-	verify(optional_uv, optional_uv("a", "b", "c"), "abc");
-	verify(optional_uv, optional_uv("a", "b"), "abC");
-	verify(optional_uv, optional_uv("a"), "aBC");
-	verify(optional_uv, optional_uv(), "ABC");
+	verify(opt_tup, opt_tup("a", "b", "c", "d", "e", "f"), "abcdef");
+	verify(opt_tup, opt_tup("a", "b", "c", "d"), "abcdCD");
+	verify(opt_tup, opt_tup("a", "b"), "abCDCD");
+	verify(opt_tup, opt_tup("a"), "aBCDCD");
+	verify(opt_tup, opt_tup(), "ABCDCD");
 	print("------------------------------------------\n");
-	verify(tuple_uv, tuple_uv("a", "b", "c", "x", "y", "z"), "abcxyz");
-	verify(tuple_uv, tuple_uv("a", "b", "c"), "abcABC");
-	verify(tuple_uv, tuple_uv(), "ABCABC");
+	verify(req_opt_tup, req_opt_tup("R", "a", "b", "c", "d", "e", "f"),
+			"Rabcdef");
+	verify(req_opt_tup, req_opt_tup("R", "a", "b", "c", "d"), "RabcdCD");
+	verify(req_opt_tup, req_opt_tup("R", "a", "b"), "RabCDCD");
+	verify(req_opt_tup, req_opt_tup("R", "a"), "RaBCDCD");
+	verify(req_opt_tup, req_opt_tup("R"), "RABCDCD");
+
+	print("\nUpvalue arguments:\n");
 	print("------------------------------------------\n");
-	verify(req_optional_uv, req_optional_uv("R", "a", "b", "c"), "Rabc");
-	verify(req_optional_uv, req_optional_uv("R", "a", "b"), "RabC");
-	verify(req_optional_uv, req_optional_uv("R", "a"), "RaBC");
-	verify(req_optional_uv, req_optional_uv("R"), "RABC");
+	verify(opt_uv, opt_uv("a", "b", "c"), "abc");
+	verify(opt_uv, opt_uv("a", "b"), "abC");
+	verify(opt_uv, opt_uv("a"), "aBC");
+	verify(opt_uv, opt_uv(), "ABC");
 	print("------------------------------------------\n");
-	verify(req_tuple_uv, req_tuple_uv("R", "a", "b", "c", "x", "y", "z"),
+	verify(tup_uv, tup_uv("a", "b", "c", "x", "y", "z"), "abcxyz");
+	verify(tup_uv, tup_uv("a", "b", "c"), "abcABC");
+	verify(tup_uv, tup_uv(), "ABCABC");
+	print("------------------------------------------\n");
+	verify(req_opt_uv, req_opt_uv("R", "a", "b", "c"), "Rabc");
+	verify(req_opt_uv, req_opt_uv("R", "a", "b"), "RabC");
+	verify(req_opt_uv, req_opt_uv("R", "a"), "RaBC");
+	verify(req_opt_uv, req_opt_uv("R"), "RABC");
+	print("------------------------------------------\n");
+	verify(req_tup_uv, req_tup_uv("R", "a", "b", "c", "x", "y", "z"),
 			"Rabcxyz");
-	verify(req_tuple_uv, req_tuple_uv("R", "a", "b", "c"), "RabcABC");
-	verify(req_tuple_uv, req_tuple_uv("R"), "RABCABC");
+	verify(req_tup_uv, req_tup_uv("R", "a", "b", "c"), "RabcABC");
+	verify(req_tup_uv, req_tup_uv("R"), "RABCABC");
 	print("------------------------------------------\n");
 
 	print("Argument default value tests done.\n");
