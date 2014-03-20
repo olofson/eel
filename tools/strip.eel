@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////
 // Strip EEL source files of all comments and formatting
-// Copyright 2010, 2011 David Olofson
+// Copyright 2010, 2011, 2014 David Olofson
 //////////////////////////////////////////////////////////
 //
 // TODO:
@@ -13,7 +13,7 @@ constant ESS_FIRST_TOKEN = 128;
 
 static tokens = [
 	// TK_KW_*
-	"include", "import", "as", "end",
+	"include", "import", "as", "end", "eelversion",
 
 	"return", "if", "else", "switch", "case", "default",
 	"for", "do", "while", "until", "break", "continue", "repeat",
@@ -52,18 +52,18 @@ function is_whitespace(c)
 // First character of an identifier
 function is_kwalpha0(c)
 {
-	return c >= 'a' and c <= 'z' or
-			c >= 'A' and c <= 'Z' or
-			c == '_';
+	return ((c >= 'a') and (c <= 'z')) or
+			((c >= 'A') and (c <= 'Z')) or
+			(c == '_');
 }
 
 // Subsequent characters of an identifier
 function is_kwalpha(c)
 {
-	return c >= 'a' and c <= 'z' or
-			c >= 'A' and c <= 'Z' or
-			c >= '0' and c <= '9' or
-			c == '_';
+	return ((c >= 'a') and (c <= 'z')) or
+			((c >= 'A') and (c <= 'Z')) or
+			((c >= '0') and (c <= '9')) or
+			(c == '_');
 }
 
 function is_delimiter(c)
@@ -100,10 +100,10 @@ function skip_quoted(buf, pos)
 	local delim = buf[pos];
 	local bm2 = nil;	// Can't safely look *two* chars back...!
 	pos += 1;
-	while pos < sizeof buf - 1
+	while pos < (sizeof buf - 1)
 	{
-		if buf[pos] == delim and (buf[pos - 1] != '\\' or
-				buf[pos - 1] == '\\' and bm2 == '\\')
+		if ((buf[pos] == delim) and ((buf[pos - 1] != '\\')) or
+				((buf[pos - 1] == '\\') and (bm2 == '\\')))
 			break;
 		bm2 = buf[pos - 1];
 		pos += 1;
@@ -114,7 +114,7 @@ function skip_quoted(buf, pos)
 procedure encode_newlines(buf)
 {
 	local i = 0;
-	while i < sizeof buf - 1
+	while i < (sizeof buf - 1)
 	{
 		switch buf[i]
 		  case '\'', '"'
@@ -122,7 +122,7 @@ procedure encode_newlines(buf)
 		  case '\n'
 		  {
 			buf[i] = 1;
-			while i < sizeof buf - 1
+			while i < (sizeof buf - 1)
 			{
 				if buf[i + 1] == '\n'
 				{
@@ -141,23 +141,23 @@ procedure encode_newlines(buf)
 
 // NOTE:
 //	This will sometimes tokenize words that should actually be left as
-//	"names", such as table field indices with the .somename syntax! However,
-//	the EEL lexer is aware of this, and turns these back into names when
-//	that's what the parser expects - so we get some bonus compression and
-//	obfuscation! ;-)
+//	"names", such as table field indices with the .somename syntax!
+//	However, the EEL lexer is aware of this, and turns these back into
+//	names when that's what the parser expects - so we get some bonus
+//	compression and obfuscation! ;-)
 //
 procedure tokenize(buf)
 {
 	local i = 0;
 	local word = dstring [];
-	while i < sizeof buf - 1
+	while i < (sizeof buf - 1)
 	{
 		switch buf[i]
 		  case '\'', '"'
 			i = skip_quoted(buf, i);
 		delete(word);
 		if is_kwalpha0(buf[i])
-			while i < sizeof buf - 1
+			while i < (sizeof buf - 1)
 			{
 				if not is_kwalpha(buf[i])
 					break;
@@ -206,7 +206,8 @@ procedure strip(f, out, newlines)
 			c = b;
 			// Insert space only if needed - but make sure we don't
 			// accidentally create a legal EEL di- or trigraph!
-			if not is_delimiter(b) and not is_delimiter(lastout) and
+			if not is_delimiter(b) and
+					not is_delimiter(lastout) and
 					not is_operator(b, lastout)
 				out.+ ' ';
 		}
@@ -236,7 +237,7 @@ procedure strip(f, out, newlines)
 						if b == '\n'
 							c = b;
 				}
-				until last == '*' and b == '/';
+				until (last == '*') and (b == '/');
 				if lastout == ' '
 					c = nil;
 				else
@@ -255,8 +256,9 @@ procedure strip(f, out, newlines)
 			while true
 			{
 				b = read(f)[0];
-				if b == '\'' and (bm1 != '\\' or
-						bm1 == '\\' and bm2 == '\\')
+				if (b == '\'') and ( (bm1 != '\\') or
+						((bm1 == '\\') and
+						(bm2 == '\\')) )
 					break;
 				out.+ b;
 				bm2 = bm1;
@@ -271,8 +273,9 @@ procedure strip(f, out, newlines)
 			while true
 			{
 				b = read(f)[0];
-				if b == '\"' and (bm1 != '\\' or
-						bm1 == '\\' and bm2 == '\\')
+				if (b == '\"') and ( (bm1 != '\\') or
+						((bm1 == '\\') and
+						(bm2 == '\\')) )
 					break;
 				out.+ b;
 				bm2 = bm1;
@@ -290,21 +293,22 @@ procedure strip(f, out, newlines)
 
 procedure usage(name)
 {
-	print(	"\n"
-		"usage:    ", name, " <infilename> [<infilename> ...] [-stdout]\n"
-		"          ", name, " -a [-r] [<inpath>] [-stdout]\n"
-		"          ", name, " <infilename> -o <outfilename>\n"
-		"\n"
-		"   Switches:\n"
-		"          -stdout  Write stripped output to standard output\n"
-		"          -a       Strip all *.eel files in the current directory\n"
-		"          -r       Recurse into subdirectories\n"
-		"          -x       Output file extension [ess]\n"
-		"\n"
-		"   NOTE:  If no output file name, or -stdout, is specified, the output is\n"
-		"          written to the corresponding .eel files. (For example, the output\n"
-		"          from 'name.eel' would be written to 'name.ess'.)\n"
-		"\n"
+	print(
+"\n"
+"usage:    ", name, " <infilename> [<infilename> ...] [-stdout]\n"
+"          ", name, " -a [-r] [<inpath>] [-stdout]\n"
+"          ", name, " <infilename> -o <outfilename>\n"
+"\n"
+"   Switches:\n"
+"          -stdout  Write stripped output to standard output\n"
+"          -a       Strip all *.eel files in the current directory\n"
+"          -r       Recurse into subdirectories\n"
+"          -x       Output file extension [ess]\n"
+"\n"
+"   NOTE:  Unless an output file name or -stdout is specified, the output is\n"
+"          written to the corresponding .eel files. (For example, the output\n"
+"          from 'name.eel' would be written to 'name.ess'.)\n"
+"\n"
 	);
 }
 
@@ -361,7 +365,7 @@ function findfiles(list, path, recursive)
 		local n = d:read();
 		if not n
 			break;
-		if n == "." or n == ".."
+		if (n == ".") or (n == "..")
 			continue;
 		local sp = path + "/" +  n;
 		if is_dir(sp)
@@ -436,13 +440,13 @@ export function main<args>
 		usage(args[0]);
 		return 1;
 	}
-	if all and sizeof infiles > 1
+	if all and (sizeof infiles > 1)
 	{
 		print("ERROR: Input files specified along with -a!\n");
 		usage(args[0]);
 		return 1;
 	}
-	if all and typeof outfile == string
+	if all and (typeof outfile == string)
 	{
 		print("ERROR: Output file specified along with -a!\n");
 		usage(args[0]);

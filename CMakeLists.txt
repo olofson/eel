@@ -16,7 +16,10 @@ set(PACKAGE "eel-${VERSION_STRING}")
 install(DIRECTORY include/ DESTINATION include/EEL
 	FILES_MATCHING PATTERN "*.h")
 
-install(DIRECTORY src/modules/ DESTINATION lib/eel)
+install(DIRECTORY src/modules/ DESTINATION lib/eel
+	FILES_MATCHING PATTERN "*.eel")
+install(DIRECTORY tools/ DESTINATION lib/eel
+	FILES_MATCHING PATTERN "*.eel")
 
 # Release build: full optimization, no debug features, no debug info
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
