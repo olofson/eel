@@ -859,9 +859,7 @@ static void st_dump(EEL_state *es, EEL_symbol *st, int code, int indent)
 		fputs(st->name ? eel_o2s(st->name) : "<unnamed>", stdout);
 		if(f->common.reqargs)
 			printf("(%d)", f->common.reqargs);
-		if(255 == f->common.optargs)
-			printf("[...]");
-		else if(f->common.optargs > 0)
+		if(f->common.optargs)
 			printf("[%d]", f->common.optargs);
 		if(f->common.tupargs)
 			printf("<%d>", f->common.tupargs);

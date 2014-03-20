@@ -600,7 +600,7 @@ EEL_xno eb_net_init(EEL_vm *vm)
 
 	/* TCP functions */
 	eel_export_cfunction(m, 1, "TCPAcceptOn", 1, 0, 0, n2_tcp_accept_on);
-	eel_export_cfunction(m, 1, "TCPSend", 1, -1, 0, n2_tcp_send);
+	eel_export_cfunction(m, 1, "TCPSend", 1, 0, 1, n2_tcp_send);
 	eel_export_cfunction(m, 1, "TCPRead", 1, 0, 0, n2_tcp_read);
 	eel_export_cfunction(m, 0, "TCPClose", 1, 0, 0, n2_tcp_close);
 	eel_export_cfunction(m, 0, "TCPSetBuffer", 2, 1, 0, n2_tcp_setbuf);

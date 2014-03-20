@@ -333,8 +333,7 @@ static inline EEL_xno check_args(EEL_vm *vm, EEL_object *fo)
 				f->common.optargs) % f->common.tupargs))
 			return EEL_XTUPLEARGS;
 	}
-	else if((f->common.optargs != 255) &&
-			(argc > f->common.reqargs + f->common.optargs))
+	else if(argc > f->common.reqargs + f->common.optargs)
 		return EEL_XMANYARGS;
 	return 0;
 }

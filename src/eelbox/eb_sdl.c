@@ -2082,10 +2082,10 @@ EEL_xno eb_sdl_init(EEL_vm *vm)
 
 	/* Display and surface handling */
 	eel_export_cfunction(m, 1, "GetVideoInfo", 0, 0, 0, eb_GetVideoInfo);
-	eel_export_cfunction(m, 1, "SetVideoMode", 0, -1, 0, eb_SetVideoMode);
+	eel_export_cfunction(m, 1, "SetVideoMode", 0, 4, 0, eb_SetVideoMode);
 	eel_export_cfunction(m, 0, "Flip", 0, 0, 0, eb_Flip);
 	eel_export_cfunction(m, 0, "SetClipRect", 0, 2, 0, eb_SetClipRect);
-	eel_export_cfunction(m, 0, "Update", 0, -1, 0, eb_Update);
+	eel_export_cfunction(m, 0, "Update", 0, 4, 0, eb_Update);
 	eel_export_cfunction(m, 0, "BlitSurface", 1, 3, 0, eb_BlitSurface);
 	eel_export_cfunction(m, 0, "FillRect", 0, 3, 0, eb_FillRect);
 	eel_export_cfunction(m, 1, "LockSurface", 1, 0, 0, eb_LockSurface);

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_io.c - EEL File and Memory File Classes
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009, 2012 David Olofson
+ * Copyright 2005-2006, 2009, 2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -752,7 +752,7 @@ TODO: Create static stdin/stdout/stderr wrapper objects during init?
 //	eel_export_cfunction(m, 1, "stderr", 0, 0, 0, io_get_stderr);
 //	eel_export_cfunction(m, 1, "open", 1, 1, 0, io_open);
 	eel_export_cfunction(m, 1, "read", 1, 1, 0, io_read);
-	eel_export_cfunction(m, 1, "write", 1, -1, 0, io_write);
+	eel_export_cfunction(m, 1, "write", 1, 0, 1, io_write);
 	eel_export_cfunction(m, 0, "close", 1, 0, 0, io_close);
 
 	SETNAME(m, "EEL Built-in IO Module");

@@ -1,6 +1,6 @@
 
-* optargs = 255...? Why? This is covered by tupargs = 1!
-
+* Does eel_share_module() actually work now - or rather, are non-shared modules
+  really ignored by 'import' and load() as intended?
 
 * Overwriting an existing environment variable in envtest.eel;
   "setenv(TESTVAR, "new_test_value", false);" succeeds under Wine 1.4.1.

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_register.c - EEL operator registry
 ---------------------------------------------------------------------------
- * Copyright 2002, 2005-2006, 2009-2012 David Olofson
+ * Copyright 2002, 2005-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -186,24 +186,21 @@ static EEL_object *eel__register_cfunction(EEL_vm *vm,
 	EEL_function *f;
 	eel_info(es, "Registering C function '%s':", name);
 	if((results < 0) || (results > 1))
-		eel_cerror(es, "Out of range value for 'results'!");
+		eel_cerror(es, "Out of range value (%d) for 'results'!",
+				results);
 	if((reqargs < 0) || (reqargs > 255))
-		eel_cerror(es, "Out of range value for 'reqargs'!");
-	if(optargs && tupargs)
-		eel_cerror(es, "Cannot have both optional"
-					" and tuple arguments!");
+		eel_cerror(es, "Out of range value (%d) for 'reqargs'!",
+				reqargs);
 	if((tupargs < 0) || (tupargs > 255))
-	        eel_cerror(es, "Out of range value for 'tupargs'!");
-	if(optargs > 255)
-		eel_cerror(es, "Out of range value for 'optargs'!");
-	else if(optargs < 0)
-		optargs = 255;
-	x = eel_o_construct(vm, EEL_CFUNCTION, NULL, 0, &fv);
-	if(x)
+	        eel_cerror(es, "Out of range value (%d) for 'tupargs'!",
+	        		tupargs);
+	if((optargs < 0) || (optargs > 255))
+		eel_cerror(es, "Out of range value (%d) for 'optargs'!",
+				optargs);
+	if((x = eel_o_construct(vm, EEL_CFUNCTION, NULL, 0, &fv)))
 		eel_serror(es, "Could not create FUNCTION object!");
 	f = o2EEL_function(fv.objref.v);
-	f->common.name = eel_ps_new(vm, name);
-	if(!f->common.name)
+	if(!(f->common.name = eel_ps_new(vm, name)))
 	{
 		eel_o_disown_nz(fv.objref.v);
 		eel_serror(es, "Could not duplicate function name!");
@@ -289,7 +286,6 @@ static EEL_object *eel__register_class(EEL_vm *vm,
 	if((int)type < 0)
 		type = es->nclasses;
 	eel_info(es, "Registering class '%s' (ID: %d):", name, type);
-//printf("Registering class '%s' (ID: %d)\n", name, type);
 	if(type >= es->maxclasses)
 	{
 		EEL_object **nt;

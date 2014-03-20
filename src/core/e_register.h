@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_register.h - EEL compiler registry
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009, 2011 David Olofson
+ * Copyright 2002, 2004-2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -69,19 +69,18 @@ static inline void eel_operator_free(EEL_operator *op)
 	Other stuff
 ----------------------------------------------------------*/
 /*
- * Register class 'name' with ID 'cid', ancestor 'ancestor',
- * constructor 'construct', destructor 'destruct' and
- * reconstructor ("stream deserializer") 'reconstruct'.
+ * Register class 'name' with ID 'cid', ancestor 'ancestor', constructor
+ * 'construct', destructor 'destruct' and reconstructor ("stream
+ * deserializer") 'reconstruct'.
  *
  * If 'cid' is -1, the first free type ID is used.
  *
- * Unless 'name' starts with a '\001' character, 'name' is
- * also registered as a TK_SYM_TYPE in the compiler symbol
- * table, so the name can be used as a type name in EEL
- * source code.
+ * Unless 'name' starts with a '\001' character, 'name' is also registered as a
+ * TK_SYM_TYPE in the compiler symbol table, so the name can be used as a type
+ * name in EEL source code.
  *
- * The class is marked as a descendant from class 'ancestor',
- * where -1 means the class is a root class.
+ * The class is marked as a descendant from class 'ancestor', where -1 means
+ * the class is a root class.
  *
  * SUCCESS: Returns the type EEL_classdef object of the new class.
  * FAILURE: Returns NULL.
@@ -92,27 +91,15 @@ EEL_object *eel_register_class(EEL_vm *vm,
 		EEL_rector_cb reconstruct);
 
 /*
- * Mark class 'classdef' as unused, so that it will be
- * destroyed as soon as there are no more instances of it.
+ * Mark class 'classdef' as unused, so that it will be destroyed as soon as
+ * there are no more instances of it.
  */
 void eel_unregister_class(EEL_object *classdef);
 
 
 /*
- * Register C function 'func' as 'name', taking 'args'
- * fixed arguments, and up to 'optargs' optional arguments
- * OR any number of groups of 'tupargs' arguments, and
- * returning 'results' results.
- *
- * 'results', 'args' and 'tupargs' must be values of 0 or
- * higher.
- *
- * 'optargs' may have the value of -1, meaning "any number
- * of optional arguments"; that is, roughly equivalent to
- * '...' in C/C++ function declarations.
- *
- * SUCCESS: Returns the EEL_function object.
- * FAILURE: Returns NULL.
+ * Essentially the internal compiler version of eel_add_cfunction(). This one
+ * also adds a symbol to the current scope.
  */
 EEL_object *eel_register_cfunction(EEL_vm *vm,
 		int results, const char *name,

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eb_opengl.c - EEL OpenGL Binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2012 David Olofson
+ * Copyright 2010-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -1705,7 +1705,12 @@ EEL_xno ebgl_init(EEL_vm *vm)
 	/* Textures */
 	eel_export_cfunction(m, 1, "IsTexture", 1, 0, 0, gl_istexture);
 	eel_export_cfunction(m, 0, "BindTexture", 2, 0, 0, gl_bindtexture);
-	eel_export_cfunction(m, 0, "TexParameter", 3, -1, 0, gl_texparameter);
+	/*
+	 * NOTE: Theoretically, args should be 2, 0, 1, but the current
+	 *       implementation actually has a limit at 8, so we may as well
+	 *       allow this to be trapped at compile time.
+	 */
+	eel_export_cfunction(m, 0, "TexParameter", 2, 8, 0, gl_texparameter);
 	eel_export_cfunction(m, 0, "DeleteTexture", 1, 0, 0, gl_deletetexture);
 
 	/* Lighting */

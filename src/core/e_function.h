@@ -59,7 +59,6 @@ typedef enum
 	EEL_object	*module;	/* Parent module */		\
 	EEL_object	*name;						\
 	unsigned short	flags;						\
-	/* Native functions can use reqargs == 255 for "any number"! */	\
 	unsigned char	results;	/* # of results */		\
 	unsigned char	reqargs;	/* # of required args */	\
 	unsigned char	optargs;	/* # of optional args */	\

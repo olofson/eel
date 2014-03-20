@@ -725,7 +725,7 @@ EEL_xno eel_builtin_init(EEL_vm *vm)
 			bi__xdesc);
 
 	/* "System" */
-	eel_export_cfunction(m, 1, "print", 0, -1, 0, bi_print);
+	eel_export_cfunction(m, 1, "print", 0, 0, 1, bi_print);
 	eel_export_cfunction(m, 1, "getms", 0, 0, 0, bi_getms);
 	eel_export_cfunction(m, 1, "getus", 0, 0, 0, bi_getus);
 	eel_export_cfunction(m, 1, "sleep", 1, 0, 0, bi_sleep);
