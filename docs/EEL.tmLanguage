@@ -119,14 +119,10 @@
 			<key>patterns</key>
 			<array>
 				<dict>
-					<key>match</key>
-					<string>\\(\\|[abefnprtv'"?]|[0-3]\d{,2}|[4-7]\d?|x[a-fA-F0-9]{,2}|u[a-fA-F0-9]{,4}|U[a-fA-F0-9]{,8})</string>
-					<key>name</key>
-					<string>constant.character.escape</string>
+					<key>include</key>
+					<string>#string_escaped_char</string>
 				</dict>
 			</array>
-			<key>string_escaped_char</key>
-			<false/>
 		</dict>
 		<dict>
 			<key>begin</key>
@@ -149,6 +145,21 @@
 			<string>comment.block</string>
 		</dict>
 	</array>
+	<key>repository</key>
+	<dict>
+		<key>string_escaped_char</key>
+		<dict>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>match</key>
+					<string>\\(\\|[abefnprtv'"?]|[0-3]\d{,2}|[4-7]\d?|x[a-fA-F0-9]{,2}|u[a-fA-F0-9]{,4}|U[a-fA-F0-9]{,8})</string>
+					<key>name</key>
+					<string>constant.character.escape</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
 	<key>scopeName</key>
 	<string>source.eel</string>
 	<key>uuid</key>
