@@ -201,17 +201,38 @@ static inline int get_figure(EEL_state *es, int base)
 }
 
 
-/* Simple base-n integer number parser for string escapes */
+/*
+ * Simple base-n integer number parser for string escapes.
+ *
+ * If 'figures' is positive, it specifies the number of figures to read, and
+ * the call will fail if that number of valid figures cannot be read.
+ *
+ * If 'figures' is negative, this function reads at most abs(figures) figures,
+ * and fails only if it gets no figures at all.
+ */
 static int get_num(EEL_state *es, int base, int figures)
 {
 	int value = 0;
+	int limitonly = 0;
+	int figures_read = 0;
+	if(figures < 0)
+	{
+		figures = -figures;
+		limitonly = 1;
+	}
 	while(figures--)
 	{
 		int n = get_figure(es, base);
 		if(n < 0)
-			return n;
+		{
+			if(limitonly && figures_read)
+				return value;
+			else
+				return n;
+		}
 		value *= base;
 		value += n;
+		++figures_read;
 	}
 	return value;
 }
@@ -260,11 +281,11 @@ static int parse_string(EEL_state *es, int delim)
 			  case '1':
 			  case '2':
 			  case '3':
-				c = get_num(es, 8, 2);
+				eel_bio_ungetc(es->context->bio);
+			  	c = get_num(es, 8, -3);
 				if(c < 0)
-					eel_cerror(es, "Illegal octal number!");
-				break;
-				c += 64 * (c - '0');
+					eel_cerror(es, "Illegal octal "
+							"number!");
 				break;
 			  case 'a':
 				c = '\a';
@@ -276,9 +297,10 @@ static int parse_string(EEL_state *es, int delim)
 				c = '\0';
 				break;
 			  case 'd':
-				c = get_num(es, 10, 2);
+				c = get_num(es, 10, -3);
 				if(c < 0)
-					eel_cerror(es, "Illegal decimal number!");
+					eel_cerror(es, "Illegal decimal "
+							"number!");
 				break;
 			  case 'f':
 				c = '\f';
@@ -296,7 +318,7 @@ static int parse_string(EEL_state *es, int delim)
 				c = '\v';
 				break;
 			  case 'x':
-				c = get_num(es, 16, 2);
+				c = get_num(es, 16, -2);
 				if(c < 0)
 					eel_cerror(es, "Illegal hex number!");
 				break;
