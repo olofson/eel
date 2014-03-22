@@ -57,6 +57,7 @@ export function main<args>
 	run("random");
 	run("string");
 	run("dstring");
+	run("stringquote");
 	run("array");
 	run("table");
 	run("vector");
