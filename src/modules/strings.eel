@@ -1,0 +1,121 @@
+   ////////////////////////////////////////////////////////////
+  // strings.eel - String processing utilities
+ // Copyright 2014 David Olofson
+////////////////////////////////////////////////////////////
+
+module strings;
+
+import "io";
+
+
+// Flags for quote()
+
+// Set to leave out the double quotes
+export constant STRINGS_NOQUOTES =	0x00000001;
+
+// Set to quote lines as actual lines. Each line will end with a \n escape and
+// an actual newline character. Unless STRINGS_NOQUOTES is set, lines will be
+// quoted separately, C/C++/EEL multiline quoted string literal style.
+export constant STRINGS_MULTILINE =	0x00000002;
+
+
+constant hexfigures = "0123456789ABCDEF";
+
+export function hexstr(val)[figures = 0]
+{
+	if figures
+	{
+		local buf = dstring [];
+		for local i = figures - 1, 0, -1
+			buf.+ hexfigures[(val / (16 ** i)) % 16];
+		return buf;
+	}
+	else if val
+	{
+		local buf = dstring [];
+		while val
+		{
+			insert(buf, 0, hexfigures[val % 16]);
+			val /= 16;
+		}
+		return buf;
+	}
+	return "0";
+}
+
+
+export function octstr(val)[figures = 0]
+{
+	if figures
+	{
+		local buf = dstring [];
+		for local i = figures - 1, 0, -1
+			buf.+ hexfigures[(val / (8 ** i)) % 8];
+		return buf;
+	}
+	else if val
+	{
+		local buf = dstring [];
+		while val
+		{
+			insert(buf, 0, hexfigures[val % 8]);
+			val /= 8;
+		}
+		return buf;
+	}
+	return "0";
+}
+
+
+export function quote(data)[flags = 0]
+{
+	local c = nil;
+	local buf = dstring [];
+	if not (flags & STRINGS_NOQUOTES)
+		buf.+ '"';
+	for local i = 0, sizeof data - 1
+	{
+		c = data[i];
+		switch(c)
+		  case '\\'
+			buf.+ "\\\\";
+		  case '\a'
+			buf.+ "\\a";
+		  case '\b'
+			buf.+ "\\b";
+		  case '\f'
+			buf.+ "\\f";
+		  case '\n'
+			if flags & STRINGS_MULTILINE
+			{
+				if flags & STRINGS_NOQUOTES
+					buf.+ "\\n\n";
+				else
+					buf.+ "\\n\"\n\"";
+			}
+			else
+				buf.+ "\\n";
+		  case '\r'
+			buf.+ "\\r";
+		  case '\t'
+			buf.+ "\\t";
+		  case '\v'
+			buf.+ "\\v";
+		  case '"'
+			buf.+ "\\\"";
+		  case '\''
+			// May as well support single-quoted literals as well!
+			buf.+ "\\'";
+		  default
+			if (c < 32) or (c > 126)
+			{
+				buf.+ "\\";
+				buf.+ octstr(c, 3);
+			}
+			else
+				buf.+ c;
+	}
+	if not (flags & STRINGS_NOQUOTES)
+		buf.+ '"';
+	return buf;
+}

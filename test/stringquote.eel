@@ -1,0 +1,32 @@
+/////////////////////////////////////////////
+// EEL Test Suite - String quoting test
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+import "strings";
+import "serialize";
+
+export function main<args>
+{
+	print("String quoting tests:\n");
+
+	print("\nASCII ranges:\n");
+	for local j = 0, 15
+	{
+		local i0 = j * 16;
+		local i1 = i0 + 15;
+		print("  ", hexstr(i0, 2), "..", hexstr(i1, 2), ": ");
+		local s1 = dstring [];
+		for local i = i0, i1
+			s1.+ i;
+		local s2 = quote(s1);
+		print(s2, "\n");
+		local s3 = deserialize(s2);
+		if s3 != s1
+			throw "Deserialized quoted string differs from "
+					"original!";
+	}
+
+	print("\nString quoting tests done.\n");
+	return 0;
+}
