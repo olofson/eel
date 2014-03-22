@@ -6,6 +6,7 @@
 module serialize;
 
 import "io";
+import "strings";
 
 
 // Flags for serialize()
@@ -21,7 +22,7 @@ constant BIN_UNKNOWN =	0;
 constant BIN_NIL =	1;
 constant BIN_INTEGER =	2;
 constant BIN_REAL =	3;
-constant BIN_BOOLEAN =	4;	// True
+constant BIN_BOOLEANT =	4;	// True
 constant BIN_BOOLEANF =	5;	// False
 constant BIN_STRING =	6;
 constant BIN_DSTRING =	7;
@@ -36,11 +37,7 @@ procedure write_value_eel(buf, v, indent, flags)
 	  case nil, integer, real, boolean
 		buf.+ (dstring)v;
 	  case string, dstring
-	  {
-		buf.+ "\"";
-		buf.+ v;
-		buf.+ "\"";
-	  }
+	  	buf.+ quote(v);
 	  case vector_d
 	  {
 		buf.+ "vector [";
@@ -114,7 +111,7 @@ procedure write_value_bin(buf, v, flags)
 		write_typed(buf, BIN_REAL, v);
 	  case boolean
 		if v
-			write_typed(buf, BIN_BOOLEAN);
+			write_typed(buf, BIN_BOOLEANT);
 		else
 			write_typed(buf, BIN_BOOLEANF);
 	  case string
@@ -168,7 +165,7 @@ function read_value_bin(mf)
 		return read(mf, integer);
 	  case BIN_REAL
 		return read(mf, real);
-	  case BIN_BOOLEAN
+	  case BIN_BOOLEANT
 		return true;
 	  case BIN_BOOLEANF
 		return false;
@@ -204,16 +201,8 @@ function read_value_bin(mf)
 }
 
 
-export function serialize(v)[_format, _flags]
+export function serialize(v)[format = "eel", flags = 0]
 {
-	if specified _format
-		local format = _format;
-	else
-		format = "eel";
-	if specified _flags
-		local flags = _flags;
-	else
-		flags = 0;
 	switch format
 	  case "eel"
 	  {
@@ -231,12 +220,8 @@ export function serialize(v)[_format, _flags]
 }
 
 
-export function deserialize(buf)[_format]
+export function deserialize(buf)[format = "eel"]
 {
-	if specified _format
-		local format = _format;
-	else
-		format = "eel";
 	switch format
 	  case "eel"
 	  {
@@ -255,6 +240,6 @@ export function deserialize(buf)[_format]
 		return read_value_bin(mf);
 	  }
 	  default
-		throw "deserialize(): Unknown format '" + _format + "'!";
+		throw "deserialize(): Unknown format '" + format + "'!";
 	return nil;
 }
