@@ -1,6 +1,6 @@
 
-* Does eel_share_module() actually work now - or rather, are non-shared modules
-  really ignored by 'import' and load() as intended?
+* Should we just treat Audiality handles like plain integers, as in the C
+  API, or should we wrap them and wire them to EEL memory management?
 
 * Overwriting an existing environment variable in envtest.eel;
   "setenv(TESTVAR, "new_test_value", false);" succeeds under Wine 1.4.1.
@@ -21,9 +21,6 @@
 	  compiler is NOT to be used in realtime context!
 	* Are we using eel_malloc() etc where intended?
 
-* Should we just treat Audiality handles like plain integers, as in the C
-  API, or should we wrap them and wire them to EEL memory management?
-
 * Broken tests:
 	zsgl2.eel
 	zsgl.eel
@@ -42,10 +39,6 @@
   either copies the value fields from matched elements, or if they're callable,
   calls them with the match buffer, the state object and the output stream, so
   they can do whatever they want.
-
-* builtin.c should probably be stripped with eelstrip.eel - which may then
-  just as well output in C code format while at it, as that might be a handy
-  feature for building some EEL script into a host application executable.
 
 * Error code registry!
 	* Per-module error code ranges

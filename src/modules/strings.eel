@@ -90,6 +90,8 @@ export function quote(data)[flags = 0]
 			{
 				if flags & STRINGS_NOQUOTES
 					buf.+ "\\n\n";
+				else if i == (sizeof data - 1)
+					buf.+ "\\n";
 				else
 					buf.+ "\\n\"\n\"";
 			}

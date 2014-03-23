@@ -7,7 +7,7 @@
 //	* Operator tokenization
 //
 
-import "io", "dir";
+import "io", "dir", "strings";
 
 constant ESS_FIRST_TOKEN = 128;
 
@@ -302,8 +302,11 @@ procedure usage(name)
 "   Switches:\n"
 "          -stdout  Write stripped output to standard output\n"
 "          -a       Strip all *.eel files in the current directory\n"
+"          -n       Disable newline encoding\n"
+"          -q       Output quoted string literal. Default extension: c\n"
 "          -r       Recurse into subdirectories\n"
-"          -x       Output file extension [ess]\n"
+"          -t       Disable keyword tokenization\n"
+"          -x       Output file extension [ess] ([c] when using -c)\n"
 "\n"
 "   NOTE:  Unless an output file name or -stdout is specified, the output is\n"
 "          written to the corresponding .eel files. (For example, the output\n"
@@ -390,6 +393,9 @@ export function main<args>
 	local infiles = [];
 	local outfile = nil;
 	local extension = "ess";
+	local enc_nl = true;
+	local do_tokenize = true;
+	local quoted = false;
 
 	tokentab = table [];
 	for local i = 0, sizeof tokens - 1
@@ -413,8 +419,18 @@ export function main<args>
 			outfile = true;
 		  case "-a"
 			all = true;
+		  case "-n"
+			enc_nl = false;
+		  case "-q"
+		  {
+			quoted = true;
+			if extension == "ess"
+				extension = "c";
+		  }
 		  case "-r"
 			recursive = true;
+		  case "-t"
+			do_tokenize = false;
 		  case "-x"
 		  {
 			if not specified args[i + 1]
@@ -484,8 +500,12 @@ export function main<args>
 		close(f);
 
 		// Postprocessing
-		encode_newlines(buf);
-		tokenize(buf);
+		if enc_nl
+			encode_newlines(buf);
+		if do_tokenize
+			tokenize(buf);
+		if quoted
+			buf = quote(buf, STRINGS_MULTILINE);
 
 		// Output
 		if outfile == true

@@ -1,0 +1,97 @@
+//////////////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2002-2005, 2009-2011, 2014 David Olofson
+//////////////////////////////////////////////////////
+
+static results = [];
+
+import "io", "serialize";
+import "strip" as strip;
+
+procedure run(filename)
+{
+	local r = [filename];
+	print("==============================================\n");
+	try
+	{
+		local f = file [filename + ".c", "rb"];
+		local s = read(f, sizeof f);
+		print(s, "\n");
+		local m = compile(deserialize(s));
+		m.main(filename);
+		r[1] = nil;
+	}
+	except
+	{
+		local x = exception;
+		try
+			r[1] = exception_name(x);
+		except
+			r[1] = "\"" + (string)x + "\"";
+		print("######################################\n");
+		print("### \"", filename, "\" failed to run!\n");
+		print("### It threw '", r[1], "'.\n");
+		print("######################################\n");
+	}
+	results[sizeof results] = r;
+}
+
+export function main<args>
+{
+	print("==============================================\n");
+	strip.main("strip", "-a", "-q");
+	print("==============================================\n");
+	run("varinit");
+	run("hello");
+	run("version");
+	run("platform");
+	run("forscope");
+	run("arithmetics");
+	run("explist");
+	run("calling");
+	run("member");
+	run("callback");
+	run("exceptions");
+	run("varargs");
+	run("argdefault");
+	run("nesting");
+	run("scope");
+	run("loops");
+	run("break");
+	run("conditionals");
+	run("recursion");
+	run("divtest");
+	run("ackermann");
+	run("tak");
+	run("heapsort");
+	run("random");
+	run("string");
+	run("dstring");
+	run("stringquote");
+	run("array");
+	run("table");
+	run("vector");
+	run("mathtest");
+	run("compile");
+	run("nonexist");
+	run("diskfile");
+	run("memfile");
+	run("wordcount");
+	run("wordcount2");
+	run("dirtest");
+	run("dsptest");
+	run("weakref");
+	run("randomoop");
+	run("envtest");
+	print("==============================================\n");
+	for local i = 0, sizeof results - 1
+	{
+		print("  \"", results[i][0], "\": ");
+		if(results[i][1] == nil)
+			print("OK\n");
+		else
+			print("exception ", results[i][1], "\n");
+	}
+	print("==============================================\n");
+	return 0;
+}
