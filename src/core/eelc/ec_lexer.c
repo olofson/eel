@@ -241,19 +241,16 @@ static int get_num(EEL_state *es, int base, int figures)
 /*
  * Parse quoted string.
  *
- * C printf "backslash codes" are supported,
- * as well as "\dXXX", for decimal codes.
+ * C printf "backslash codes" are supported, as well as "\dXXX", for decimal
+ * codes.
  *
- * Strings can span multiple lines, either
- * by using "inline" newlines (\n, \r and \t
- * are filtered out!), or by unquoting, adding
- * the desired whitespace characters, and then
- * beginning a new quoted string (C style).
+ * Strings can span multiple lines, either by using "inline" newlines (\n, \r
+ * and \t are filtered out!), or by unquoting, adding the desired whitespace
+ * characters, and then beginning a new quoted string (C style).
  *
- * A compiler warning is issued if a string is
- * continued using the C style, unless there is
- * at least one newline character in the "hole"
- * between two parts of a string.
+ * A compiler warning is issued if a string is continued using the C style,
+ * unless there is at least one newline character in the "hole" between two
+ * parts of a string.
  */
 static int parse_string(EEL_state *es, int delim)
 {
@@ -292,9 +289,6 @@ static int parse_string(EEL_state *es, int delim)
 				break;
 			  case 'b':
 				c = '\b';
-				break;
-			  case 'c':
-				c = '\0';
 				break;
 			  case 'd':
 				c = get_num(es, 10, -3);
