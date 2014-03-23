@@ -306,7 +306,7 @@ procedure usage(name)
 "          -q       Output quoted string literal. Default extension: c\n"
 "          -r       Recurse into subdirectories\n"
 "          -t       Disable keyword tokenization\n"
-"          -x       Output file extension [ess] ([c] when using -c)\n"
+"          -x       Output file extension [ess] ([c] when using -q)\n"
 "\n"
 "   NOTE:  Unless an output file name or -stdout is specified, the output is\n"
 "          written to the corresponding .eel files. (For example, the output\n"
