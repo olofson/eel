@@ -59,6 +59,7 @@ export function main<args>
 	run("dstring");
 	run("stringquote");
 	run("replace");
+	run("stringcase");
 	run("array");
 	run("table");
 	run("vector");

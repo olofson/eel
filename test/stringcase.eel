@@ -1,0 +1,29 @@
+////////////////////////////////////////////////
+// EEL Test Suite - String case conversion test
+// Copyright 2014 David Olofson
+////////////////////////////////////////////////
+
+import "strings";
+
+export function main<args>
+{
+	print("String case conversion tests:\n");
+
+	local s1 = "This is a CASE CoNvErSiOn test string.";
+	print("  s1: ", s1, "\n");
+
+	print("\nuppercase():\n");
+	local s2 = uppercase(s1);
+	print("  s2: ", s2, "\n");
+	if s2 != "THIS IS A CASE CONVERSION TEST STRING."
+		throw "uppercase() test gave unexpected result!";
+
+	print("\nlowercase():\n");
+	s2 = lowercase(s1);
+	print("  s2: ", s2, "\n");
+	if s2 != "this is a case conversion test string."
+		throw "lowercase() test gave unexpected result!";
+
+	print("\nString case conversion tests done.\n");
+	return 0;
+}

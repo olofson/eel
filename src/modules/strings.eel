@@ -2,13 +2,20 @@
   // strings.eel - String processing utilities
  // Copyright 2014 David Olofson
 ////////////////////////////////////////////////////////////
+//
+// NOTE: For performance reasons, these functions generally
+//       return dstrings rather than (immutable) strings!
+//
+////////////////////////////////////////////////////////////
 
 module strings;
 
 import "io";
 
 
-// Flags for quote()
+  /////////////////////////
+ // Flags for quote()
+/////////////////////////
 
 // Set to leave out the double quotes
 export constant STRINGS_NOQUOTES =	0x00000001;
@@ -123,7 +130,7 @@ export function quote(data)[flags = 0]
 }
 
 
-export function replace(str, what, with)
+export function replace(s, what, with)[flags = 0]
 {
 	switch typeof what
 	  case integer
@@ -142,12 +149,38 @@ export function replace(str, what, with)
 		throw "Cannot replace with object of type " + (string)with +
 				"!";
 
-	local buf = dstring [];
-	for local i = 0, sizeof str - 1
-		if str[i] == what
-			buf.+ with;
+	local r = dstring [];
+	for local i = 0, sizeof s - 1
+		if s[i] == what
+			r.+ with;
 		else
-			buf[sizeof buf] = str[i];
+			r[sizeof r] = s[i];
 
-	return buf;
+	return r;
+}
+
+
+export function uppercase(s)[flags = 0]
+{
+	// TODO: Locales and/or UNICODE?
+	local r = dstring [];
+	for local i = 0, sizeof s - 1
+		if (s[i] >= 'a') and (s[i] <= 'z')
+			r.+ s[i] - 'a' + 'A';
+		else
+			r.+ s[i];
+	return r;
+}
+
+
+export function lowercase(s)[flags = 0]
+{
+	// TODO: Locales and/or UNICODE?
+	local r = dstring [];
+	for local i = 0, sizeof s - 1
+		if (s[i] >= 'A') and (s[i] <= 'Z')
+			r.+ s[i] - 'A' + 'a';
+		else
+			r.+ s[i];
+	return r;
 }
