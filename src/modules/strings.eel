@@ -121,3 +121,33 @@ export function quote(data)[flags = 0]
 		buf.+ '"';
 	return buf;
 }
+
+
+export function replace(str, what, with)
+{
+	switch typeof what
+	  case integer
+		;
+	  case string, dstring
+		throw "String matching not yet implemented!";
+	  default
+		throw "Cannot match object of type " + (string)what + "!";
+
+	switch typeof with
+	  case integer
+		with = string [with];
+	  case string, dstring
+		;
+	  default
+		throw "Cannot replace with object of type " + (string)with +
+				"!";
+
+	local buf = dstring [];
+	for local i = 0, sizeof str - 1
+		if str[i] == what
+			buf.+ with;
+		else
+			buf[sizeof buf] = str[i];
+
+	return buf;
+}

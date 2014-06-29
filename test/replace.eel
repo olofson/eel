@@ -1,0 +1,29 @@
+/////////////////////////////////////////////
+// EEL Test Suite - String substitution test
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+import "strings";
+
+export function main<args>
+{
+	print("String substitution tests:\n");
+
+	local s1 = "This is a test string.";
+	print("  s1: ", s1, "\n");
+
+	print("\nReplace character with character:\n");
+	local s2 = replace(s1, 's', 'z');
+	print("  s2: ", s2, "\n");
+	if s2 != "Thiz iz a tezt ztring."
+		throw "Char/char replace test gave unexpected result!";
+
+	print("\nReplace character with string:\n");
+	s2 = replace(s1, 's', "\\/\\");
+	print("  s2: ", s2, "\n");
+	if s2 != "Thi\\/\\ i\\/\\ a te\\/\\t \\/\\tring."
+		throw "Char/string replace test gave unexpected result!";
+
+	print("\nString substitution tests done.\n");
+	return 0;
+}
