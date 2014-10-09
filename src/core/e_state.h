@@ -99,10 +99,6 @@ struct EEL_state
 	/* Compiler */
 	EEL_context	*context;	/* Linked LIFO stack */
 	EEL_vm		*vm;		/* Master/state VM */
-/*
-FIXME: 'path' probably belongs in the VM...
-*/
-	EEL_object	*path;		/* EEL_string object */
 
 	/* Compiler error/warning handling */
 	unsigned	last_module_id;

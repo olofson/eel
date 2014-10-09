@@ -195,20 +195,6 @@ static inline void eel_free(EEL_vm *vm, void *block)
 	Compiler API
 ----------------------------------------------------------*/
 
-/*
- * Set the EEL path for scripts and includes.
- *
- * This must be a valid path, terminated by a
- * '/', '\', ':' or whatever "directory separator"
- * the current platform is using, and will be
- * prepended to file names passed to the #include
- * directive.
- */
-EELAPI(void)eel_set_path(EEL_vm *vm, const char *path);
-
-/* Returns the current EEL path. */
-EELAPI(const char *)eel_path(EEL_vm *vm);
-
 /* Open/Close an EEL VM. */
 EELAPI(EEL_vm *)eel_open(int argc, const char *argv[]);
 EELAPI(void)eel_close(EEL_vm *vm);

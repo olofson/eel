@@ -683,7 +683,7 @@ typedef struct
 	long long	p_time;		/* Time of entering p_current */
 #endif
 #ifdef	EEL_VM_PROFILING
-	long long	vmp_time;	/* Time for dispath of instruction */
+	long long	vmp_time;	/* Time for dispatch of instruction */
 	int		vmp_overhead;	/* Profiling overhead correction */
 	EEL_opcodes	vmp_opcode;	/* Opcode currently being timed */
 	EEL_vmpentry	vmprof[EEL_VMP_POINTS];

@@ -369,8 +369,6 @@ EEL_vm *eel_open(int argc, const char *argv[])
 		return NULL;
 	}
 
-	eel_set_path(vm, NULL);	/* Set default path */
-
 	/* Install system module */
 	if(eel_system_init(vm, argc, argv))
 	{
@@ -594,9 +592,6 @@ static void es_close(EEL_state *es)
 	DBGK2(printf("eel_close(): Destroying module name table.\n");)
 	if(es->modnames)
 		eel_o_disown(&es->modnames);
-	DBGK2(printf("eel_close(): Destroying EEL state path string.\n");)
-	if(es->path)
-		eel_o_disown(&es->path);
 	DBGK2(printf("eel_close(): Clearing message log.\n");)
 	eel_clear_errors(es);
 	eel_clear_warnings(es);
@@ -699,37 +694,6 @@ char *eel_unique(EEL_vm *vm, const char *base)
 		base = "__sym";
 	snprintf(buf, EEL_SBUFSIZE, "%s%.4d", base, VMP->state->unique++);
 	return buf;
-}
-
-
-/*----------------------------------------------------------
-	File System Interface
-----------------------------------------------------------*/
-
-void eel_set_path(EEL_vm *vm, const char *path)
-{
-	EEL_state *es = VMP->state;
-	if(es->path)
-		eel_o_disown_nz(es->path);
-	if(path)
-		es->path = eel_ps_new(vm, path);
-	else
-	{
-#if defined(WIN32) || defined(MACOS)
-		es->path = eel_ps_new(vm, "");
-#else
-		es->path = eel_ps_new(vm, "./");
-#endif
-	}
-	if(!es->path)
-		eel_serror(es, "Could not create patch string!");
-}
-
-
-const char *eel_path(EEL_vm *vm)
-{
-	EEL_state *es = VMP->state;
-	return o2EEL_string(es->path)->buffer;
 }
 
 
