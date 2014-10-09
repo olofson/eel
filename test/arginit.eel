@@ -1,0 +1,48 @@
+//////////////////////////////////////////////////////
+// EEL Test Suite - Argument based initializers
+// Copyright 2014 David Olofson
+//////////////////////////////////////////////////////
+
+function create_object(base)
+{
+	return table [
+		.field1 base,
+		.field2 base + 1,
+		.field3 base * 10,
+		procedure dump(self)
+		{
+			print("    ", self, ":\n");
+			print("      field1:", self.field1, ":\n");
+			print("      field2:", self.field2, ":\n");
+			print("      field3:", self.field3, ":\n");
+		}
+	];
+}
+
+export function main<args>
+{
+	print("Argument based initializer tests:\n");
+
+	print("\n  create_object(1):\n");
+	local o = create_object(1);
+	o:dump();
+	if o.field1 != 1
+		throw "o.field1 is " + o.field1 + "! Expected 1.";
+	if o.field2 != 2
+		throw "o.field2 is " + o.field2 + "! Expected 2.";
+	if o.field3 != 10
+		throw "o.field3 is " + o.field3 + "! Expected 10.";
+
+	print("\n  create_object(2):\n");
+	o = create_object(2);
+	o:dump();
+	if o.field1 != 2
+		throw "o.field1 is " + o.field1 + "! Expected 2.";
+	if o.field2 != 3
+		throw "o.field2 is " + o.field2 + "! Expected 3.";
+	if o.field3 != 20
+		throw "o.field3 is " + o.field3 + "! Expected 20.";
+
+	print("\nArgument based initializer tests done.\n");
+	return 0;
+}

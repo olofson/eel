@@ -75,6 +75,7 @@ export function main<args>
 	run("weakref");
 	run("randomoop");
 	run("envtest");
+	run("arginit");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{
