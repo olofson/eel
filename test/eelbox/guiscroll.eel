@@ -16,8 +16,6 @@ export function main<args>
 	local flags = SDL.SWSURFACE | SDL.RESIZABLE;
 	local screen = SDL.SetVideoMode(640, 480, bpp, flags);
 	SDL.EnableKeyRepeat(250, 30);
-//	local font = text.Open("microfont_sh.png");
-//	font:Offset(-1, 1);
 	SDL.SetCaption("EBGUI Scroll Test", args[0]);
 
 	ebgui.Open(screen);

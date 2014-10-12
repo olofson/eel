@@ -573,7 +573,7 @@ export function main<args>
 
 	SDL.SetCaption("ZeeSpace Test - 2006-2011 David Olofson", "ZeeSpace");
 
-	font = text.Open("microfont_sh.png");
+	font = text.Open();
 
 	// Set up
 	drawpipe = ZS_Pipe [];

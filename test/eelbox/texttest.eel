@@ -12,7 +12,7 @@ export function main<args>
 	SetCaption("EELBox Text Test", args[0]);
 	ShowCursor(0);
 
-	local f = text.Open("microfont_sh.png");
+	local f = text.Open();
 	local xc, local yc = (screen.w, screen.h) / 2;
 	local xa, local ya = (xc, yc) - ((130, 10) / 2);
 	local last_tick = GetTicks();

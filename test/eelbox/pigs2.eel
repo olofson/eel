@@ -42,7 +42,7 @@ export function main<args>
 	ShowCursor(0);
 
 	// Load font
-	local font = text.Open("microfont_sh.png");
+	local font = text.Open();
 
 	// Load pig sprite image
 	local pigframes = IMG.Load("pigframes2.png");

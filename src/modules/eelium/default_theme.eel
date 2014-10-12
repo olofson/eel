@@ -9,7 +9,6 @@ import "SDL" as SDL;
 import "math";
 import "eelium/ebgui";
 import "eelium/recttools" as RT;
-import "eelium/text" as text;
 import "eelium/drawtools";
 
 // Theme constructor
@@ -23,7 +22,7 @@ export function Create
 		.colors			vector_s32 [],
 
 		// Default font
-		.font			text.Open("microfont_sh.png"),
+		.font			LoadFont("microfont_sh.png"),
 
 		// Default drawing style for Selector() items.
 		.SelectorItemStyle	"flat",

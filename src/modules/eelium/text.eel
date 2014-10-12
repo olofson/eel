@@ -6,8 +6,9 @@
 module text;
 
 import "SDL", "SDL_image", "math";
+import "system" as sys;
 
-export function Open(filename)
+export function Open[filename]
 {
 	// Create object
 	local no = table [
@@ -104,7 +105,10 @@ export function Open(filename)
 	];
 
 	// Load and process font
-	local sfont = Load(filename);
+	if specified filename
+		local sfont = Load(filename);
+	else
+		sfont = Load(sys.MODPATH + "/eelium/fonts/microfont_sh.png");
 	SetAlpha(sfont);
 	local x = 0;
 	local last_cut = 0;

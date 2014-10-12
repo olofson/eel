@@ -18,6 +18,8 @@ install(DIRECTORY include/ DESTINATION include/EEL
 
 install(DIRECTORY src/modules/ DESTINATION lib/eel
 	FILES_MATCHING PATTERN "*.eel")
+install(DIRECTORY src/modules/eelium/fonts DESTINATION lib/eel/eelium
+	FILES_MATCHING PATTERN "*.png")
 install(DIRECTORY tools/ DESTINATION lib/eel
 	FILES_MATCHING PATTERN "*.eel")
 

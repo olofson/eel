@@ -10,6 +10,8 @@ import "SDL" as SDL;
 import "eelium/recttools" as RT;
 import "eelium/line" as line;
 export import "eelium/ebguidefs";
+import "eelium/text" as text;
+import "system" as sys;
 
 
 static system_unicode = SDL.EnableUNICODE(true);
@@ -50,6 +52,22 @@ static roots = [];
 // Table of dirty widgets, all roots. (table is used only to filter out
 // multiple invalidations between refreshes. Values are ignored.)
 static dirtywidgets = table [];
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//// Font management
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+export function LoadFont(name)
+{
+	try
+		return text.Open(sys.MODPATH + "/eelium/fonts/" + name);
+	return text.Open(name);
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
