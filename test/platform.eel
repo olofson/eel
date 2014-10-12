@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////
 // Platform information
-// Copyright 2007 David Olofson
+// Copyright 2007, 2014 David Olofson
 ///////////////////////////////////////////////
 
 import "system";
@@ -16,6 +16,7 @@ export function main<args>
 	print("     EXEPATH: ", EXEPATH, "\n");
 	print("     CFGPATH: ", CFGPATH, "\n");
 	print("    HOMEPATH: ", HOMEPATH, "\n");
+	print("     MODPATH: ", MODPATH, "\n");
 	print("  environment:\n");
 	print("     args[0]: ", args[0], "\n");
 	for local i = 0, sizeof $ - 1

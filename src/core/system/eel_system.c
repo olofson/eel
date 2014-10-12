@@ -41,6 +41,7 @@ TODO:
 #include <stdlib.h>
 #include <string.h>
 #include "eel_system.h"
+#include "e_config.h"
 #include "EEL_register.h"
 #ifdef _WIN32
 #include <windows.h>
@@ -207,6 +208,7 @@ EEL_xno eel_system_init(EEL_vm *vm, int argc, const char *argv[])
 	eel_export_sconstant(m, "CFGPATH", "~");
 	eel_export_sconstant(m, "HOMEPATH", "~");
 #endif
+	eel_export_sconstant(m, "MODPATH", EEL_MODULE_DIR);
 	free(exepath);
 	free(exename);
 
