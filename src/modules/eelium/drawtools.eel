@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////
-// drawtools.eel - SDL drawing tools for EBGUI and themes
-// Copyright 2005, 2010-2011 David Olofson
+// drawtools.eel - SDL draw tools for the EElium GUI and themes
+// Copyright 2005, 2010-2011, 2014 David Olofson
 ////////////////////////////////////////////////////////////////
 
 module eelium.drawtools;

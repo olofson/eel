@@ -15,6 +15,6 @@
 #cmakedefine	HAVE_SNPRINTF
 #cmakedefine	HAVE__SNPRINTF
 
-#cmakedefine	EEL_HAVE_EELBOX
+#cmakedefine	EEL_HAVE_EELIUM
 
 #define	EEL_MODULE_DIR	"@EEL_MODULE_DIR@"

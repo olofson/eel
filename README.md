@@ -10,7 +10,7 @@ EEL compiles into byte-code that runs on a virtual machine, which means that no 
 Installing
 ----------
 
-* Install the dependencies. Most of these should actually be optional (build scripts need some work), but you'll want most of them for a fully functional EELBox executive anyway.
+* Install the dependencies. Most of these should actually be optional (build scripts need some work), but you'll want most of them for a fully functional Eelium executive anyway.
   * SDL 1.2
     * http://libsdl.org
   * SDL_net 1.2
@@ -29,7 +29,7 @@ Installing
     * http://eelang.org/
   * GitHub
     * git clone git@github.com:olofson/eel.git
-  
+
 * Configure the source tree.
   * Option 1 (Un*x with bash or similar shell)
     * ./cfg-all

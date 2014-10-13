@@ -1,0 +1,55 @@
+/////////////////////////////////////////////
+// draw.eel - Eelium Drawing Toy
+// Copyright 2005, 2011 David Olofson
+/////////////////////////////////////////////
+
+import SDL, "pen" as pen, SDL_image as img;
+
+constant FILTERCOEFF = .1;
+
+export function main<args>
+{
+	local screen = SetVideoMode(640, 480, 24, SWSURFACE);
+	SetCaption("Eelium Drawing Toy", args[0]);
+
+	local localpen = pen.create(screen);
+	localpen.color = MapColor(screen, 255, 255, 0);
+
+	local fx, local fy = nil;
+	while true
+	mainloop:
+	{
+		local ev = WaitEvent();
+		switch ev.type
+		  case KEYDOWN
+			if ev.sym == Ks
+				img.SavePNG("draw-out.png", screen,
+					img.COMPRESS_MAX);
+		  case KEYUP
+			if ev.sym == KESCAPE
+				break mainloop;
+		  case QUIT
+			break mainloop;
+		  case MOUSEBUTTONDOWN
+		  {
+			fx, fy = ev.(x, y);
+			localpen:To((integer)(fx, fy));
+			localpen:Down();
+		  }
+		  case MOUSEMOTION
+		  {
+			if fx == nil
+				fx, fy = ev.(x, y);
+			else
+				fx, fy += (ev.(x, y) - (fx, fy)) * FILTERCOEFF;
+			localpen:To((integer)(fx, fy));
+		  }
+		  case MOUSEBUTTONUP
+		  {
+			fx, fy = ev.(x, y);
+			localpen:To((integer)(fx, fy));
+			localpen:Up();
+		  }
+	}
+	return 0;
+}

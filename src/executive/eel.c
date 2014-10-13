@@ -27,8 +27,8 @@
 #include "EEL.h"
 #include "e_function.h"
 
-#ifdef EEL_HAVE_EELBOX
-# include "eelbox.h"
+#ifdef EEL_HAVE_EELIUM
+# include "eelium.h"
 #endif
 
 #define	READ_CHUNK_SIZE	256
@@ -85,8 +85,8 @@ static void usage(const char *exename)
 			EEL_GET_MAJOR(v),
 			EEL_GET_MINOR(v),
 			EEL_GET_MICRO(v));
-#ifdef EEL_HAVE_EELBOX
-	fprintf(stderr, "| With EELBox (SDL, OpenGL, Audiality 2)\n");
+#ifdef EEL_HAVE_EELIUM
+	fprintf(stderr, "| With Eelium (SDL, OpenGL, Audiality 2)\n");
 #endif
 	fprintf(stderr, "| Copyright 2005-2014 David Olofson\n");
 	fprintf(stderr,	"|------------------------------------------------\n");
@@ -239,11 +239,11 @@ int main(int argc, const char *argv[])
 		return 2;
 	}
 
-#ifdef EEL_HAVE_EELBOX
-	if((x = eb_init_bindings(vm)))
+#ifdef EEL_HAVE_EELIUM
+	if((x = eelium_init_bindings(vm)))
 	{
 		eel_perror(vm, 1);
-		fprintf(stderr, "Could not initialize EELBox!\n");
+		fprintf(stderr, "Could not initialize Eelium!\n");
 		return 3;
 	}
 #endif
@@ -297,8 +297,8 @@ int main(int argc, const char *argv[])
 			return 7;
 		}
 
-#ifdef EEL_HAVE_EELBOX
-		if(eb_open_subsystems() < 0)
+#ifdef EEL_HAVE_EELIUM
+		if(eelium_open_subsystems() < 0)
 		{
 			eel_perror(vm, 1);
 			fprintf(stderr, "Could not open subsystems!\n");
@@ -316,8 +316,8 @@ int main(int argc, const char *argv[])
 					eel_x_name(vm, x));
 			eel_disown(m);
 			eel_close(vm);
-#ifdef EEL_HAVE_EELBOX
-			eb_close_subsystems();
+#ifdef EEL_HAVE_EELIUM
+			eelium_close_subsystems();
 #endif
 			return 9;
 		}
@@ -366,8 +366,8 @@ int main(int argc, const char *argv[])
 	if(m)
 		eel_disown(m);
 	eel_close(vm);
-#ifdef EEL_HAVE_EELBOX
-	eb_close_subsystems();
+#ifdef EEL_HAVE_EELIUM
+	eelium_close_subsystems();
 #endif
 	return result;
 }

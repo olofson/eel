@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////
-// default_theme.eel - Default theme for the EELBox GUI Toolkit
+// default_theme.eel - Default theme for the Eelium GUI Toolkit
 // Copyright 2005, 2010-2011, 2014 David Olofson
 ////////////////////////////////////////////////////////////////
 
@@ -7,7 +7,7 @@ module eelium.default_theme;
 
 import SDL as SDL;
 import math;
-import eelium.ebgui;
+import eelium.gui;
 import eelium.recttools as RT;
 import eelium.drawtools;
 

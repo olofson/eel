@@ -1,0 +1,95 @@
+/////////////////////////////////////////////
+// fmsynth.eel - Simple FM Synth
+// Copyright 2006, 2010, 2014 David Olofson
+/////////////////////////////////////////////
+
+eelversion 0.3.7;
+
+import SDL, math;
+
+constant FS = 44100;	// Output sample rate (Hz)
+constant BUF = 512;	// Output buffer size (sample frames)
+constant FIFO = 2048;	// PlayAudio() FIFO buffer size (sample frames)
+
+constant F0 = 22;	// Frequency at left edge (Hz)
+constant OCTAVES = 8;	// Number of octaves accross the window
+
+export function main<args>
+{
+	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
+	SetCaption("FMSynth", args[0]);
+
+	OpenAudio(FS, BUF, FIFO);
+
+	local ph = 0;			// Phase accumulator
+	local a = 0;			// Amplitude
+	local d = .1;			// Decay factor
+	local f, local tf = 100.;	// Frequency
+	local fm, local tfm = 0.;	// FM depth
+	local lfm = 1;			// Low frequency FM divisor
+
+	while true
+	mainloop:
+	{
+		while true
+		{
+			local ev = PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case KEYDOWN
+			  {
+				switch ev.sym
+				  case K0, KKP0
+					lfm = 10;
+				  case K1, K2, K3, K4, K5, K6, K7, K8, K9
+					lfm = ev.sym - K0;
+				  case KKP1, KKP2, KKP3, KKP4,
+				  		KKP5, KKP6, KKP7, KKP8, KKP9
+					lfm = ev.sym - KKP0;
+			  }
+			  case KEYUP
+				if ev.sym == KESCAPE
+					break mainloop;
+			  case MOUSEBUTTONDOWN
+			  {
+				// Retrig envelope
+				ph = 0;
+				a = 1;
+				if ev.button == BUTTON_RIGHT
+					d = 1;
+				else
+					d = .99995;
+			  }
+			  case MOUSEBUTTONUP
+			  {
+				// Decay envelope
+				d = .999;
+			  }
+			  case MOUSEMOTION
+			  {
+				// Change pitch and FM depth
+				tf = 2 ** (OCTAVES * ev.x / screen.w) * F0;
+				tfm = ev.y - screen.h / screen.h * PI * 7;
+			  }
+			  case QUIT
+				break mainloop;
+		}
+		while AudioSpace()
+		{
+			f += tf - f * .0005;
+			fm += tfm - fm * .0005;
+			local mod = fm * a * a + fm * sin(ph);
+			if lfm > 1
+				mod += sin(ph / lfm) * fm;
+			local s = sin(ph + mod) * a;
+			ph += 2. * PI * f / FS;
+			a *= d;
+			PlayAudio(s, s);
+		}
+		Delay(10);
+	}
+
+	CloseAudio();
+	return 0;
+}

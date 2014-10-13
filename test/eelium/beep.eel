@@ -1,0 +1,46 @@
+/////////////////////////////////////////////
+// beep.eel - Simple Audio Test
+// Copyright 2006 David Olofson
+/////////////////////////////////////////////
+
+import SDL, math;
+
+constant FS = 44100;	// Output sample rate (Hz)
+constant BUF = 2048;	// Output buffer size (sample frames)
+constant FIFO = 8192;	// PlayAudio() FIFO buffer size (sample frames)
+
+export function main<args>
+{
+	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
+	SetCaption("SDL Audio Test", args[0]);
+
+	OpenAudio(FS, BUF, FIFO);
+	local ph = 0;
+	local dph = 2. * PI * 440 / FS;
+	while true
+	mainloop:
+	{
+		while true
+		{
+			local ev = PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case KEYUP
+				if ev.sym == KESCAPE
+					break mainloop;
+			  case QUIT
+				break mainloop;
+		}
+		while AudioSpace()
+		{
+			local s = sin(ph);
+			ph += dph;
+			PlayAudio(s, s);
+		}
+		Delay(10);
+	}
+
+	CloseAudio();
+	return 0;
+}

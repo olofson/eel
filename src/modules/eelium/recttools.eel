@@ -42,7 +42,7 @@ export procedure Subtract(r1, r2, output)
 //FIXME: Quick hack: We calculate the four possible rects as the intersections
 //FIXME: of r1 and very large constructed rects around r2. There must be more
 //FIXME: efficient ways of doing this... And, it should probably be implemented
-//FIXME: in C and put in EELBox! And maybe the window/complex region stuff
+//FIXME: in C and put in Eelium! And maybe the window/complex region stuff
 //FIXME: should be built right into the drawing API? Some nice optimizations to
 //FIXME: be done there, plus the API Just Works(TM) with or without windows. :-)
 	local x1 = r2.x;

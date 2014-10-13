@@ -1,0 +1,143 @@
+/////////////////////////////////////////////
+// chat.eel - Graphical Chat Toy
+// Copyright 2005, 2009 David Olofson
+/////////////////////////////////////////////
+
+import SDL, NET2, "pen" as pen;
+
+export function main<args>
+{
+	if specified args[1]
+		local host = args[1];
+	else
+		host = "localhost";
+	if specified args[2]
+		local port = (integer)args[2];
+	else
+		port = 6666;
+
+	// Try to connect to a server. Whether or not that
+	// succeeds, also try to set up a server socket,
+	// so we can accept new connections after our peer
+	// disconnects.
+	local peer, local server = nil;
+	try
+		peer = Socket [host, port];
+	try
+		server = TCPAcceptOn(port);
+
+	local screen = SetVideoMode(640, 480);
+	SetCaption("Graphical Chat", args[0]);
+	ShowCursor(false);
+
+	local canvas = Surface [0, screen.w, screen.h];
+
+	local localpen = pen.create(screen, canvas);
+	localpen.color = MapColor(canvas, 255, 255, 0);
+
+	local remotepen = pen.create(screen, canvas);
+	remotepen.color = MapColor(canvas, 0, 255, 255);
+
+	local buf = dstring [];
+
+	procedure handle(data)
+	{
+		upvalue remotepen;
+		upvalue buf.+ data;
+		while sizeof buf
+		parseloop:
+		{
+			switch buf[0]
+			  case 'D'
+			  {
+				remotepen:Down();
+				delete(buf, 0);
+			  }
+			  case 'U'
+			  {
+				remotepen:Up();
+				delete(buf, 0);
+			  }
+			  case 'T'
+			  {
+				if sizeof buf < 5
+					break parseloop;
+				local x = buf[1] * 256 + buf[2];
+				local y = buf[3] * 256 + buf[4];
+				delete(buf, 0, 5);
+				remotepen:To(x, y);
+			  }
+			  default
+				throw "Received corrupt data!";
+		}
+	}
+
+	while true
+	mainloop:
+	{
+		local ev = WaitEvent();
+		switch ev.type
+		  case MOUSEBUTTONDOWN
+		  {
+			localpen:Down();
+			if peer
+				TCPSend(peer, "D");
+		  }
+		  case MOUSEMOTION
+		  {
+			localpen:To(ev.(x, y));
+			if peer
+			{
+				local bb = dstring ['T'];
+				bb.+ ev.x / 256, ev.x;
+				bb.+ ev.y / 256, ev.y;
+				TCPSend(peer, bb);
+			}
+		  }
+		  case MOUSEBUTTONUP
+		  {
+			localpen:Up();
+			if peer
+				TCPSend(peer, "U");
+		  }
+		  case TCPACCEPTEVENT
+		  {
+			// We only want one client!
+			if peer
+				TCPClose(ev.socket);
+			else
+				peer = ev.socket;
+		  }
+		  case TCPRECEIVEEVENT
+		  {
+			while true
+			{
+				local d = TCPRead(ev.socket);
+				if d == nil
+					break;
+				handle(d);
+			}
+		  }
+		  case TCPCLOSEEVENT
+		  {
+			if ev.socket == peer
+				peer = nil;
+			TCPClose(ev.socket);
+			// In case we were talking to a local server,
+			// try to become a server when we're left alone.
+			if not server
+				try
+					server = TCPAcceptOn(port);
+		  }
+		  case ERROREVENT
+			print("NET2 error: ", ev.error, "\n");
+		  case KEYUP
+			if ev.sym == KESCAPE
+				break mainloop;
+		  case QUIT
+			break mainloop;
+		  case VIDEOEXPOSE
+			BlitSurface(canvas, nil, screen);
+	}
+	return 0;
+}

@@ -1,0 +1,103 @@
+/////////////////////////////////////////////
+// balls2.eel - Smarter SDL 2D Balls
+// Copyright 2005, 2010, 2014 David Olofson
+/////////////////////////////////////////////
+
+import SDL, math, "ball" as ball;
+
+export function main<args>
+{
+	local nballs = 200;
+	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
+	SetCaption("Balls II", args[0]);
+	ShowCursor(0);
+
+	// Generate sprite graphics
+	local sprites = [];
+	for local z = 0, 32, 2
+	{
+		local s = ball.render(8 + z);
+		SetAlpha(s, SRCALPHA | RLEACCEL);
+		sprites.+ DisplayFormatAlpha(s);
+	}
+
+	// Initialize dirtyrects
+	local olddrs = [];
+	local drs = [];
+	for local i = 0, nballs - 1
+	{
+		olddrs[i] = Rect[0, 0, 0, 0];
+		drs[i] = Rect[0, 0, 0, 0];
+	}
+
+	// Main loop
+	local start = GetTicks();
+	local maxsize = sprites[sizeof sprites - 1].w;
+	local xc, local yc = screen.(w, h) / 2;
+	local xa, local ya = (xc, yc) - (maxsize / 2);
+	while true
+	mainloop:
+	{
+		local t = (GetTicks() - start);
+
+		// Handle events
+		while true
+		{
+			local ev = PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case KEYUP
+				if ev.sym == KESCAPE
+					break mainloop;
+			  case MOUSEBUTTONUP, QUIT
+				break mainloop;
+		}
+
+		// Remove old sprites
+		local black = MapColor(screen, 0, 0, 0);
+		for local i = 0, nballs - 1
+			FillRect(screen, drs[i], black);
+
+		// Swap dirtyrect sets
+		local tmp = olddrs;
+		olddrs = drs;
+		drs = tmp;
+
+		// Render sprites
+		local stx, local sty, local stz = t / (1000, 1400, 400);
+		local za = sizeof sprites / 2;
+		for local i = 0, nballs - 1
+		{
+			stx, sty, stz += .07, .09, .15;
+			local s = sprites[sin(stz) * za + za];
+			drs[i].x = cos(stx) * xa + xc - (s.w / 2);
+			drs[i].y = sin(sty) * ya + yc - (s.h / 2);
+			drs[i].(w, h) = s.(w, h);
+			BlitSurface(s, nil, nil, drs[i]);
+		}
+
+		// Merge old and new dirtyrect sets
+		for local i = 0, nballs - 1
+		{
+			local r1, local r2 = olddrs[i], drs[i];
+			if not r1.w or not r1.h
+			{
+				r1.(x, y, w, h) = r2.(x, y, w, h);
+				continue;
+			}
+			local x1 = r1.x |< r2.x;
+			local x2 = (r1.x + r1.w) >| (r2.x + r2.w);
+			local y1 = r1.y |< r2.y;
+			local y2 = (r1.y + r1.h) >| (r2.y + r2.h);
+			r1.(x, y, w, h) = x1, y1, x2 - x1, y2 - y1;
+		}
+
+		// Update screen
+		Update(olddrs);
+
+		// Yield, so we don't look too much like CPU hog
+		Delay(0);
+	}
+	return 0;
+}

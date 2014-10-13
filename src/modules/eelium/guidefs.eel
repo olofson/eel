@@ -1,0 +1,27 @@
+//////////////////////////////////////////////////
+// guidefs.eel - EEL GUI Toolkit definitions
+// Copyright 2005, 2014 David Olofson
+//////////////////////////////////////////////////
+
+module eelium.guidefs;
+
+/////////////////////////////////////////////
+// Theme management and rendering
+/////////////////////////////////////////////
+
+// Color indices
+export constant CWOL = 0;	// Window outline
+export constant CFG = 1;	// Foreground
+export constant CMK = 2;	// Mark
+
+export constant CAHL = 3;	// Active highlight
+export constant CASHL = 4;	// Active semi-highlight
+export constant CABG = 5;	// Active background
+export constant CASSH = 6;	// Active semi-shadow
+export constant CASH = 7;	// Active shadow
+
+export constant CPHL = 8;	// Passive highlight
+export constant CPSHL = 9;	// Passive semi-highlight
+export constant CPBG = 10;	// Passive background
+export constant CPSSH = 11;	// Passive semi-shadow
+export constant CPSH = 12;	// Passive shadow

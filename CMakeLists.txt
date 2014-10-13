@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(EEL)
 
-option(BUILD_EELBOX "Build EELBox SDL binding" ON)
-set(EEL_HAVE_EELBOX ${BUILD_EELBOX})
+option(BUILD_EELIUM "Build Eelium SDL/OpenGL/Audiality2 binding" ON)
+set(EEL_HAVE_EELIUM ${BUILD_EELIUM})
 
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 3)
