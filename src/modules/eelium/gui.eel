@@ -896,8 +896,8 @@ procedure align_ratio(self)
 	local rr, local cr = self.(rowratio, colratio);
 	if self.childsize
 	{
-		rr = vector [];
-		cr = vector [];
+		delete(rr);
+		delete(cr);
 		// Top row and left column widgets govern ratios.
 		for local i = 0, cols - 1
 		{
