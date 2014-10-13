@@ -5,8 +5,8 @@
 
 static results = [];
 
-import "io", "serialize";
-import "strip" as strip;
+import io, serialize;
+import strip as strip;
 
 procedure run(filename)
 {
@@ -14,7 +14,7 @@ procedure run(filename)
 	print("==============================================\n");
 	try
 	{
-		local f = file [filename + ".c", "rb"];
+		local f = file [filename + ".sqc", "rb"];
 		local s = read(f, sizeof f);
 		print(s, "\n");
 		local m = compile(deserialize(s));
@@ -39,7 +39,7 @@ procedure run(filename)
 export function main<args>
 {
 	print("==============================================\n");
-	strip.main("strip", "-a", "-q");
+	strip.main("strip", "-a", "-q", "-x", "sqc");
 	print("==============================================\n");
 	run("varinit");
 	run("hello");
@@ -68,6 +68,8 @@ export function main<args>
 	run("string");
 	run("dstring");
 	run("stringquote");
+	run("replace");
+	run("stringcase");
 	run("array");
 	run("table");
 	run("vector");
@@ -79,10 +81,12 @@ export function main<args>
 	run("wordcount");
 	run("wordcount2");
 	run("dirtest");
+	run("tree");
 	run("dsptest");
 	run("weakref");
 	run("randomoop");
 	run("envtest");
+	run("arginit");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{

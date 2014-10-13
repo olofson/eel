@@ -3,8 +3,7 @@
 // Copyright 2014 David Olofson
 /////////////////////////////////////////////
 
-import "strings";
-import "serialize";
+import strings, serialize;
 
 export function main<args>
 {

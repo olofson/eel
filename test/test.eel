@@ -71,6 +71,7 @@ export function main<args>
 	run("wordcount");
 	run("wordcount2");
 	run("dirtest");
+	run("tree");
 	run("dsptest");
 	run("weakref");
 	run("randomoop");

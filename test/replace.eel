@@ -3,7 +3,7 @@
 // Copyright 2014 David Olofson
 /////////////////////////////////////////////
 
-import "strings";
+import strings;
 
 export function main<args>
 {

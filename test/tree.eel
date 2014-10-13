@@ -3,7 +3,7 @@
 // Copyright 2005, 2011, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "io", "dir";
+import io, dir;
 
 procedure list(p, indent)
 {
