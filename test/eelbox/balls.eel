@@ -3,7 +3,7 @@
 // Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math", "ball" as ball;
+import SDL, math, "ball" as ball;
 
 export function main<args>
 {

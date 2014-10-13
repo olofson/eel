@@ -10,7 +10,7 @@
 
 module strings;
 
-import "io";
+import io;
 
 
   /////////////////////////

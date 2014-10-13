@@ -3,13 +3,13 @@
 // Copyright 2005, 2010-2011, 2014 David Olofson
 ////////////////////////////////////////////////////////////////
 
-module default_theme;
+module eelium.default_theme;
 
-import "SDL" as SDL;
-import "math";
-import "eelium/ebgui";
-import "eelium/recttools" as RT;
-import "eelium/drawtools";
+import SDL as SDL;
+import math;
+import eelium.ebgui;
+import eelium.recttools as RT;
+import eelium.drawtools;
 
 // Theme constructor
 export function Create

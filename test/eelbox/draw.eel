@@ -3,8 +3,7 @@
 // Copyright 2005, 2011 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "pen" as pen;
-import "SDL_image" as img;
+import SDL, "pen" as pen, SDL_image as img;
 
 constant FILTERCOEFF = .1;
 

@@ -3,7 +3,7 @@
 // Copyright 2005, 2007, 2010, 2014 David Olofson
 //////////////////////////////////////////////////
 
-import "SDL";
+import SDL;
 
 static IM, static IA, static IC, static LAST = 0;
 

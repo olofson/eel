@@ -3,7 +3,7 @@
 // Copyright 2014 David Olofson
 /////////////////////////////////////////////
 
-import "system";
+import system;
 
 constant TESTVAR = "EEL_TEST_VARIABLE";
 

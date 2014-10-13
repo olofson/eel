@@ -3,8 +3,7 @@
 // Copyright 2006, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "math";
-import "dsp" as dsp;
+import math, dsp as dsp;
 
 procedure print_v(v)
 {

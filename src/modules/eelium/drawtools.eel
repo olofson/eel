@@ -3,9 +3,9 @@
 // Copyright 2005, 2010-2011 David Olofson
 ////////////////////////////////////////////////////////////////
 
-module drawtools;
+module eelium.drawtools;
 
-import "SDL" as SDL;
+import SDL as SDL;
 
 
 export procedure box(target, rect, color)

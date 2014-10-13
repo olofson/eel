@@ -1,9 +1,11 @@
 /////////////////////////////////////////////
 // line.eel - Simple line drawing functions
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math";
+module eelium.line;
+
+import SDL, math;
 
 export procedure line(s, c, x0, y0, x1, y1)
 {

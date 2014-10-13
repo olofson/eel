@@ -5,8 +5,7 @@
 
 module serialize;
 
-import "io";
-import "strings";
+import io, strings;
 
 
 // Flags for serialize()

@@ -3,7 +3,7 @@
 // (Port of tc.cpp from NET2)
 /////////////////////////////////////////////
 
-import "NET2";
+import NET2;
 
 export function main<args>
 {

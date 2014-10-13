@@ -3,7 +3,7 @@
 // Copyright 2005 David Olofson
 /////////////////////////////////////////////
 
-import "io", "dir";
+import io, dir;
 
 export function main<args>
 {

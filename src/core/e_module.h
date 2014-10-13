@@ -29,6 +29,11 @@
 #include "e_util.h"
 #include "e_config.h"
 
+typedef enum
+{
+	/* This module instance can be shared by other modules */
+	EEL_M_SHARED =		0x00000001
+} EEL_mflags;
 
 typedef EEL_object *EEL_object_p;
 EEL_DARRAY(eel_objs_, EEL_object_p)
@@ -36,6 +41,8 @@ EEL_DARRAY(eel_objs_, EEL_object_p)
 typedef struct
 {
 	unsigned	id;		/* Long time "unique" ID. */
+
+	unsigned	flags;
 
 	EEL_object	*exports;	/* Exports (EEL_table) */
 

@@ -7,7 +7,7 @@
 //	* Operator tokenization
 //
 
-import "io", "dir", "strings";
+import io, dir, strings;
 
 constant ESS_FIRST_TOKEN = 128;
 

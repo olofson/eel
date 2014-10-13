@@ -3,7 +3,7 @@
 // (Port of ts.cpp from NET2)
 /////////////////////////////////////////////
 
-import "SDL", "NET2";
+import SDL, NET2;
 
 export function main<args>
 {

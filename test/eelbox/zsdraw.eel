@@ -3,11 +3,11 @@
 // Copyright 2011, 2014 David Olofson
 ////////////////////////////////////////////////////
 
-import "math";
-import "SDL" as SDL;
-import "ZeeSpace" as zs;
-import "eelium/ebgui" as gui;
-import "eelium/drawtools" as dt;
+import math;
+import SDL as SDL;
+import ZeeSpace as zs;
+import eelium.ebgui as gui;
+import eelium.drawtools as dt;
 
 constant HANDLESIZE = 10;
 

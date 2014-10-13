@@ -39,10 +39,10 @@ picked from that table and redrawn to reflect their new world positions.
 
 */
 
-import "math";
-import "SDL" as SDL;
-import "ZeeSpace" as zs;
-import "OpenGL" as gl;
+import math;
+import SDL as SDL;
+import ZeeSpace as zs;
+import OpenGL as gl;
 
 
 // Create a tiled layer manager

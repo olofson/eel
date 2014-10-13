@@ -3,9 +3,9 @@
 // Copyright 2010, 2014 David Olofson
 ////////////////////////////////////////////////////////////////
 
-module recttools;
+module eelium.recttools;
 
-import "SDL" as SDL;
+import SDL as SDL;
 
 
 // Shrink 'rect' by moving all edges 'pixels' towards the center.

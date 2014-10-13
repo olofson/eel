@@ -3,15 +3,15 @@
 // Copyright 2005-2006, 2009-2011, 2014 David Olofson
 //////////////////////////////////////////////////////
 
-module ebgui;
+module eelium.ebgui;
 
-import "math";
-import "SDL" as SDL;
-import "eelium/recttools" as RT;
-import "eelium/line" as line;
-export import "eelium/ebguidefs";
-import "eelium/text" as text;
-import "system" as sys;
+import math;
+import SDL as SDL;
+import eelium.recttools as RT;
+import eelium.line as line;
+export import eelium.ebguidefs;
+import eelium.text as text;
+import system as sys;
 
 
 static system_unicode = SDL.EnableUNICODE(true);
@@ -3991,5 +3991,3 @@ export function FileRequest(theme, title, filename, extension)<caption, callback
 	SetFocus(b);
 	return win;
 }
-
-

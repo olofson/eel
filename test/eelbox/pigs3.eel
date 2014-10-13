@@ -8,10 +8,10 @@
 // Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "math";
-import "SDL";
-import "SDL_image" as IMG;
-import "eelium/text" as text;
+import math;
+import SDL;
+import SDL_image as IMG;
+import eelium.text as text;
 
 constant X = 0;
 constant Y = 1;

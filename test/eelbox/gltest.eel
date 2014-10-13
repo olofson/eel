@@ -5,8 +5,8 @@
 // Based on NeHe tutorial code by Jeff Molofee
 ///////////////////////////////////////////////
 
-import "SDL" as SDL;
-import "OpenGL";
+import SDL as SDL;
+import OpenGL;
 
 
 procedure resize(w, h)

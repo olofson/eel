@@ -3,7 +3,7 @@
 // Copyright 2005, 2009 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "NET2", "pen" as pen;
+import SDL, NET2, "pen" as pen;
 
 export function main<args>
 {

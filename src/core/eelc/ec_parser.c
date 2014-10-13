@@ -50,13 +50,13 @@ static inline int eel__tk(const char *tkn, int tkc, int line)
 #  define TK2(x, y)	y
 #endif
 
-static int expression2(EEL_state *es, int limit, EEL_mlist *al, int wantresult);
+static int expression2(EEL_state *es, int limit, EEL_mlist *al,
+		int wantresult);
 static int expression(EEL_state *es, EEL_mlist *al, int wantresult);
 static int body(EEL_state *es, int flags);
-static int argdeflist(EEL_state *es, EEL_varkinds kind);
+static void argdeflist(EEL_state *es, EEL_varkinds kind);
 static int block(EEL_state *es);
 static int statement(EEL_state *es, int flags);
-
 static void add_export(EEL_object *mo, EEL_value *xv, const char *name);
 
 
@@ -377,24 +377,34 @@ static void forward_exports(EEL_object *from, EEL_object *to, int symcheck)
 }
 
 
-/* filelist() item handler for 'import'. */
-/*
-	import:
-		  [KM_EXPORT] KW_IMPORT filelist
-		| [KM_EXPORT] KW_IMPORT STRING KW_AS NAME
-		;
-*/
-static void import_handler(EEL_state *es, int forward)
+/*----------------------------------------------------------
+	importstat rule
+----------------------------------------------------------*/
+
+/* Item handler for importlist */
+static void import_handler(EEL_state *es, int forward, int shared)
 {
+	EEL_object *m;
 	char *modname = strdup(es->lval.v.s.buf);
-	EEL_object *m = eel_load(es->vm, modname, es->context->sflags);
-	if(!m)
+	unsigned flags = es->context->sflags;
+	if(shared)
+		flags |= EEL_SF_ALLOWSHARED | EEL_SF_SHARED;
+	if(!(m = eel_load(es->vm, modname, flags)))
 	{
 		char mn[256];
 		snprintf(mn, sizeof(mn) - 1, "%s", modname);
 		mn[sizeof(mn) - 1] = 0;
 		free(modname);
 		eel_cerror(es, "Couldn't import module \"%s\"!", mn);
+	}
+	if(shared && (o2EEL_module(m)->flags & EEL_M_SHARED))
+	{
+		if(strcmp(modname, eel_module_modname(m)) != 0)
+			eel_cwarning(es, "Module imported as '%s' actually "
+					"calls itself '%s'!\n"
+					"Perhaps the module is misnamed, or "
+					"installed in the wrong location?",
+					modname, eel_module_modname(m));
 	}
 	eel_lex(es, 0);
 	if(TK_KW_AS == es->token)
@@ -423,6 +433,65 @@ static void import_handler(EEL_state *es, int forward)
 	}
 	eel_o_disown_nz(m);	/* Now held via the exports! */
 	free(modname);
+}
+
+/*
+	importlist:
+		STRING [KW_AS NAME]
+		| DOTTED_NAME [KW_AS NAME]
+		| STRING ',' importlist
+		| DOTTED_NAME ',' importlist
+		;
+*/
+static void importlist(EEL_state *es, int forward)
+{
+	while(1)
+	{
+		eel_lex(es, ELF_DOTTED_NAME);
+		switch(es->token)
+		{
+		  case TK_STRING:
+			import_handler(es, forward, 0);
+			break;
+		  case TK_NAME:
+			import_handler(es, forward, 1);
+			break;
+		  default:
+			eel_cerror(es, "Expected module name or path!");
+		}
+		if(es->token != ',')
+			return;
+	}
+}
+
+/*
+	importstat:
+		[KM_EXPORT] KW_IMPORT importlist
+		;
+*/
+static int importstat(EEL_state *es)
+{
+	int fwimports = 0;
+	switch(es->token)
+	{
+	  case TK_KW_EXPORT:
+		eel_lex(es, 0);
+		if(es->token != TK_KW_IMPORT)
+		{
+			/* Nope! Someone wanting to export something else... */
+			eel_unlex(es);
+			return TK(WRONG);
+		}
+		fwimports = 1;
+		/* Fall through! */
+	  case TK_KW_IMPORT:
+		importlist(es, fwimports);
+		expect(es, ';', "Missing ';' after 'import' statement!");
+		DBGH(printf("## statement: KW_IMPORT importlist ';'\n");)
+		return TK(STATEMENT);
+	  default:
+		return TK(WRONG);
+	}
 }
 
 
@@ -980,7 +1049,7 @@ static int explist(EEL_state *es, EEL_mlist *al, int wantresult)
 	call rule
 ----------------------------------------------------------*/
 
-static int call_member(EEL_state *es, EEL_manipulator *fnref,
+static void call_member(EEL_state *es, EEL_manipulator *fnref,
 		EEL_manipulator *self, EEL_mlist *al, int wantresult)
 {
 	EEL_coder *cdr = es->context->coder;
@@ -1047,14 +1116,13 @@ static int call_member(EEL_state *es, EEL_manipulator *fnref,
 	/* Cleanup */
 	eel_ml_close(args);
 	DBGE(printf("=== end function call ==============================\n");)
-	return TK(CALL);
 }
 
 
-static inline int call_indirect(EEL_state *es, EEL_manipulator *fnref,
+static inline void call_indirect(EEL_state *es, EEL_manipulator *fnref,
 		EEL_mlist *al, int wantresult)
 {
-	return call_member(es, fnref, NULL, al, wantresult);
+	call_member(es, fnref, NULL, al, wantresult);
 }
 
 
@@ -1170,7 +1238,7 @@ static int call(EEL_state *es, EEL_mlist *al)
 
 	DBGE(printf("=== end function call ==============================\n");)
 	if(result)
-		return TK(CALL);
+		return TK(SIMPLEXP);
 	else
 		return TK(VOID);
 }
@@ -1180,7 +1248,7 @@ static int call(EEL_state *es, EEL_mlist *al)
 	funcargs rule
 ----------------------------------------------------------*/
 
-static int getargs(EEL_state *es)
+static void getargs(EEL_state *es)
 {
 	int delim;
 	EEL_varkinds kind;
@@ -1200,7 +1268,7 @@ static int getargs(EEL_state *es)
 		kind = EVK_TUPARG;
 		break;
 	  default:
-		return TK(WRONG);
+		return;
 	}
 	eel_lex(es, ELF_NO_OPERATORS);
 	argdeflist(es, kind);
@@ -1208,7 +1276,6 @@ static int getargs(EEL_state *es)
 		eel_cerror(es, "Expected closing '%c' after argument list.",
 				delim);
 	eel_lex(es, ELF_NO_OPERATORS);
-	return TK(ARGDEFLIST);
 }
 
 
@@ -1222,7 +1289,7 @@ static int getargs(EEL_state *es)
 		| '(' argdeflist ')' '[' argdeflist ']' '<' argdeflist '>'
 		;
 */
-static int funcargs(EEL_state *es)
+static void funcargs(EEL_state *es)
 {
 	int have_req = 0;
 	int have_opt = 0;
@@ -1259,10 +1326,7 @@ static int funcargs(EEL_state *es)
 			have_tup = 1;
 			break;
 		  default:
-		  	if(have_req || have_opt || have_tup)
-				return TK(FUNCARGS);	/* Have >=1 lists! */
-			else
-				return TK(WRONG);	/* No arguments! */
+			return;
 		}
 		getargs(es);
 	}
@@ -1292,7 +1356,7 @@ static int funcargs(EEL_state *es)
 		;
  */
 
-static int funcdef2(EEL_state *es, EEL_mlist *al, int is_func, int local)
+static void funcdef2(EEL_state *es, EEL_mlist *al, int is_func, int local)
 {
 	EEL_function decl;
 	EEL_symbol *declsym = NULL;
@@ -1436,22 +1500,18 @@ static int funcdef2(EEL_state *es, EEL_mlist *al, int is_func, int local)
 		/* Just a declaration! */
 		f = o2EEL_function(es->context->symtab->v.object);
 		f->common.flags |= EEL_FF_DECLARATION;
-
-		DBGH(printf("## funcdecl #####################################\n");)
-		return TK(FUNCDECL);
 	}
-
-	/* Leave and finalize function */
-	procreturn(es);
-	DBGH(printf("## funcdef #####################################\n");)
-
-	return TK(FUNCDEF);
+	else
+	{
+		/* Leave and finalize function */
+		procreturn(es);
+	}
 }
 
 
 static int funcdef(EEL_state *es, EEL_mlist *al, int local)
 {
-	int res, is_func;
+	int is_func;
 	switch(es->token)
 	{
 	  case TK_SYM_CLASS:
@@ -1486,13 +1546,13 @@ static int funcdef(EEL_state *es, EEL_mlist *al, int local)
 	}
 
 	eel_context_push(es, ECTX_FUNCTION, NULL);
-	res = funcdef2(es, al, is_func, local);
+	funcdef2(es, al, is_func, local);
 	eel_context_pop(es);
 
 	/* The next token was lexed in the function's context! Re-lex it. */
 	eel_relex(es, 0);
 
-	return res;
+	return TK(SIMPLEXP);
 }
 
 
@@ -1504,7 +1564,8 @@ static int funcdef(EEL_state *es, EEL_mlist *al, int local)
 		block
 		;
 */
-static int xblock(EEL_state *es, const char *basename, EEL_mlist *al, int flags)
+static void xblock(EEL_state *es, const char *basename, EEL_mlist *al,
+		int flags)
 {
 	char *name = eel_unique(es->vm, basename);
 	eel_context_push(es, ECTX_FUNCTION | flags, NULL);
@@ -1545,7 +1606,6 @@ FIXME: return value of the containing normal function?
 		eel_unlex(es);
 		eel_lex(es, 0);
 	}
-	return TK(FUNCDEF);
 }
 
 
@@ -2834,7 +2894,6 @@ static int constdeclstat(EEL_state *es)
  */
 static int body(EEL_state *es, int flags)
 {
-	int res;
 	char name[128];
 	int is_function = (flags & ECTX_TYPE) == ECTX_FUNCTION;
 	flags &= ~ECTX_TYPE;
@@ -2872,14 +2931,8 @@ static int body(EEL_state *es, int flags)
 			eel_sfree(es, n);
 	}
 	es->context->flags |= ECTX_WRAPPED;
-	switch(block(es))
-	{
-	  case TK_EOF:
+	if(block(es) == TK_EOF)
 		eel_cerror(es, "Unexpected EOF; unterminated {...} block!");
-	  default:
-		res = TK_BODY;
-		break;
-	}
 	if(!is_function && !(flags & ECTX_KEEP))
 	{
 		code_leave_context(es, es->context);
@@ -2890,7 +2943,7 @@ static int body(EEL_state *es, int flags)
 	expect(es, '}', "Expected new statement or closing '}'.");
 	DBGH(printf("## body: '}'\n");)
 
-	return res;
+	return TK(BODY);
 }
 
 
@@ -2938,7 +2991,7 @@ static void argdefault(EEL_state *es, EEL_symbol *s)
 	eel_relex(es, ELF_LOCALS_ONLY | ELF_NO_OPERATORS);
 }
 
-static int argdeflist(EEL_state *es, EEL_varkinds kind)
+static void argdeflist(EEL_state *es, EEL_varkinds kind)
 {
 /*
 TODO: Check for arguments shadowing upvalues and other
@@ -2974,11 +3027,10 @@ TODO: error? (Shadowing arguments definitely should be.)
 					eel_o2s(es->lval.v.symbol->name),
 					eel_symbol_is(es->lval.v.symbol));
 		  default:
-			if(first)
-				return TK(WRONG);
-			else
+			if(!first)
 				eel_cerror(es, "Incorrect argument "
 						"declaration.");
+			return;
 		}
 		first = 0;
 		if(es->token == '=')
@@ -2986,37 +3038,8 @@ TODO: error? (Shadowing arguments definitely should be.)
 		else
 			s->v.var.defindex = -1;
 		if(es->token != ',')
-			return TK(ARGDEFLIST);
+			return;
 		eel_lex(es, ELF_LOCALS_ONLY | ELF_NO_OPERATORS);
-	}
-}
-
-
-/*----------------------------------------------------------
-	filelist rule
-----------------------------------------------------------*/
-/*
-	filelist:
-		STRING
-		| STRING ',' filelist
-		;
-*/
-static int filelist(EEL_state *es, void (*handler)(EEL_state *es, int flags),
-		int flags)
-{
-	while(1)
-	{
-		switch(es->token)
-		{
-		  case TK_STRING:
-			handler(es, flags);
-			break;
-		  default:
-			eel_cerror(es, "Expected a string literal.");
-		}
-		if(es->token != ',')
-			return TK(FILELIST);
-		eel_lex(es, 0);
 	}
 }
 
@@ -3746,22 +3769,18 @@ static int trystat(EEL_state *es)
 	eel_lex(es, 0);
 
 	fl = eel_ml_open(cdr);
-	if(xblock(es, "__try", fl, 0) == TK_WRONG)
-		eel_cerror(es, "Expected 'try' block!");
+	xblock(es, "__try", fl, 0);
 	tf = eel_m_prepare_constant(eel_ml_get(fl, 0));
 
 	if(TK_KW_EXCEPT == es->token)
 	{
 		eel_lex(es, 0);
-		if(xblock(es, "__except", fl, ECTX_CATCHER) == TK_WRONG)
-			eel_cerror(es, "Expected 'except' block!");
+		xblock(es, "__except", fl, ECTX_CATCHER);
 		xf = eel_m_prepare_constant(eel_ml_get(fl, 1));
 	}
 	else
 	{
-		if(xblock(es, "__except", fl, ECTX_CATCHER | ECTX_DUMMY) ==
-				TK_WRONG)
-			eel_ierror(es, "Could not compile dummy 'except' block!");
+		xblock(es, "__except", fl, ECTX_CATCHER | ECTX_DUMMY);
 		xf = eel_m_prepare_constant(eel_ml_get(fl, 1));
 	}
 
@@ -3812,8 +3831,7 @@ static int untrystat(EEL_state *es)
 	eel_lex(es, 0);
 
 	fl = eel_ml_open(cdr);
-	if(xblock(es, "__untry", fl, 0) == TK_WRONG)
-		eel_cerror(es, "Expected 'untry' block!");
+	xblock(es, "__untry", fl, 0);
 	tf = eel_m_prepare_constant(eel_ml_get(fl, 0));
 
 	eel_codeAx(cdr, EEL_OUNTRY_Ax, tf);
@@ -3855,9 +3873,8 @@ static int get_version_figure(EEL_state *es)
 		| KW_END ';'
 		| ';'
 		| KW_EELVERSION x[.y[.z]] ';'
-		| KW_INCLUDE filelist ';'
-		| importstat
 TODO:		| KW_ALWAYS ':'
+		| importstat
 		| throwstat
 		| retrystat
 		| ifstat
@@ -3877,7 +3894,6 @@ TODO:		| KW_ALWAYS ':'
  */
 static int statement2(EEL_state *es)
 {
-	int fwimports = 0;
 	switch(es->token)
 	{
 	  /* EOF */
@@ -3964,24 +3980,6 @@ static int statement2(EEL_state *es)
 		return TK(STATEMENT);
 	  }
 
-	  /* [KW_EXPORT] KW_IMPORT filelist ';' */
-	  case TK_KW_EXPORT:
-		eel_lex(es, 0);
-		if(es->token != TK_KW_IMPORT)
-		{
-			eel_unlex(es);
-			break;
-		}
-		fwimports = 1;
-		/* Fall through! */
-
-	  case TK_KW_IMPORT:
-		eel_lex(es, 0);
-		filelist(es, import_handler, fwimports);
-		expect(es, ';', "Missing ';' after 'import' statement!");
-		DBGH(printf("## statement: KW_IMPORT filelist ';'\n");)
-		return TK(STATEMENT);
-
 	  /* Some nice error checking */
 	  case TK_SYM_CLASS:
 	  	if((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) !=
@@ -4024,6 +4022,10 @@ static int statement2(EEL_state *es)
 		expect(es, ';', NULL);
 		return TK(STATEMENT);
 	}
+
+	/* importstat */
+	if(TK_WRONG != importstat(es))
+		return TK(STATEMENT);
 
 	/* ifstat */
 	if(TK_WRONG != ifstat(es))
@@ -4214,7 +4216,6 @@ static void declare_environment(EEL_state *es)
 static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 {
 	int res;
-	int shared_module = 0;
 	EEL_symbol *mst;
 	EEL_module *m = o2EEL_module(mo);
 
@@ -4240,14 +4241,30 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 	if((es->token == TK_SYM_CLASS) && ((EEL_classes)eel_class_typeid(
 			es->lval.v.symbol->v.object) == EEL_CMODULE))
 	{
-		eel_lex(es, 0);
+		EEL_value v;
+		eel_lex(es, ELF_DOTTED_NAME);
 		if(TK_NAME != es->token)
 			eel_cerror(es, "Expected module name!");
+
+		if(sflags & EEL_SF_SHARED)
+		{
+			/* There Can Be Only One! */
+			if(es->modules && (eel_table_gets(es->modules,
+					es->lval.v.s.buf, &v) == 0))
+				eel_cerror(es, "A shared module named '%s' "
+						"is already loaded!",
+						es->lval.v.s.buf);
+
+			/* Allow the module to be shared */
+			m->flags |= EEL_M_SHARED;
+		}
+
+		/* Apply the name for shared import-by-name */
 		eel_s_rename(es, es->context->symtab, es->lval.v.s.buf);
 		eel_table_setss(m->exports, "__modname", es->lval.v.s.buf);
+
 		eel_lex(es, 0);
 		expect(es, ';', "Missing ';' after module declaration!");
-		shared_module = 1;
 	}
 
 	/* Create function context */
@@ -4288,7 +4305,7 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 	eel_lexer_invalidate(es);
 
 	/* If it's a "real" module, add it to the shared module table */
-	if(shared_module)
+	if(m->flags & EEL_M_SHARED)
 		switch(eel_share_module(mo))
 		{
 		  case -1:

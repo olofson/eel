@@ -7,10 +7,10 @@
  * This code is in the Public Domain. No warranty!
  */
 
-import "math";
-import "SDL" as SDL;
-import "ZeeSpace" as zs;
-import "eelium/text" as text;
+import math;
+import SDL as SDL;
+import ZeeSpace as zs;
+import eelium.text as text;
 
 constant SPEED256 = 32.;
 constant SPEED90 = 15.;

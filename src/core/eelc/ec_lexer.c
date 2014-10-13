@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_lexer.c - EEL lexer
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2010, 2012 David Olofson
+ * Copyright 2002-2006, 2010, 2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -557,6 +557,7 @@ int eel_lex(EEL_state *es, int flags)
 		int len = 1;
 		int start = eel_bio_tell(bio) - 1;
 		while((isalnum(c = lex_getchar(es)) ||
+				((flags & ELF_DOTTED_NAME) && (c == '.')) ||
 				(c == '_')) && (c >= 0))
 			++len;
 		lexbuf_bump(es, len);
@@ -564,20 +565,26 @@ int eel_lex(EEL_state *es, int flags)
 		eel_bio_read(bio, es->lexbuf, len);
 		es->lexbuf[len] = '\0';
 
-		eel_finder_init(es, &f, st, ESTF_NAME | ESTF_TYPES |
-				((flags & ELF_LOCALS_ONLY) ? 0 : ESTF_UP));
-		f.name = eel_ps_new(es->vm, es->lexbuf);
-		f.types =	EEL_SMKEYWORD |
-				EEL_SMVARIABLE |
-				EEL_SMUPVALUE |
-				EEL_SMBODY |
-				EEL_SMNAMESPACE |
-				EEL_SMCONSTANT |
-				EEL_SMCLASS |
-				EEL_SMFUNCTION |
-				EEL_SMOPERATOR;
-		sym = eel_finder_go(&f);
-		eel_o_disown_nz(f.name);
+		if(!(flags & ELF_DOTTED_NAME))
+		{
+			eel_finder_init(es, &f, st, ESTF_NAME | ESTF_TYPES |
+					((flags & ELF_LOCALS_ONLY) ? 0 :
+					ESTF_UP));
+			f.name = eel_ps_new(es->vm, es->lexbuf);
+			f.types =	EEL_SMKEYWORD |
+					EEL_SMVARIABLE |
+					EEL_SMUPVALUE |
+					EEL_SMBODY |
+					EEL_SMNAMESPACE |
+					EEL_SMCONSTANT |
+					EEL_SMCLASS |
+					EEL_SMFUNCTION |
+					EEL_SMOPERATOR;
+			sym = eel_finder_go(&f);
+			eel_o_disown_nz(f.name);
+		}
+		else
+			sym = NULL;	/* No lookups for dotted names! */
 		if(sym)
 		{
 			int tk;

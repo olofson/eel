@@ -3,7 +3,7 @@
 // Copyright 2005, 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math";
+import SDL, math;
 
 constant FS = 44100;
 constant BUF = 2048;

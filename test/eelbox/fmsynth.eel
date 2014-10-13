@@ -5,7 +5,7 @@
 
 eelversion 0.3.7;
 
-import "SDL", "math";
+import SDL, math;
 
 constant FS = 44100;	// Output sample rate (Hz)
 constant BUF = 512;	// Output buffer size (sample frames)

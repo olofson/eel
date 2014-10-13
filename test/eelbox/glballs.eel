@@ -3,10 +3,10 @@
 // Copyright 2010, 2014 David Olofson
 ///////////////////////////////////////////////
 
-import "SDL" as SDL;
-import "OpenGL";
-import "math";
-import "ball" as ball;
+import SDL as SDL;
+import OpenGL;
+import math;
+import ball as ball;
 
 
 procedure resize(w, h)

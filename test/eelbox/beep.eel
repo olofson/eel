@@ -3,7 +3,7 @@
 // Copyright 2006 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math";
+import SDL, math;
 
 constant FS = 44100;	// Output sample rate (Hz)
 constant BUF = 2048;	// Output buffer size (sample frames)

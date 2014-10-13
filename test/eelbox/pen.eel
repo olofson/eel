@@ -3,7 +3,7 @@
 // Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math", "eelium/line";
+import SDL, math, eelium.line;
 
 export function create(screen)[buffer]
 {

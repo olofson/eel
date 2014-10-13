@@ -225,16 +225,20 @@ static EEL_xno bi_print(EEL_vm *vm)
 
 
 /*
- * NOTE: This takes a flags argument to match the prototype for
- *       $.module_loader entries, but ignores that argument.
+ * NOTE: This looks at the EEL_SF_NOSHARED flag, but all other flags are
+ *       ignored! That is, if a module is found, there is no checking whether
+ *       or not it was loaded with matching flags.
  */
 static EEL_xno bi__get_loaded_module(EEL_vm *vm)
 {
 	EEL_object *m;
 	EEL_value *args = vm->heap + vm->argv;
 	const char *name = eel_v2s(args + 0);
+	unsigned flags = (unsigned)eel_v2l(args + 1);
 	if(!name)
 		return EEL_XNEEDSTRING;
+	if(!(flags & EEL_SF_ALLOWSHARED))
+		return EEL_XWRONGINDEX;	/* No shared modules, please! */
 	if(!(m = eel_get_loaded_module(vm, name)))
 		return EEL_XWRONGINDEX;
 	eel_o2v(vm->heap + vm->resv, m);
@@ -683,9 +687,13 @@ static const EEL_lconstexp bi_constants[] =
 	{ "SW_RESTORE",		9	},
 	{ "SW_SHOWDEFAULT",	10	},
 
-	/* Compiler flags */
+	/* Module loading/sharing and compiler flags */
 	{ "SF_NOCOMPILE",	EEL_SF_NOCOMPILE	},
 	{ "SF_NOINIT",		EEL_SF_NOINIT		},
+
+	{ "SF_SHARED",		EEL_SF_SHARED		},
+	{ "SF_ALLOWSHARED",	EEL_SF_ALLOWSHARED	},
+
 	{ "SF_LIST",		EEL_SF_LIST		},
 	{ "SF_LISTASM",		EEL_SF_LISTASM		},
 	{ "SF_WERROR",		EEL_SF_WERROR		},

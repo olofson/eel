@@ -150,23 +150,12 @@ typedef enum
 	TK_SYM_BODY,
 
 	/* Grammar rule tokens */
-/*
-FIXME: Are these really useful?
-*/
-	TK_INCLUDE,
-	TK_USES,
-	TK_CALL,
-	TK_FUNCARGS,
-	TK_FUNCDECL,
-	TK_FUNCDEF,
-	TK_SIMPLEXP,
 	TK_EXPRESSION,
+	TK_SIMPLEXP,
 	TK_EXPLIST,
 	TK_BODY,
-	TK_ARGDEFLIST,
-	TK_FILELIST,
-	TK_STATEMENT,
-	TK_BLOCK
+	TK_BLOCK,
+	TK_STATEMENT
 } EEL_token;
 
 /* Definitions for .ess stripped, tokenized source files */
@@ -259,7 +248,8 @@ typedef enum
 	ELF_LOCALS_ONLY =	0x00000002,
 	ELF_NO_OPERATORS =	0x00000004,
 	ELF_CHARACTERS =	0x00000008,
-	ELF_NO_SKIPWHITE =	0x00000010
+	ELF_NO_SKIPWHITE =	0x00000010,
+	ELF_DOTTED_NAME =	0x00000020
 } EEL_lexflags;
 
 int eel_lexer_init(EEL_state *es);

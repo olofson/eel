@@ -5,10 +5,10 @@
 
 eelversion 0.3.7;
 
-import "math";
-import "SDL" as SDL;
-import "dsp" as dsp;
-import "midi" as midi;
+import math;
+import SDL as SDL;
+import dsp as dsp;
+import midi as midi;
 
 
  // System constants

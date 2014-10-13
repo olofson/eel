@@ -3,10 +3,10 @@
 // Copyright 2006-2007, 2009, 2011, 2014 David Olofson
 ///////////////////////////////////////////////////////
 
-import "SDL" as SDL;
-import "eelium/text" as text;
-import "eelium/ebgui" as ebgui;
-import "math";
+import SDL as SDL;
+import eelium.text as text;
+import eelium.ebgui as ebgui;
+import math;
 
 
 export function main<args>

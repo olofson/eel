@@ -32,8 +32,7 @@ eelversion 0.3.7;
 export import "builtin_c";
 
 // For __load_eel_module()
-import "system";
-import "io";
+import system, io;
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -141,6 +140,20 @@ export function __load_via_path_modules(modname, flags)
 		return nil;
 	}
 	local modpaths = $.path_modules;
+	if flags & SF_ALLOWSHARED
+	{
+		// Looking for shared modules? We're going to assume 'modname'
+		// is a "dotted name", and that the module wasn't found by
+		// __get_loaded_module(). So, we have to figure out the file
+		// name of the module and actually load it here.
+		local r = dstring [];
+		for local i = 0, sizeof modname - 1
+			if modname[i] == '.'
+				r.+ '/';
+			else
+				r[sizeof r] = modname[i];
+		modname = (string)r;
+	}
 	for local i = 0, sizeof modpaths - 1
 	{
 		if sizeof modpaths[i]

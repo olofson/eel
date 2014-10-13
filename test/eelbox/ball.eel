@@ -3,7 +3,7 @@
 // Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "SDL", "math";
+import SDL, math;
 
 export function render(size)
 {

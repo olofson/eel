@@ -43,16 +43,24 @@ typedef enum
 	EEL_SF_NOINIT =		0x00000002,
 
 	/*
+	 * Module sharing flags (applies to named modules only!)
+	 */
+	/* Allows this module to be shared by other modules */
+	EEL_SF_SHARED =		0x00000010,
+	/* Grab a previously loaded instance if one is present */
+	EEL_SF_ALLOWSHARED =	0x00000020,
+
+	/*
 	 * Compiler flags
 	 */
 	/* List symbol tree after compiling */
-	EEL_SF_LIST =		0x00000004,
+	EEL_SF_LIST =		0x00000100,
 	/* List VM asm code in the symbol tree */
-	EEL_SF_LISTASM =	0x00000008,
+	EEL_SF_LISTASM =	0x00000200,
 	/* Turn compiler warnings into errors (give up after current module) */
-	EEL_SF_WERROR =		0x00000010,
+	EEL_SF_WERROR =		0x00000400,
 	/* Disable the operator precedence warning introduced in 0.3.7 */
-	EEL_SF_NOPRECEDENCE =	0x00000020,
+	EEL_SF_NOPRECEDENCE =	0x00000800,
 } EEL_sflags;
 
 EELAPI(EEL_object *)eel_load_buffer(EEL_vm *vm,

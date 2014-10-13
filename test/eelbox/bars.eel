@@ -13,7 +13,7 @@
 // not just functions.
 ////////////////////////////////////////////////
 
-import "SDL" as SDL, "math";
+import SDL as SDL, math;
 
 function new_gradient(height)
 {

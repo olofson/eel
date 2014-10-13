@@ -1,9 +1,9 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
-import "math";
+import math;
 
 procedure check(prompt, val, correct)
 {
