@@ -79,13 +79,25 @@ export function builtin_version
 // Module loading and compiling
 //
 
+$.current_module_path = nil;
+
+
 // Compile a string of EEL source code into a module
 export function compile(s)[flags = 0, filename = nil, modname = nil]
 {
 	local m = module [];
+	local mpath = nil;
 	m.__source = s;
 	if filename
+	{
 		m.__filename = filename;
+		for local i = sizeof filename - 1, 0, -1
+			if filename[i] == '/'
+			{
+				mpath = copy(filename, 0, i);
+				break;
+			}
+	}
 	else
 		m.__filename = "script from " + ((string)typeof s) + ", " +
 				(string)sizeof s + " bytes";
@@ -95,9 +107,35 @@ export function compile(s)[flags = 0, filename = nil, modname = nil]
 		m.__modname = m.__filename;
 	if not (flags & SF_NOCOMPILE)
 	{
-		__compile(m, flags);
-		if not (flags & SF_NOINIT)
-			m.__init_module();
+		if mpath
+		{
+			local old_module_path = $.current_module_path;
+			$.current_module_path = mpath;
+			// If we didn't have $.current_module_path set, we grab
+			// this one as the "root" module path. Usually, this
+			// will be the main application module loaded by the
+			// executive.
+			if not old_module_path
+				old_module_path = mpath;
+			try
+			{
+				__compile(m, flags);
+				if not (flags & SF_NOINIT)
+					m.__init_module();
+			}
+			except
+			{
+				$.current_module_path = old_module_path;
+				throw exception;
+			}
+			$.current_module_path = old_module_path;
+		}
+		else
+		{
+			__compile(m, flags);
+			if not (flags & SF_NOINIT)
+				m.__init_module();
+		}
 	}
 	return m;
 }
@@ -139,7 +177,7 @@ export function __load_via_path_modules(modname, flags)
 			return ldbin(p, f);
 		return nil;
 	}
-	local modpaths = $.path_modules;
+
 	if flags & SF_ALLOWSHARED
 	{
 		// Looking for shared modules? We're going to assume 'modname'
@@ -154,6 +192,19 @@ export function __load_via_path_modules(modname, flags)
 				r[sizeof r] = modname[i];
 		modname = (string)r;
 	}
+
+	try
+	{
+		// Try the directory of the currently compiling module, or the
+		// "root" module. (See compile() for details.)
+		local m = try_load($.current_module_path + DIRSEP + modname,
+				flags);
+		if m
+			return m;
+	}
+
+	// Try each path in $.path_modules
+	local modpaths = $.path_modules;
 	for local i = 0, sizeof modpaths - 1
 	{
 		if sizeof modpaths[i]
@@ -178,7 +229,7 @@ export function __load_injected_module(modname, flags)
 $.module_loaders = [
 	__get_loaded_module,	// Try to grab a loaded shared module
 	__load_injected_module,	// See if it's an injected module
-	__load_via_path_modules	// Try to load from disk
+	__load_via_path_modules	// Try to load from file system
 ];
 
 
