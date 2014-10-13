@@ -270,7 +270,7 @@ export function Control(parent, min, max, init, caption, onchange)
 export function NumEditor(parent, init, caption, onchange)
 {
 	local w = gui.Panel(parent);
-	w.colrowratio = -.3;
+	w.colrowratio = 0;
 	w.OnChange = onchange;
 	gui.Label(w, caption);
 	w.value = init;

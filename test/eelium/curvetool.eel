@@ -4,14 +4,12 @@
 /////////////////////////////////////////////////////////
 
 module curvetool;
-
+eelversion 0.3.7;
 import math;
 import io as io;
 import SDL as SDL;
 import eelium.gui as gui;
 import deltawidgets as dw;
-
-constant DRAW_LINES = false;
 
 static bpp;
 static flags;
@@ -27,9 +25,16 @@ static xscale, static yscale;
 static sel;
 static curves = [];
 
+static drawlines = false;
+static autoclear = true;
+
 static xmin = 0;
 static xmax = 1;
 static xstep = .01;
+
+static zmin = 1;
+static zmax = 1;
+static zstep = .1;
 
 // Tool palette
 static tool_curve = 0;
@@ -46,7 +51,7 @@ function CurveToggle(parent, crv)
 	local b = gui.Toggle(parent, c.name,
 			procedure(self)
 			{
-				curves[self.curve].visible = self.pressed;
+				curves[self.curve].visible = self.state;
 				graph:Invalidate();
 			});
 	b:ApplyTheme(c.theme);
@@ -57,7 +62,7 @@ function CurveToggle(parent, crv)
 
 procedure add_curve(name, glyph, r, g, b)
 {
-	local c = graph:Curve(name, glyph, r, g, b, DRAW_LINES);
+	local c = graph:Curve(name, glyph, r, g, b, drawlines);
 	c.theme = clone guiroot.theme;
 	c.theme.colors = clone c.theme.colors;
 	c.theme:SetActiveColors(r, g, b, 1.3);
@@ -181,7 +186,6 @@ procedure scale_dialog(parent, crv)
 	local defbutton = gui.Button(p, "Apply", procedure(self)
 		{
 			local w = self.parent.parent;
-print("y: ", w.curve.y, "\tscale: ", w.scale, "\n");
 			w.curve.y.#* w.scale;
 			w:Delete();
 		});
@@ -221,9 +225,10 @@ procedure evaluate_fx(c, code)
 {
 	local expr = nil;
 	try
-		expr = compile(	"import curvetool;\n"
+		expr = compile(	"eelversion 0.3.7;\n"
+				"import curvetool;\n"
 				"import math;\n"
-				"export function f(x)\n"
+				"export function f(x, z)\n"
 				"{\n"
 				"  local y = 0;\n"
 				"  " + code + ";\n"
@@ -235,18 +240,20 @@ procedure evaluate_fx(c, code)
 				exception_name(exception) + ")");
 		return;
 	}
-	for local i = xmin, xmax, xstep
-		try
-			c:Add(i, expr.f(i));
-		except
-		{
-			messagebox(guiroot, "Expression evaluation "
-					"failed at x = " +
-					(string)i + " (" +
-					exception_name(exception) +
-					")");
-			return;
-		}
+	for local z = zmin, zmax, zstep
+		for local x = xmin, xmax, xstep
+			try
+				c:Add(x, expr.f(x, z));
+			except
+			{
+				messagebox(guiroot, "Expression evaluation "
+						"failed at (x, z) = (" +
+						(string)x + ", " +
+						(string)z + ") [" +
+						exception_name(exception) +
+						"]");
+				return;
+			}
 }
 
 
@@ -325,10 +332,15 @@ export function main<args>
 
 	  // Tool palette
 	  local p = gui.Panel(gp, "none")
-		:SetAlign("grid", 1, 15);
+		:SetAlign("ratio", 0);
+	  p.childsize = true;
 	  p.logicrect.w = 8;
+
 	    SelectButton(p, procedure(self) { tool_curve = self.selected; })
 		:Select(tool_curve);
+
+	    gui.Panel(p, "none").logicrect.h = 5;
+
 	    gui.Button(p, "Clear", procedure(self)
 			{
 				local c = curves[tool_curve];
@@ -443,12 +455,43 @@ export function main<args>
 				graph:Invalidate();
 			});
 
-	    gui.LineEditor(p, (string)xmin,
-	    		procedure(self, text) { xmin = (real)text; });
-	    gui.LineEditor(p, (string)xmax,
-	    		procedure(self, text) { xmax = (real)text; });
-	    gui.LineEditor(p, (string)xstep,
-	    		procedure(self, text) { xstep = (real)text; });
+	    gui.Panel(p, "none").logicrect.h = 5;
+
+	    gui.Toggle(p, "Draw Lines",
+			procedure(self)
+			{
+				drawlines = self.state;
+				for local ci = 0, sizeof curves - 1
+					curves[ci].lines = drawlines;
+				graph:Invalidate();
+			}).state = drawlines;
+	    gui.Toggle(p, "Auto Clear",
+			procedure(self)
+			{
+				autoclear = self.state;
+			}).state = autoclear;
+
+	    gui.Panel(p, "none").logicrect.h = 5;
+
+	    dw.NumEditor(p, xmin, "xmin", procedure(self, v) { xmin = v; })
+	    	.logicrect.h = 15;
+	    dw.NumEditor(p, xmax, "xmax", procedure(self, v) { xmax = v; })
+	    	.logicrect.h = 15;
+	    dw.NumEditor(p, xstep, "xstep", procedure(self, v) { xstep = v; })
+	    	.logicrect.h = 15;
+
+	    gui.Panel(p, "none").logicrect.h = 5;
+
+	    dw.NumEditor(p, zmin, "zmin", procedure(self, v) { zmin = v; })
+	    	.logicrect.h = 15;
+	    dw.NumEditor(p, zmax, "zmax", procedure(self, v) { zmax = v; })
+	    	.logicrect.h = 15;
+	    dw.NumEditor(p, zstep, "zstep", procedure(self, v) { zstep = v; })
+	    	.logicrect.h = 15;
+
+	    for local i = 0, sizeof p.widgets - 1
+	    	if p.widgets[i].logicrect.h == 1
+	    		p.widgets[i].logicrect.h = 10;
 
 	  local scp = gui.Panel(gp, "none")
 		:SetAlign("grid", 1, 2);
@@ -560,7 +603,7 @@ export function main<args>
 	{
 		expressions[0] = "y = sin(x * 2 * PI)";
 		expressions[1] = "y = sin(x * 4 * PI)";
-		expressions[2] = "y = sin(x * 8 * PI)";
+		expressions[2] = "y = sin(x * z * PI)";
 	}
 	editpanel = gui.Panel(guiroot, "none")
 		:SetAlign("grid", 3, 3, vector [2, 32, 2]);
@@ -574,9 +617,13 @@ export function main<args>
 		expedit[i], local le = gui.LineEditor(editpanel, expressions[i]);
 		local b = gui.Button(editpanel, "Render", procedure(self)
 				{
-					evaluate_fx(curves[
-							self.selector.curve],
-							self.editor.text);
+					local c = curves[self.selector.curve];
+					if autoclear
+					{
+						delete(c.x);
+						delete(c.y);
+					}
+					evaluate_fx(c, self.editor.text);
 					graph:Invalidate();
 				});
 		b.editor = le;
