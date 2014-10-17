@@ -86,7 +86,7 @@ $.current_module_path = nil;
 export function compile(s)[flags = 0, filename = nil, modname = nil]
 {
 	local m = module [];
-	local mpath = nil;
+	m.__modpath = nil;
 	m.__source = s;
 	if filename
 	{
@@ -94,7 +94,7 @@ export function compile(s)[flags = 0, filename = nil, modname = nil]
 		for local i = sizeof filename - 1, 0, -1
 			if filename[i] == '/'
 			{
-				mpath = copy(filename, 0, i);
+				m.__modpath = copy(filename, 0, i);
 				break;
 			}
 	}
@@ -107,16 +107,16 @@ export function compile(s)[flags = 0, filename = nil, modname = nil]
 		m.__modname = m.__filename;
 	if not (flags & SF_NOCOMPILE)
 	{
-		if mpath
+		if m.__modpath
 		{
 			local old_module_path = $.current_module_path;
-			$.current_module_path = mpath;
+			$.current_module_path = m.__modpath;
 			// If we didn't have $.current_module_path set, we grab
 			// this one as the "root" module path. Usually, this
 			// will be the main application module loaded by the
 			// executive.
 			if not old_module_path
-				old_module_path = mpath;
+				old_module_path = m.__modpath;
 			try
 			{
 				__compile(m, flags);
