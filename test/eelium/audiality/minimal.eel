@@ -1,0 +1,31 @@
+///////////////////////////////////////////
+// minimal.eel - Minimal Audiality 2 Test
+// Copyright 2014 David Olofson
+///////////////////////////////////////////
+
+import Audiality2;
+
+export function main<args>
+{
+	// Create an audio engine state
+	local a2 = a2state [ 44100, 1024, 2, REALTIME ];
+
+	// Load song
+	local path = __exports().__modpath;
+	if path
+		path += "/";
+	else
+		path = "";
+	local bank = a2:Load(path + "a2jingle.a2s");
+
+	// Find song entry point
+	local song = a2:Get(bank, "Song");
+
+	// Start song as child of the root voice
+	local voice = a2:Start(a2:RootVoice(), song);
+
+	sleep(10000);
+
+	// NOTE: The audio engine will close as a2 is deleted.
+	return 0;
+}

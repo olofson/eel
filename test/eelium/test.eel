@@ -55,7 +55,12 @@ export function main<args>
 	run("gltest.eel");
 	run("glballs.eel");
 	run("zstest.eel");
-	run("audiality.eel");
+	run("audiality/audiality.eel");
+
+	// This last one is supposed to work without a window!
+	SetVideoMode(false);
+	run("audiality/minimal.eel");
+
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{

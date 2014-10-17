@@ -22,7 +22,12 @@ export function main<args>
 	local a2 = A2.a2state [ 44100, 1024, 2, A2.REALTIME ];
 
 	// Load song
-	local bank = hchk(a2:Load("k2intro.a2s"));
+	local path = __exports().__modpath;
+	if path
+		path += "/";
+	else
+		path = "";
+	local bank = hchk(a2:Load(path + "k2intro.a2s"));
 	print("Song title: ", a2:String(a2:Get(bank, "title")), "\n");
 
 	// Find song entry point
