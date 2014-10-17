@@ -34,20 +34,6 @@ extern "C" {
 #endif
 
 
-/*
-TODO:
- * Register exception 'number' and it's 'description'. If 'number' is 0, EEL
- * will find an unused exception number.
- *
- * SUCCESS: Returns the registered exception number.
- * FAILURE: Returns -1.
- */
-#if 0
-EELAPI(int)eel_register_exception(EEL_vm *vm,
-		int number, const char *description);
-#endif
-
-
 /*----------------------------------------------------------
 	Binary or unary operator
 ----------------------------------------------------------*/

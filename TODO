@@ -40,13 +40,6 @@
   calls them with the match buffer, the state object and the output stream, so
   they can do whatever they want.
 
-* Error code registry!
-	* Per-module error code ranges
-	* Error code is registered with:
-		Source module (object)
-		Name (string)
-		Description (string)
-
 * EEL probably has the same bug that I reinvented in Audiality 2: If the
   last token is invalid (after Unlex() usually), the start position is
   bogus, and should not be used!
@@ -167,7 +160,7 @@ Also Kobo II - uninitialized hashes in tables...?
 	* Normally, the VM does nothing, and doesn't even look at
 	  this info.
 	* In case of an exception, the VM checks the PC and looks
-	  up the corresponding zone. The simplest implemantation
+	  up the corresponding zone. The simplest implementation
 	  would probably be to just compile the "except" block as
 	  a function as we do now, and wire the exception trap
 	  zone to that.
