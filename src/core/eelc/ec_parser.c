@@ -3430,6 +3430,9 @@ static int dostat(EEL_state *es)
 
 	/* Allow no "maybe initialized" variables! */
 	eel_initializations(es->context);
+
+	expect(es, ';', "Missing ';' after 'do' statement!");
+
 	return TK(STATEMENT);
 }
 
