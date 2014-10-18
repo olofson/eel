@@ -204,10 +204,6 @@ Also Kobo II - uninitialized hashes in tables...?
 
 	* Body 'e' field not implemented!
 
-* Native compiler! (Based on the LuaJIT code generator, but no actual JIT.)
-
-* LuaJIT style FFI?
-
 
 ---------------------------
 * Exception handling segfaults:
@@ -256,8 +252,6 @@ Also Kobo II - uninitialized hashes in tables...?
 		  remove them, and throw in some nice builtin
 		  functions? min(), max(), clamp(), ...
 
-	* 'if' statement with empty "action" statement ==> WARNING!
-
 	* Convert ZeeSpace to the same naming conventions as my
 	  other projects; ZS_typename - not ZS_TypeName!
 
@@ -272,21 +266,6 @@ Also Kobo II - uninitialized hashes in tables...?
 		* Later on:
 			* Interleaved buffers, for interfacing
 			  directly with SDL, ZeeSpace and OpenGL.
-
-	* Introduce standard install locations:
-		* "./eel" for stuff installed along with the app
-		* "~/.eel" for per-user stuff
-		* "/usr/share/eel" (?) for system wide stuff
-		* Subdirectories:
-			* "modules" for shared modules (GUI etc)
-			* "tools" for devtools, installers etc
-			* "config" for configuration files
-
-	* Maybe the 'module' declaration should be required for
-	  anything 'import'ed? We don't really want 'import' to
-	  create multiple instances in the process - at least not
-	  implicitly, as a result of forgetting the 'module'
-	  declaration...!
 
 	* EELBox should perhaps have
 		* AAPlot()
@@ -314,25 +293,6 @@ Also Kobo II - uninitialized hashes in tables...?
 	    Temporary hack: All calls wired to a dummy that prints
 	  a warning message.
 
-	* Module import order matters! Memory leaks in Kobo II can
-	  be "fixed" by rearranging the import statements.
-
-	* There is something wring with module memory management!
-	  Can't safely hold modules by means of references to
-	  functions they export, apparently; that results in
-	  double free crasches down the road...
-
-	* The optimizer screws up the line number info!
-		* Unfortunately, it's not trivial to fix...
-
-	* Remove builtin.eel and eelbox.eel! One may have "core"
-	  libs implemented in EEL, but they should not be required
-	  to even compile anything at all... That's a nasty catch
-	  22, which caused a lot of problems in the 0.2.x branch.
-
-	* Constructors allow a stray terminating comma before the
-	  closing bracket! Why, and what does that do?
-
 	* Putting function references in static tables creates
 	  memory leaks!
 
@@ -353,14 +313,6 @@ Also Kobo II - uninitialized hashes in tables...?
 	* "WARNING: Discarding event for dead body"...? Should
 	  that actually ever happen? Some limbo list or local
 	  variable holding on to dead bodies in the loop...?
-
-	* Structured scene graph API instead of raw OpenGL?
-		* Persistent "objects" (sprites, quads, polygons
-		  etc) with properties that can be updated as
-		  needed, instead of gathering and moving all data
-		  every frame.
-		* Layers for managing views and transforms.
-		* Groups and property inheritance?
 
 	* INDGET* --> LDIND*, maybe...
 
@@ -702,19 +654,6 @@ Also Kobo II - uninitialized hashes in tables...?
 -----------------------------------------------------------
 Long term:
 
-	* Static typing? (Implement in compiler only first!)
-		* Add explicit type "dynamic"
-		* Local variables are declared using type names
-		  instead of 'local'. ('dynamic' is equivalent
-		  to the current declaration behavior.)
-		* Function arguments need types!
-			* Leave out the type for "dynamic"?
-		* Functions get return types.
-		* Typed table type for structs/classes...?
-			* These would need "base classes",
-			  which get their own type IDs for
-			  typed references.
-
 	* Modules:
 		* Fix the module loading catch-22 etc...
 		* Injected modules are instantiated by
@@ -1044,16 +983,11 @@ EEL compiler
 -----------------------------------------------------------
 * Nicer peephole optimizer implementation. (A table that's
   rendered into a 2D LUT or something at startup.)
-	* Should also deal with registers being unused as a result
-	  of substituting "shortcut" instructions!
+	* Should also deal with registers being unused as a
+	  result of substituting "shortcut" instructions!
 
 * Add more peephole optimizations! Any automatic tools
   for finding safe or at least potential optimizations...?
-
-* The include directive should operate on the file I/O
-  level, rather on the parser level! As it is, you can't
-  really use it for "pasting" things together, as there
-  will be unterminated {...} block errors and the like.
 
 * When encountering ANY compile error that involves some
   known symbol where a name (from the lexer POV) is
@@ -1065,12 +999,6 @@ EEL compiler
 * The compiler event system should understand infinite
   loops! This would probably also cover the case where an
   infinite loop body guarantees initialization.
-
-* Make sure that all compiler API calls are wrapped to
-  prevent unhandled exceptions from terminating the
-  application. This probably means EEL internals should
-  (normally) not call API functions, because this often
-  leads to "double wrap" problems.
 
 * Go back to linked lists of compiler events. I got it
   right the first time... The current array hack is
