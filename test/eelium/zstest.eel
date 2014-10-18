@@ -204,7 +204,7 @@ procedure run_intro(dt)
 	pitch += SPEED90 * .7 * dt;
 	pitch |<= 90;
 	altitude += SPEED90 / 16 * dt;
-	altitude += (45 - altitude) * .1 * dt;;
+	altitude += (45 - altitude) * .1 * dt;
 	relight = true;
 	if altitude > 44.9
 		leave_intro();

@@ -57,8 +57,7 @@ export function main<args>
 		local tv = rng:Gen();
 		print("1000'nd value: ", tv, "\n");
 		if (integer)(tv * 1000) != 8163
-			throw "1000'nd value should be
-					 approximately 8.163!";
+			throw "1000'nd value should be approximately 8.163!";
 	}
 	print("Random Number Generator benchmark done.\n");
 	return 0;

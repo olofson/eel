@@ -2982,7 +2982,7 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 	{
 		local pos = 0 >| _pos |< 1;
 		self.position = pos;
-		local nv = self:Pos2Value(pos);;
+		local nv = self:Pos2Value(pos);
 		if nv == self.value
 			return false;
 		self.value = nv;
@@ -3469,7 +3469,7 @@ export function Selector(parent, type)[onchange, style]
 		w.itemstyle = w.theme.SelectorItemStyle;
 	switch type
 	  case "command", "radio", "toggle"
-		;
+		{}
 	  default
 		throw "Unknown Selector type " + type + "!\n";
 	w.SilentSelect = procedure(self, widget)[state]

@@ -33,8 +33,6 @@
 
 typedef enum
 {
-	TK_VOID =	-4,	/* No result generated! */
-	TK_WRONG =	-2,	/* Wrong rule! */
 	TK_EOF =	0,	/* End of file or script */
 
 	/* (All ASCII characters + the 128 8 bit codes go here.) */
@@ -155,7 +153,10 @@ typedef enum
 	TK_EXPLIST,
 	TK_BODY,
 	TK_BLOCK,
-	TK_STATEMENT
+	TK_STATEMENT,
+	TK_VOID,	/* Empty statement or expression */
+	TK_EMPTY,	/* Intentionally empty block ("{}") */
+	TK_WRONG	/* Wrong rule! Retry with another rule. */
 } EEL_token;
 
 /* Definitions for .ess stripped, tokenized source files */

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // Temporary EEL Test Suite
-// Copyright 2004, 2005 David Olofson
+// Copyright 2004, 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
 export function main<args>
@@ -31,7 +31,7 @@ export function main<args>
 	procedure mrecurse2(arg)
 	{
 		mrecurse1(arg - 1);
-	};
+	}
 
 	mrecurse1(10);
 

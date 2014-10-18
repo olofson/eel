@@ -1492,19 +1492,20 @@ static void funcdef2(EEL_state *es, EEL_mlist *al, int is_func, int local)
 	}
 
 	/* Compile function body */
-	if(TK_WRONG == body(es, ECTX_FUNCTION))
+	switch(body(es, ECTX_FUNCTION))
 	{
+	  case TK_WRONG:
 		if(predeclared)
 			eel_cerror(es, "Expected function body!");
 
 		/* Just a declaration! */
 		f = o2EEL_function(es->context->symtab->v.object);
 		f->common.flags |= EEL_FF_DECLARATION;
-	}
-	else
-	{
+		break;
+	  default:
 		/* Leave and finalize function */
 		procreturn(es);
+		break;
 	}
 }
 
@@ -1580,11 +1581,18 @@ static void xblock(EEL_state *es, const char *basename, EEL_mlist *al,
 		eel_r_alloc_reg(es->context->coder, 0, EEL_RUVARIABLE);
 
 	if(!(flags & ECTX_DUMMY))
-	{
 		/* Compile function body */
-		if(TK_WRONG == statement(es, ECTX_FUNCTION))
-			eel_cerror(es, "Expected a statement or body!");
-	}
+		switch(statement(es, ECTX_FUNCTION))
+		{
+		  case TK_STATEMENT:
+			break;
+		  case TK_VOID:
+			eel_cwarning(es, "Empty exception handling block.");
+			break;
+		  default:
+			eel_cerror(es, "Expected exception handling "
+					"statement or body!");
+		}
 
 	eel_code0(es->context->coder, EEL_ORETURN_0);
 
@@ -2876,6 +2884,7 @@ static int body(EEL_state *es, int flags)
 {
 	char name[128];
 	int is_function = (flags & ECTX_TYPE) == ECTX_FUNCTION;
+	int res;
 	flags &= ~ECTX_TYPE;
 	name[0] = 0;
 
@@ -2913,8 +2922,17 @@ static int body(EEL_state *es, int flags)
 			eel_sfree(es, n);
 	}
 	es->context->flags |= ECTX_WRAPPED;
-	if(block(es) == TK_EOF)
+	switch((res = block(es)))
+	{
+	  case TK_EOF:
 		eel_cerror(es, "Unexpected EOF; unterminated {...} block!");
+	  case TK_VOID:
+	  case TK_EMPTY:
+		break;
+	  default:
+		res = TK_BODY;
+		break;
+	}
 	if(!is_function && !(flags & ECTX_KEEP))
 	{
 		code_leave_context(es, es->context);
@@ -2925,7 +2943,7 @@ static int body(EEL_state *es, int flags)
 	expect(es, '}', "Expected new statement or closing '}'.");
 	DBGH(printf("## body: '}'\n");)
 
-	return TK(BODY);
+	return res;
 }
 
 
@@ -3068,8 +3086,17 @@ static int ifstat(EEL_state *es)
 	eel_ml_close(expr);
 
 	/* Code for "true" */
-	if(statement(es, ECTX_CONDITIONAL | ECTX_KEEP) != TK_STATEMENT)
+	switch(statement(es, ECTX_CONDITIONAL | ECTX_KEEP))
+	{
+	  case TK_STATEMENT:
+	  case TK_EMPTY:
+		break;
+	  case TK_VOID:
+		eel_cwarning(es, "Empty 'true' condition statement.");
+		break;
+	  default:
 		eel_cerror(es, "Expected 'true' condition statement!");
+	}
 	code_leave_context(es, es->context);
 	if(TK_KW_ELSE == es->token)
 	{
@@ -3092,8 +3119,18 @@ static int ifstat(EEL_state *es)
 	{
 		/* 'else' block */
 		eel_lex(es, 0);
-		if(statement(es, ECTX_CONDITIONAL) != TK_STATEMENT)
-			eel_cerror(es, "Expected 'false' condition statement!");
+		switch(statement(es, ECTX_CONDITIONAL))
+		{
+		  case TK_STATEMENT:
+		  case TK_EMPTY:
+			break;
+		  case TK_VOID:
+			eel_cwarning(es, "Empty 'false' condition statement.");
+			break;
+		  default:
+			eel_cerror(es, "Expected 'false' condition "
+					"statement!");
+		}
 
 		eel_code_setjump(cdr, jump_out, eel_code_target(cdr));
 		eel_e_merge(es->context, EEL_EYES);
@@ -3148,8 +3185,17 @@ static void caselist(EEL_state *es, EEL_object *jtab)
 						eel_v_stringrep(es->vm, kv));
 		}
 		eel_ml_close(values);
-		if(statement(es, ECTX_CONDITIONAL | ECTX_KEEP) != TK_STATEMENT)
-			eel_cerror(es, "Expected 'case' body statement!");
+		switch(statement(es, ECTX_CONDITIONAL | ECTX_KEEP))
+		{
+		  case TK_STATEMENT:
+		  case TK_EMPTY:
+			break;
+		  case TK_VOID:
+			eel_cwarning(es, "Empty 'case' statement.");
+			break;
+		  default:
+			eel_cerror(es, "Expected 'case' statement!");
+		}
 		code_break(es, es->context);
 		code_move_breaks_up(es);
 		eel_context_pop(es);
@@ -3232,8 +3278,17 @@ static int switchstat(EEL_state *es)
 	if(es->token == TK_KW_DEFAULT)
 	{
 		eel_lex(es, 0);
-		if(statement(es, ECTX_CONDITIONAL | ECTX_KEEP) != TK_STATEMENT)
+		switch(statement(es, ECTX_CONDITIONAL | ECTX_KEEP))
+		{
+		  case TK_STATEMENT:
+		  case TK_EMPTY:
+			break;
+		  case TK_VOID:
+			eel_cwarning(es, "Empty 'default' catch statement!");
+			break;
+		  default:
 			eel_cerror(es, "Expected 'default' catch statement!");
+		}
 		code_move_breaks_up(es);
 		eel_context_pop(es);
 		eel_e_merge(es->context, EEL_EYES);
@@ -3323,10 +3378,17 @@ static int whilestat(EEL_state *es)
 	eel_ml_close(expr);
 
 	/* Loop body */
-	if(statement(es, ECTX_CONDITIONAL | ECTX_BREAKABLE | ECTX_CONTINUABLE |
-			ECTX_KEEP)
-			!= TK_STATEMENT)
+	switch(statement(es, ECTX_CONDITIONAL | ECTX_BREAKABLE |
+			ECTX_CONTINUABLE | ECTX_KEEP))
+	{
+	  case TK_VOID:
+		eel_cwarning(es, "Empty loop body statement.");
+		break;
+	  case TK_STATEMENT:
+		break;
+	  default:
 		eel_cerror(es, "Expected loop body statement!");
+	}
 	code_leave_context(es, es->context);
 
 	/* Continue jumps land here */
@@ -3371,12 +3433,19 @@ static int dostat(EEL_state *es)
 
 	/* Grab the loop start point! */
 	loop_start = eel_code_target(cdr);
-
 	/* Loop body */
-	if(statement(es, ECTX_CONDITIONAL | ECTX_BREAKABLE | ECTX_CONTINUABLE |
-			ECTX_KEEP)
-			!= TK_STATEMENT)
+	switch(statement(es, ECTX_CONDITIONAL | ECTX_BREAKABLE |
+			ECTX_CONTINUABLE | ECTX_KEEP))
+	{
+	  case TK_STATEMENT:
+	  case TK_EMPTY:
+		break;
+	  case TK_VOID:
+		eel_cwarning(es, "Empty loop body statement.");
+		break;
+	  default:
 		eel_cerror(es, "Expected loop body statement!");
+	}
 	code_leave_context(es, es->context);
 
 	/* Continue jumps land here */
@@ -3511,10 +3580,18 @@ static int forstat(EEL_state *es)
 	loopstart = eel_code_target(cdr);
 
 	/* Loop body */
-	if(statement(es, ECTX_CONDITIONAL | ECTX_BREAKABLE | ECTX_CONTINUABLE |
-			ECTX_REPEATABLE | ECTX_KEEP)
-			!= TK_STATEMENT)
+	switch(statement(es, ECTX_CONDITIONAL | ECTX_BREAKABLE |
+			ECTX_CONTINUABLE | ECTX_REPEATABLE | ECTX_KEEP))
+	{
+	  case TK_STATEMENT:
+	  case TK_EMPTY:
+		break;
+	  case TK_VOID:
+		eel_cwarning(es, "Empty loop body statement.");
+		break;
+	  default:
 		eel_cerror(es, "Expected loop body statement!");
+	}
 	code_leave_context(es, es->context);
 
 	/* 'continue' lands here */
@@ -3894,7 +3971,7 @@ static int statement2(EEL_state *es)
 	  case ';':
 		eel_lex(es, 0);
 		DBGH(printf("## statement: ';'\n");)
-		return TK(STATEMENT);
+		return TK(VOID);
 
 	  /* KW_EELVERSION x[.y[.z]] ';' */
 	  case TK_KW_EELVERSION:
@@ -4037,8 +4114,21 @@ static int statement(EEL_state *es, int flags)
 	int res;
 
 	/* This wraps itself if needed */
-	if(TK_WRONG != body(es, flags))
+	switch(body(es, flags))
+	{
+	  case TK_WRONG:
+		break;
+	  case TK_VOID:
+		/*
+		 * We want a distinction between ; and {}, so we can use the
+		 * latter as a way of saying "intentionally empty statement",
+		 * to eliminate the "empty statement" warnings that would
+		 * result from a lone ';'.
+		 */
+		return TK(EMPTY);
+	  default:
 		return TK(STATEMENT);
+	}
 
 	/* Wrap if needed */
 	if(flags & ECTX_CONDITIONAL)
@@ -4074,9 +4164,25 @@ static int statement(EEL_state *es, int flags)
  */
 static int block(EEL_state *es)
 {
+	switch(statement(es, 0))
+	{
+	  case TK_EMPTY:
+		return TK(EMPTY);
+	  case TK_VOID:
+	  case TK_WRONG:
+		return TK(VOID);
+	  case TK_EOF:
+		return TK(EOF);
+	}
 	while(1)
 		switch(statement(es, 0))
 		{
+		  case TK_VOID:
+			eel_cwarning(es, "Possibly accidental empty "
+					"statement.");
+			break;
+		  case TK_EMPTY:
+			break;
 		  case TK_WRONG:
 			return TK(BLOCK);
 		  case TK_EOF:
@@ -4231,6 +4337,9 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 	res = block(es);
 	switch(res)
 	{
+	  case TK_VOID:
+		eel_cwarning(es, "No statements found in module.");
+		break;
 	  case TK_WRONG:
 		eel_cerror(es, "Syntax error! Statement expected.");
 	  case TK_EOF:

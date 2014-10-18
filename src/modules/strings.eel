@@ -134,7 +134,7 @@ export function replace(s, what, with)[flags = 0]
 {
 	switch typeof what
 	  case integer
-		;
+		{}
 	  case string, dstring
 		throw "String matching not yet implemented!";
 	  default
@@ -144,7 +144,7 @@ export function replace(s, what, with)[flags = 0]
 	  case integer
 		with = string [with];
 	  case string, dstring
-		;
+		{}
 	  default
 		throw "Cannot replace with object of type " + (string)with +
 				"!";

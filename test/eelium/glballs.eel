@@ -53,7 +53,7 @@ export function main<args>
 	resize(screen.(w, h));
 
 	// Main loop
-	local start, local lt, local t0 = SDL.GetTicks();;
+	local start, local lt, local t0 = SDL.GetTicks();
 	local frames = 0;
 	while true
 	mainloop:
