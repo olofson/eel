@@ -1009,7 +1009,11 @@ static int listof(EEL_state *es, EEL_mlist *al,
 		switch(what(es, al, xopt))
 		{
 		  case TK_WRONG:
-			return first ? TK(WRONG) : TK2("LISTOF <?>", TK_EXPLIST);
+			if(!first)
+				eel_cwarning(es, "Trailing comma in %s list.",
+						whatn);
+			return first ? TK(WRONG) :
+					TK2("LISTOF <?>", TK_EXPLIST);
 		  case TK_VOID:
 			if(first && (es->token != ','))
 				return TK(VOID);
@@ -1893,6 +1897,7 @@ static int vardecl(EEL_state *es, EEL_mlist *al)
 static int tablector(EEL_state *es, EEL_mlist *al)
 {
 	int r, lastcount;
+	int first = 1;
 	EEL_coder *cdr;
 	EEL_mlist *inits;
 
@@ -1916,7 +1921,12 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 	{
 		int func_by_name = 0;
 		if(']' == es->token)
+		{
+			if(!first)
+				eel_cwarning(es, "Trailing comma in table "
+						" constructor.");
 			break;
+		}
 		lastcount = inits->length;
 		if('(' == es->token)
 		{
@@ -1974,6 +1984,7 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 				break;
 			eel_lex(es, 0);
 		}
+		first = 0;
 	}
 
 	/* Closing brace */
