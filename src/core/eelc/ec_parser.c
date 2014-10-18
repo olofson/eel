@@ -1897,7 +1897,7 @@ static int vardecl(EEL_state *es, EEL_mlist *al)
 static int tablector(EEL_state *es, EEL_mlist *al)
 {
 	int r, lastcount;
-	int first = 1;
+	int comma = 0;
 	EEL_coder *cdr;
 	EEL_mlist *inits;
 
@@ -1921,12 +1921,7 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 	{
 		int func_by_name = 0;
 		if(']' == es->token)
-		{
-			if(!first)
-				eel_cwarning(es, "Trailing comma in table "
-						" constructor.");
 			break;
-		}
 		lastcount = inits->length;
 		if('(' == es->token)
 		{
@@ -1972,20 +1967,27 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 					(inits->length - lastcount != 2))
 				eel_cerror(es, "Expected value expression!");
 		}
+		comma = 0;
 		if(func_by_name)
 		{
 			/* Coma is optional after "function by name"! */
 			if(',' == es->token)
+			{
+				comma = 1;
 				eel_lex(es, 0);
+			}
 		}
 		else
 		{
 			if(',' != es->token)
 				break;
 			eel_lex(es, 0);
+			comma = 1;
 		}
-		first = 0;
 	}
+
+	if(comma)
+		eel_cwarning(es, "Trailing comma in table constructor.");
 
 	/* Closing brace */
 	expect(es, ']', NULL);
