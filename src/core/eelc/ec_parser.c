@@ -1586,16 +1586,6 @@ static void xblock(EEL_state *es, const char *basename, EEL_mlist *al,
 			eel_cerror(es, "Expected a statement or body!");
 	}
 
-/*
-FIXME: Do we need a special "hands off" RETURN here, to avoid messing up the
-FIXME: return value of the containing normal function?
- */
-/*
-	if(flags & EEL_FF_RESULTS)
-		eel_codeA(cdr, EEL_ORETXR_A, r);
-	else
-		eel_code0(es->context->coder, EEL_ORETX_0);
-*/
 	eel_code0(es->context->coder, EEL_ORETURN_0);
 
 	eel_context_pop(es);
@@ -2266,7 +2256,7 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 			eel_m_delete(lastm);	/* Replaced! */
 			return TK(SIMPLEXP);
 		}
-		if(TK_VOID == res)
+		if(res == TK_VOID)
 			return TK(VOID);
 		else
 			return TK(SIMPLEXP);
@@ -2284,24 +2274,14 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 		return TK(SIMPLEXP);
 	}
 
-	/* vardecl */
-	if(TK_WRONG != vardecl(es, al))
-		return TK(SIMPLEXP);
-
-	/* funcdef */
-	if(TK_WRONG != funcdef(es, al, 0))
-		return TK(SIMPLEXP);
-
-	/* arginfo */
-	if(TK_WRONG != arginfo(es, al))
-		return TK(SIMPLEXP);
-
-	/* ctor */
-	if(TK_WRONG != ctor(es, al))
+	if((vardecl(es, al) != TK_WRONG) ||
+			(funcdef(es, al, 0) != TK_WRONG) ||
+			(arginfo(es, al) != TK_WRONG) ||
+			(ctor(es, al) != TK_WRONG))
 		return TK(SIMPLEXP);
 
 	/* TYPENAME */
-	if(TK_SYM_CLASS == es->token)
+	if(es->token == TK_SYM_CLASS)
 	{
 		v.type = EEL_TTYPEID;
 		v.integer.v = eel_class_typeid(es->lval.v.symbol->v.object);
@@ -2375,7 +2355,7 @@ static int simplexp(EEL_state *es, EEL_mlist *al, int wantresult)
 
 	/* Parse the initial simplexp */
 	res = simplexp2(es, al, wantresult);
-	if(TK_WRONG == res || al->length <= a)
+	if(res == TK_WRONG || al->length <= a)
 	{
 		/* Don't let stray qualifiers leak outside simplexp()! */
 		no_qualifiers(es);
@@ -2898,6 +2878,8 @@ static int body(EEL_state *es, int flags)
 	int is_function = (flags & ECTX_TYPE) == ECTX_FUNCTION;
 	flags &= ~ECTX_TYPE;
 	name[0] = 0;
+
+	/* Named block? */
 	switch(es->token)
 	{
 	  case '{':
@@ -3222,7 +3204,8 @@ static int switchstat(EEL_state *es)
 	switch(expression(es, expr, 1))
 	{
 	  case TK_VOID:
-		eel_cerror(es, "Switch expression does not generate a result!");
+		eel_cerror(es, "Switch expression does not generate a "
+				"result!");
 	  case TK_WRONG:
 		eel_cerror(es, "Expected an expression!");
 	}
@@ -3230,12 +3213,14 @@ static int switchstat(EEL_state *es)
 		eel_cerror(es, "Expected exactly one expression!");
 	r = eel_m_direct_read(eel_ml_get(expr, 0));
 	if(r >= 0)
-		jump_else = eel_codeABxsCx(cdr, EEL_OSWITCH_ABxsCx, r, jtabc, 0);
+		jump_else = eel_codeABxsCx(cdr, EEL_OSWITCH_ABxsCx,
+				r, jtabc, 0);
 	else
 	{
 		r = eel_r_alloc(cdr, 1, EEL_RUTEMPORARY);
 		eel_m_read(eel_ml_get(expr, 0), r);
-		jump_else = eel_codeABxsCx(cdr, EEL_OSWITCH_ABxsCx, r, jtabc, 0);
+		jump_else = eel_codeABxsCx(cdr, EEL_OSWITCH_ABxsCx,
+				r, jtabc, 0);
 		eel_r_free(cdr, r, 1);
 	}
 	eel_ml_close(expr);
@@ -3911,8 +3896,8 @@ static int statement2(EEL_state *es)
 	  /* KW_EELVERSION x[.y[.z]] ';' */
 	  case TK_KW_EELVERSION:
 	  {
-	  	int major, minor, micro;
-	  	major = minor = micro = -1;
+		int major, minor, micro;
+		major = minor = micro = -1;
 		major = get_version_figure(es);
 		if(es->token == '.')
 			minor = get_version_figure(es);
@@ -3982,8 +3967,8 @@ static int statement2(EEL_state *es)
 
 	  /* Some nice error checking */
 	  case TK_SYM_CLASS:
-	  	if((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) !=
-				EEL_CMODULE)
+		if((EEL_classes)eel_class_typeid(
+				es->lval.v.symbol->v.object) != EEL_CMODULE)
 			break;
 		eel_cerror(es, "Cannot declare a module within a module!");
 
@@ -4023,60 +4008,20 @@ static int statement2(EEL_state *es)
 		return TK(STATEMENT);
 	}
 
-	/* importstat */
-	if(TK_WRONG != importstat(es))
-		return TK(STATEMENT);
-
-	/* ifstat */
-	if(TK_WRONG != ifstat(es))
-		return TK(STATEMENT);
-
-	/* switchstat */
-	if(TK_WRONG != switchstat(es))
-		return TK(STATEMENT);
-
-	/* whilestat */
-	if(TK_WRONG != whilestat(es))
-		return TK(STATEMENT);
-
-	/* dostat */
-	if(TK_WRONG != dostat(es))
-		return TK(STATEMENT);
-
-	/* forstat */
-	if(TK_WRONG != forstat(es))
-		return TK(STATEMENT);
-
-	/* breakstat */
-	if(TK_WRONG != breakstat(es))
-		return TK(STATEMENT);
-
-	/* contstat */
-	if(TK_WRONG != contstat(es))
-		return TK(STATEMENT);
-
-	/* repeatstat */
-	if(TK_WRONG != repeatstat(es))
-		return TK(STATEMENT);
-
-	/* returnstat */
-	if(TK_WRONG != returnstat(es))
-		return TK(STATEMENT);
-
-	/* trystat */
-	if(TK_WRONG != trystat(es))
-		return TK(STATEMENT);
-
-	/* untrystat */
-	if(TK_WRONG != untrystat(es))
-		return TK(STATEMENT);
-
-	/* constdeclstat */
-	if(TK_WRONG != constdeclstat(es))
-		return TK(STATEMENT);
-
-	/* assignstat */
-	if(TK_WRONG != assignstat(es))
+	if((importstat(es) != TK_WRONG) ||
+			(ifstat(es) != TK_WRONG) ||
+			(switchstat(es) != TK_WRONG) ||
+			(whilestat(es) != TK_WRONG) ||
+			(dostat(es) != TK_WRONG) ||
+			(forstat(es) != TK_WRONG) ||
+			(breakstat(es) != TK_WRONG) ||
+			(contstat(es) != TK_WRONG) ||
+			(repeatstat(es) != TK_WRONG) ||
+			(returnstat(es) != TK_WRONG) ||
+			(trystat(es) != TK_WRONG) ||
+			(untrystat(es) != TK_WRONG) ||
+			(constdeclstat(es) != TK_WRONG) ||
+			(assignstat(es) != TK_WRONG))
 		return TK(STATEMENT);
 
 	/* Not a statement! */
@@ -4109,6 +4054,7 @@ static int statement(EEL_state *es, int flags)
 		code_leave_context(es, es->context);
 		eel_context_pop(es);
 	}
+
 	return res;
 }
 

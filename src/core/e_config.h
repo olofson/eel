@@ -179,9 +179,6 @@ FIXME: and of suitable types!
 /* Substitute recognized instruction sequences with faster equivalents */
 #define	EEL_PEEPHOLE_OPTIMIZER
 
-/* Maximum number of recursive include levels */
-#define	EEL_MAX_INCLUDE_DEPTH	1000
-
 
 /*---------------------------------------------------------
 	Debug output and checking options
