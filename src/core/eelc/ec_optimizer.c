@@ -25,31 +25,36 @@
 #include "ec_coder.h"
 #include "e_function.h"
 
-
 #ifdef EEL_PEEPHOLE_OPTIMIZER
+
+/*
+ * This is a simple peephole optimizer that looks at single instructions and
+ * pairs of instructions, replacing them with faster alternatives whenever
+ * possible.
+ *
+ * To keep things simple and robust, the optimization is done in three steps:
+ *	1. Analyze the input and generate the substitution code as usual; that
+ *	   is, after the end of the current fragment.
+ *	2. Calculate size difference and move subsequent code as needed.
+ *	3. Move the generated code from the end of the block into the target
+ *	   area.
+ */
+
 /*
  * Attempt to make a peephole substitution at the indicated position.
  * Returns 1 if a substitution was made.
- *
- *	To keep things simple and robust, the optimization is done in three
- *	steps:
- *	  1. Analyze the input and generate the substitution code as usual;
- *	     that is, after the end of the current fragment.
- *	  2. Calculate size difference and move subsequent code as needed.
- *	  3. Move the generated code from the end of the block into the target
- *	     area.
  */
 #define EEL_MKOPT(op1, op2)	((op1) * (EEL_O_LAST + 1) + (op2))
-static inline int eel_peephole_subst(EEL_coder *cdr, int pc, unsigned flags)
+static inline int eel_pair_subst(EEL_coder *cdr, int pc, unsigned flags)
 {
 	EEL_function *f = o2EEL_function(cdr->f);
 	int keepregs = (flags & EEL_OPTIMIZE_KEEP_REGISTERS);
-	unsigned old_len, new_len, old_end = f->e.codesize;
-	int diff, icdiff;
+	unsigned old_len, new_len;
+	int diff, icdiff, icountout;
+	unsigned old_end = f->e.codesize;
 	unsigned char *i1 = f->e.code + pc;
 	int pc2 = pc + eel_i_size(i1[0]);
 	unsigned char *i2 = f->e.code + pc2;
-	int icountout, icountin = 2;
 	int old_nlines = f->e.nlines;
 	if(pc2 >= f->e.codesize)
 		return 0;
@@ -238,62 +243,12 @@ static inline int eel_peephole_subst(EEL_coder *cdr, int pc, unsigned flags)
 				EEL_O16(i1, 2));
 		break;
 	  default:
-		/* Single instruction substitutions */
-		icountin = 1;
-		old_len = eel_i_size(i1[0]);
-		switch(i1[0])
-		{
-		  case EEL_OBOP_ABCD:
-		  {
-			int op;
-			switch(i1[3])
-			{
-			  case EEL_OP_ADD:	op = EEL_OADD_ABC; break;
-			  case EEL_OP_SUB:	op = EEL_OSUB_ABC; break;
-			  case EEL_OP_MUL:	op = EEL_OMUL_ABC; break;
-			  case EEL_OP_DIV:	op = EEL_ODIV_ABC; break;
-			  case EEL_OP_MOD:	op = EEL_OMOD_ABC; break;
-			  case EEL_OP_POWER:	op = EEL_OPOWER_ABC; break;
-			  default:
-				return 0;
-			}
-			eel_codeABC(cdr, op, i1[1], i1[2], i1[4]);
-			break;
-		  }
-		  case EEL_OPHBOP_ABC:
-		  {
-			int op;
-			switch(i1[2])
-			{
-			  case EEL_OP_ADD:	op = EEL_OPHADD_AB; break;
-			  case EEL_OP_SUB:	op = EEL_OPHSUB_AB; break;
-			  case EEL_OP_MUL:	op = EEL_OPHMUL_AB; break;
-			  case EEL_OP_DIV:	op = EEL_OPHDIV_AB; break;
-			  case EEL_OP_MOD:	op = EEL_OPHMOD_AB; break;
-			  case EEL_OP_POWER:	op = EEL_OPHPOWER_AB; break;
-			  default:
-				return 0;
-			}
-			eel_codeAB(cdr, op, i1[1], i1[3]);
-			break;
-		  }
-		  default:
-			return 0;
-		}
-		break;
+		return 0;
 	}
 	new_len = f->e.codesize - old_end;	/* Size of new code */
 	diff = old_len - new_len;
 	icountout = f->e.nlines - old_nlines;	/* # of instructions issued */
-	icdiff = icountin - icountout;
-#ifdef DEBUG
-	if(diff < 0)
-		eel_ierror(cdr->state, "Peephole substitution larger than the "
-				" original code!");
-	if(icdiff < 0)
-		eel_ierror(cdr->state, "Peephole substitution has more "
-				"instructions than the original code!");
-#endif
+	icdiff = 2 - icountout;
 	eel_code_remove_lineinfo(cdr, pc, icdiff); /* Remove excess lineinfo */
 	old_nlines -= icdiff;
 	eel_code_remove_bytes(cdr, pc, diff);	/* Remove excess bytes */
@@ -303,6 +258,77 @@ static inline int eel_peephole_subst(EEL_coder *cdr, int pc, unsigned flags)
 	eel_code_remove_bytes(cdr, old_end, new_len);	/* Clean up! */
 	return 1;
 }
+#undef EEL_MKOPT
+
+
+/*
+ * Attempt to make a single instruction substitution at the indicated position.
+ * Returns 1 if a substitution was made.
+ */
+static inline int eel_single_subst(EEL_coder *cdr, int pc, unsigned flags)
+{
+	EEL_function *f = o2EEL_function(cdr->f);
+	int diff, icdiff, icountout;
+	unsigned new_len;
+	unsigned old_end = f->e.codesize;
+	unsigned char *i1 = f->e.code + pc;
+	int old_nlines = f->e.nlines;
+	unsigned old_len = eel_i_size(i1[0]);
+	if(pc >= f->e.codesize)
+		return 0;
+	switch(i1[0])
+	{
+	  case EEL_OBOP_ABCD:
+	  {
+		int op;
+		switch(i1[3])
+		{
+		  case EEL_OP_ADD:	op = EEL_OADD_ABC; break;
+		  case EEL_OP_SUB:	op = EEL_OSUB_ABC; break;
+		  case EEL_OP_MUL:	op = EEL_OMUL_ABC; break;
+		  case EEL_OP_DIV:	op = EEL_ODIV_ABC; break;
+		  case EEL_OP_MOD:	op = EEL_OMOD_ABC; break;
+		  case EEL_OP_POWER:	op = EEL_OPOWER_ABC; break;
+		  default:
+			return 0;
+		}
+		eel_codeABC(cdr, op, i1[1], i1[2], i1[4]);
+		break;
+	  }
+	  case EEL_OPHBOP_ABC:
+	  {
+		int op;
+		switch(i1[2])
+		{
+		  case EEL_OP_ADD:	op = EEL_OPHADD_AB; break;
+		  case EEL_OP_SUB:	op = EEL_OPHSUB_AB; break;
+		  case EEL_OP_MUL:	op = EEL_OPHMUL_AB; break;
+		  case EEL_OP_DIV:	op = EEL_OPHDIV_AB; break;
+		  case EEL_OP_MOD:	op = EEL_OPHMOD_AB; break;
+		  case EEL_OP_POWER:	op = EEL_OPHPOWER_AB; break;
+		  default:
+			return 0;
+		}
+		eel_codeAB(cdr, op, i1[1], i1[3]);
+		break;
+	  }
+	  default:
+		return 0;
+	}
+	new_len = f->e.codesize - old_end;	/* Size of new code */
+	diff = old_len - new_len;
+	icountout = f->e.nlines - old_nlines;	/* # of instructions issued */
+	icdiff = 1 - icountout;
+	eel_code_remove_lineinfo(cdr, pc, icdiff); /* Remove excess lineinfo */
+	old_nlines -= icdiff;
+	eel_code_remove_bytes(cdr, pc, diff);	/* Remove excess bytes */
+	old_end -= diff;
+	memcpy(f->e.code + pc, f->e.code + old_end, new_len);	/* Paste! */
+	f->e.nlines = old_nlines;
+	eel_code_remove_bytes(cdr, old_end, new_len);	/* Clean up! */
+	return 1;
+}
+
 #endif /* EEL_PEEPHOLE_OPTIMIZER */
 
 
@@ -332,7 +358,8 @@ void eel_optimize(EEL_coder *cdr, unsigned flags)
 			 */
 			int codeonly_save = cdr->codeonly;
 			cdr->codeonly = 1;
-			changed += eel_peephole_subst(cdr, pc, flags);
+			changed += eel_pair_subst(cdr, pc, flags);
+			changed += eel_single_subst(cdr, pc, flags);
 			cdr->codeonly = codeonly_save;
 #ifdef DEBUG
 			/*
