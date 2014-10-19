@@ -1,4 +1,15 @@
 
+* Register dependency checking for the optimizer:
+	eel_r_dependency(EEL_coder *cdr, int r, int pc)
+	{
+		if(r is allocated)
+			return HANDS_OFF;
+		for i in instructions[pc, end_of_fragment]
+			if instructions[i] depends on r
+				return HANDS_OFF;
+		return NO_DEPS;
+	}
+
 * Should we just treat Audiality handles like plain integers, as in the C
   API, or should we wrap them and wire them to EEL memory management?
 
@@ -812,11 +823,6 @@ Long term:
 		* Additional metamethods are registered
 		  by name, and arranged in a suitable
 		  quick look-up structure.
-
-	* Cleaner argument passing to C functions;
-		...(EEL_vm *vm, EEL_value *argv, int argc,
-				EEL_value *resv, int resc)
-		* Performance gain/impact?
 
 	* Multiple returns:
 		* Consider the cons and pros, considering
