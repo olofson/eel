@@ -218,7 +218,7 @@ const char *eel_ol_name(EEL_operands oprs)
 
 #define	BS		(EEL_SBUFSIZE - 12)
 #define	MAXWIDTH	99
-static const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
+const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc,
 		unsigned char *code)
 {
 	EEL_function *f;
@@ -229,6 +229,12 @@ static const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 	if((EEL_classes)fo->type != EEL_CFUNCTION)
 		return "INTERNAL ERROR";
 	f = o2EEL_function(fo);
+	if(!code)
+	{
+		if((pc < 0) || (pc >= f->e.codesize))
+			return "<PC OUT OF RANGE>";
+		code = f->e.code;
+	}
 	rbuf = eel_salloc(es);
 	buf = rbuf + 12;
 	snprintf(rbuf, 13, "%-12.12s", eel_i_name(code[pc]));
@@ -608,17 +614,6 @@ static const char *eel_i_stringrepx(EEL_state *es, EEL_object *fo, int pc,
 }
 #undef	EEL_I
 #undef	BS
-
-const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc)
-{
-	EEL_function *f;
-	if((EEL_classes)fo->type != EEL_CFUNCTION)
-		return "INTERNAL ERROR";
-	f = o2EEL_function(fo);
-	if((pc < 0) || (pc >= f->e.codesize))
-		return "<PC OUT OF RANGE>";
-	return eel_i_stringrepx(es, fo, pc, f->e.code);
-}
 
 
 EEL_coder *eel_coder_open(EEL_state *es, EEL_object *fo)
@@ -1029,15 +1024,17 @@ EEL_regspec *eel_r_spec(EEL_coder *cdr, int r)
 /*----------------------------------------------------------
 	Low level code generation
 ----------------------------------------------------------*/
-static int find_line(EEL_bio *b)
+
+int eel_code_find_line(EEL_coder *cdr)
 {
 	int sline, scol;
+	EEL_bio *b = cdr->state->context->bio;
 	eel_bio_linecount(b, eel_bio_tell(b), EEL_TAB_SIZE, &sline, &scol);
 	return sline;
 }
 
-/* Remove debug line info for 'count' instructions starting at 'start' */
-static inline void eel_remove_lineinfo(EEL_coder *cdr, int start, int count)
+
+void eel_code_remove_lineinfo(EEL_coder *cdr, int start, int count)
 {
 	EEL_function *f = o2EEL_function(cdr->f);
 	EEL_int32 *li = f->e.lines;
@@ -1053,8 +1050,8 @@ static inline void eel_remove_lineinfo(EEL_coder *cdr, int start, int count)
 	f->e.nlines -= count;
 }
 
-/* Remove 'count' bytes, starting at position 'start' */
-static inline void eel_code_remove_bytes(EEL_coder *cdr, int start, int count)
+
+void eel_code_remove_bytes(EEL_coder *cdr, int start, int count)
 {
 	EEL_function *f = o2EEL_function(cdr->f);
 	unsigned char *c = f->e.code;
@@ -1062,377 +1059,11 @@ static inline void eel_code_remove_bytes(EEL_coder *cdr, int start, int count)
 	f->e.codesize -= count;
 }
 
-#ifdef EEL_PEEPHOLE_OPTIMIZER
-#define EEL_MKOPT(op1, op2)	((op1) * (EEL_O_LAST + 1) + (op2))
-/*
- * Attempt to make a peephole substitution at the indicated position.
- * Returns 1 if a substitution was made.
- *
- *	To keep things simple and robust, the optimization is done in three
- *	steps:
- *		1. Analyze the input and generate the substitution code.
- *		2. Calculate size difference and move following code as needed.
- *		3. Move the generated code from the end of the block into the
- *		   target area.
- */
-static inline int eel_peephole_subst(EEL_coder *cdr, int pc)
-{
-	EEL_function *f = o2EEL_function(cdr->f);
-	unsigned old_len, new_len, old_end = f->e.codesize;
-	int diff, icdiff;
-	unsigned char *i1 = f->e.code + pc;
-	int pc2 = pc + eel_i_size(i1[0]);
-	unsigned char *i2 = f->e.code + pc2;
-	int icountout, icountin = 2;
-	int old_nlines = f->e.nlines;
-	if(pc2 >= f->e.codesize)
-		return 0;
-	old_len = eel_i_size(i1[0]) + eel_i_size(i2[0]);
-	switch(EEL_MKOPT(i1[0], i2[0]))
-	{
-	  case EEL_MKOPT(EEL_OPUSH_A, EEL_OPUSH_A):
-		/*	Before:			After:
-		 *	PUSH R[x]		PUSH2 R[x], R[y]
-		 *	PUSH R[y]
-		 */
-		eel_codeAB(cdr, EEL_OPUSH2_AB, i1[1], i2[1]);
-		break;
-	  case EEL_MKOPT(EEL_OPUSH2_AB, EEL_OPUSH_A):
-		/*
-		 *	PUSH2 R[x], R[y]	PUSH3 R[x], R[y], R[z]
-		 *	PUSH R[z]
-		 */
-		eel_codeABC(cdr, EEL_OPUSH3_ABC, i1[1], i1[2], i2[1]);
-		break;
-	  case EEL_MKOPT(EEL_OPUSH2_AB, EEL_OPUSH2_AB):
-		/*
-		 *	PUSH2 R[x], R[y]	PUSH4 R[x], R[y], R[z], R[w]
-		 *	PUSH2 R[z], R[w]
-		 */
-		eel_codeABCD(cdr, EEL_OPUSH4_ABCD, i1[1], i1[2], i2[1], i2[2]);
-		break;
-/*FIXME: Can we ever get PUSH3; PUSH; or vice versa...? */
-	  case EEL_MKOPT(EEL_OPUSHC_Ax, EEL_OPUSHC_Ax):
-		/*	Before:			After:
-		 *	PUSHC Cx		PUSHC2 Cx, Cy
-		 *	PUSHC Cy
-		 */
-		eel_codeAxBx(cdr, EEL_OPUSHC2_AxBx, EEL_O16(i1, 1),
-				EEL_O16(i2, 1));
-		break;
-	  case EEL_MKOPT(EEL_OPUSHC_Ax, EEL_OPUSHI_sAx):
-		/*	Before:			After:
-		 *	PUSHC Cx		PUSHCI Cx, y
-		 *	PUSHI y
-		 */
-		eel_codeAxsBx(cdr, EEL_OPUSHCI_AxsBx, EEL_O16(i1, 1),
-				EEL_OS16(i2, 1));
-		break;
-	  case EEL_MKOPT(EEL_OPUSHI_sAx, EEL_OPUSHC_Ax):
-		/*	Before:			After:
-		 *	PUSHI x			PUSHIC x, Cy
-		 *	PUSHC Cy
-		 */
-		eel_codeAxsBx(cdr, EEL_OPUSHIC_AxsBx, EEL_O16(i2, 1),
-				EEL_OS16(i1, 1));
-		break;
-	  case EEL_MKOPT(EEL_ONOT_AB, EEL_OJUMPZ_AsBx):
-		/*
-		 *	NOT R[?], R[x]		JUMPNZ R[x], ?
-		 *	JUMPZ R[x], ?
-		 */
-		if(i1[1] != i2[1])
-			return 0;
-		eel_codeAsBx(cdr, EEL_OJUMPNZ_AsBx, i1[2], 0);
-		break;
-	  case EEL_MKOPT(EEL_ONOT_AB, EEL_OJUMPNZ_AsBx):
-		/*
-		 *	NOT R[?], R[x]		JUMPZ R[x], ?
-		 *	JUMPNZ R[x], ?
-		 */
-		if(i1[1] != i2[1])
-			return 0;
-		eel_codeAsBx(cdr, EEL_OJUMPZ_AsBx, i1[2], 0);
-		break;
-	  case EEL_MKOPT(EEL_OLDI_AsBx, EEL_OINIT_AB):
-		/*
-		 *	LDI ?, R[x]		INITI ?, R[x]
-		 *	INIT R[x], R[?]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeAsBx(cdr, EEL_OINITI_AsBx, i2[1], EEL_OS16(i1, 2));
-		break;
-	  case EEL_MKOPT(EEL_OLDI_AsBx, EEL_OASSIGN_AB):
-		/*
-		 *	LDI ?, R[x]		ASSIGNI ?, R[x]
-		 *	ASSIGN R[x], R[?]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeAsBx(cdr, EEL_OASSIGNI_AsBx, i2[1], EEL_OS16(i1, 2));
-		break;
-	  case EEL_MKOPT(EEL_OLDNIL_A, EEL_OINIT_AB):
-		/*
-		 *	LDNIL R[x]		INITNIL R[x]
-		 *	INIT R[x], R[?]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeA(cdr, EEL_OINITNIL_A, i2[1]);
-		break;
-	  case EEL_MKOPT(EEL_OLDNIL_A, EEL_OASSIGN_AB):
-		/*
-		 *	LDNIL R[x]		ASNNIL R[x]
-		 *	ASSIGN R[x], R[?]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeA(cdr, EEL_OASNNIL_A, i2[1]);
-		break;
-	  case EEL_MKOPT(EEL_OLDC_ABx, EEL_OINIT_AB):
-		/*
-		 *	LDC C?, R[x]		INITC C?, R[x]
-		 *	INIT R[x], R[?]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeABx(cdr, EEL_OINITC_ABx, i2[1], EEL_O16(i1, 2));
-		break;
-	  case EEL_MKOPT(EEL_OLDC_ABx, EEL_OASSIGN_AB):
-		/*
-		 *	LDC C?, R[x]		ASSIGNC C?, R[x]
-		 *	ASSIGN R[x], R[?]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeABx(cdr, EEL_OASSIGNC_ABx, i2[1], EEL_O16(i1, 2));
-		break;
-	  case EEL_MKOPT(EEL_OGETARGI_AB, EEL_OPUSH_A):
-		/*
-		 *	GETARGI args[?], R[x]	PHARGI args[?]
-		 *	PUSH R[x]
-		 */
-		if(i1[1] != i2[1])
-			return 0;
-		eel_codeA(cdr, EEL_OPHARGI_A, i1[2]);
-		break;
-	  case EEL_MKOPT(EEL_OPHARGI_A, EEL_OPHARGI_A):
-		/*
-		 *	PHARGI args[x]		PHARGI2 args[x], args[y]
-		 *	PHARGI args[y]
-		 */
-		eel_codeAB(cdr, EEL_OPHARGI2_AB, i1[1], i2[1]);
-		break;
-	  case EEL_MKOPT(EEL_OBOP_ABCD, EEL_OPUSH_A):
-		/*
-		 *	BOP R[x] y R[z], R[w]	PHBOP R[x] y R[z]
-		 *	PUSH R[w]
-		 */
-		if(i1[1] != i2[1])
-			return 0;
-		eel_codeABC(cdr, EEL_OPHBOP_ABC, i1[2], i1[3], i1[4]);
-		break;
-	  case EEL_MKOPT(EEL_OBOPI_ABCsDx, EEL_OPUSH_A):
-		/*
-		 *	BOPI R[x] y z, R[w]	PHBOPI R[x] y z
-		 *	PUSH R[w]
-		 */
-		if(i1[1] != i2[1])
-			return 0;
-		eel_codeABsCx(cdr, EEL_OPHBOPI_ABsCx, i1[2], i1[3],
-				EEL_OS16(i1, 4));
-		break;
-	  case EEL_MKOPT(EEL_OLDC_ABx, EEL_OINDGET_ABC):
-		/*
-		 *	LDC Cx, R[y]		INDGETC R[z][Cx], R[w]
-		 *	INDGET R[z][R[y]], R[w]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeABCx(cdr, EEL_OINDGETC_ABCx, i2[1], i2[3], EEL_O16(i1, 2));
-		break;
-	  case EEL_MKOPT(EEL_OLDC_ABx, EEL_OINDSET_ABC):
-		/*
-		 *	LDC Cx, R[y]		INDSETC R[w], R[z][Cx]
-		 *	INDSET R[w], R[z][R[y]]
-		 */
-		if(i1[1] != i2[2])
-			return 0;
-		eel_codeABCx(cdr, EEL_OINDSETC_ABCx, i2[1], i2[3], EEL_O16(i1, 2));
-		break;
-	  case EEL_MKOPT(EEL_OLDC_ABx, EEL_OBOP_ABCD):
-		/*
-		 *	LDC Cx, R[y]		BOPC R[z] w Cx, R[u]
-		 *	BOP R[z] w R[y], R[u]
-		 */
-		if(i1[1] != i2[4])
-			return 0;
-		eel_codeABCDx(cdr, EEL_OBOPC_ABCDx, i2[1], i2[2], i2[3],
-				EEL_O16(i1, 2));
-		break;
-	  default:
-		/* Single instruction substitutions */
-		icountin = 1;
-		old_len = eel_i_size(i1[0]);
-		switch(i1[0])
-		{
-		  case EEL_OBOP_ABCD:
-		  {
-			int op;
-			switch(i1[3])
-			{
-			  case EEL_OP_ADD:	op = EEL_OADD_ABC; break;
-			  case EEL_OP_SUB:	op = EEL_OSUB_ABC; break;
-			  case EEL_OP_MUL:	op = EEL_OMUL_ABC; break;
-			  case EEL_OP_DIV:	op = EEL_ODIV_ABC; break;
-			  case EEL_OP_MOD:	op = EEL_OMOD_ABC; break;
-			  case EEL_OP_POWER:	op = EEL_OPOWER_ABC; break;
-			  default:
-				return 0;
-			}
-			eel_codeABC(cdr, op, i1[1], i1[2], i1[4]);
-			break;
-		  }
-		  case EEL_OPHBOP_ABC:
-		  {
-			int op;
-			switch(i1[2])
-			{
-			  case EEL_OP_ADD:	op = EEL_OPHADD_AB; break;
-			  case EEL_OP_SUB:	op = EEL_OPHSUB_AB; break;
-			  case EEL_OP_MUL:	op = EEL_OPHMUL_AB; break;
-			  case EEL_OP_DIV:	op = EEL_OPHDIV_AB; break;
-			  case EEL_OP_MOD:	op = EEL_OPHMOD_AB; break;
-			  case EEL_OP_POWER:	op = EEL_OPHPOWER_AB; break;
-			  default:
-				return 0;
-			}
-			eel_codeAB(cdr, op, i1[1], i1[3]);
-			break;
-		  }
-		  default:
-			return 0;
-		}
-		break;
-	}
-	new_len = f->e.codesize - old_end;	/* Size of new code */
-	diff = old_len - new_len;
-	icountout = f->e.nlines - old_nlines; /* Number of instructions issued */
-	icdiff = icountin - icountout;
-#ifdef DEBUG
-	if(diff < 0)
-		eel_ierror(cdr->state, "Peephole substitution larger than the "
-				" original code!");
-	if(icdiff < 0)
-		eel_ierror(cdr->state, "Peephole substitution has more "
-				"instructions than the original code!");
-#endif
-	eel_remove_lineinfo(cdr, pc, icdiff);	/* Remove excess lineinfo */
-	old_nlines -= icdiff;
-	eel_code_remove_bytes(cdr, pc, diff);	/* Remove excess bytes */
-	old_end -= diff;
-	memcpy(f->e.code + pc, f->e.code + old_end, new_len);	/* Paste! */
-	f->e.nlines = old_nlines;
-	eel_code_remove_bytes(cdr, old_end, new_len);	/* Clean up! */
-	return 1;
-}
-#endif
 
 int eel_code_target(EEL_coder *cdr)
 {
-#ifdef EEL_PEEPHOLE_OPTIMIZER
 	EEL_function *f = o2EEL_function(cdr->f);
-	DBG9D(int changed2 = 0;)
-	DBG9D(unsigned char *origcode;)
-	DBG9D(EEL_int32 *origlines;)
-	DBG9D(int origsize = f->e.codesize;)
-	DBG9D(printf("Optimizing fragment %d-%d of %s()...\n", cdr->fragstart,
-			f->e.codesize, o2EEL_string(f->common.name)->buffer);)
-	DBG9D(origcode = malloc(origsize);)
-	DBG9D(memcpy(origcode, f->e.code, origsize);)
-	DBG9D(origlines = malloc(f->e.nlines * sizeof(EEL_int32));)
-	DBG9D(memcpy(origlines, f->e.lines, f->e.nlines * sizeof(EEL_int32));)
-	while(cdr->peephole)
-	{
-#ifdef DEBUG
-		int jmp;
-#endif
-		int pc = cdr->fragstart;
-		int changed = 0;
-		while(pc < f->e.codesize)
-		{
-			cdr->codeonly = 1;	/* Prevent infinite recursion! */
-			changed += eel_peephole_subst(cdr, pc);
-			cdr->codeonly = 0;
-#ifdef DEBUG
-			/*
-			 * Sanity check: The optimizer doesn't relocate, so
-			 * we'd better only try to move jumps that are to be
-			 * "wired" later on!
-			 */
-			switch(f->e.code[pc])
-			{
-			  case EEL_OJUMP_sAx:
-				jmp = EEL_OS16(f->e.code + pc, 1);
-				break;
-			  case EEL_OJUMPZ_AsBx:
-			  case EEL_OJUMPNZ_AsBx:
-				jmp = EEL_OS16(f->e.code + pc, 2);
-				break;
-			  default:
-				jmp = 0;
-				break;
-			}
-			if(jmp)
-				eel_ierror(cdr->state, "Post-fixup jump found "
-						"by peephole optimizer!");
-#endif
-			pc += eel_i_size(f->e.code[pc]);
-		}
-		DBG9D(changed2 += changed;)
-		if(!changed)
-			break;
-	}
-	DBG9D(if(changed2)
-	{
-		int pc = cdr->fragstart;
-		int i = cdr->fragline;
-		printf("  .- In ---------------------------------\n");
-		while(pc < origsize)
-		{
-			const char *tmp = eel_i_stringrepx(cdr->state, cdr->f,
-					pc, origcode);
-			printf("  | [%6.1d]   %6.1d: %s\n", origlines[i], pc, tmp);
-			eel_sfree(cdr->state, tmp);
-			pc += eel_i_size(origcode[pc]);
-			++i;
-		}
-		free(origcode);
-		free(origlines);
-		printf("  |- Out --------------------------------\n");
-		pc = cdr->fragstart;
-		i = cdr->fragline;
-		while(pc < f->e.codesize)
-		{
-			const char *tmp = eel_i_stringrep(cdr->state, cdr->f, pc);
-			printf("  | [%6.1d]   %6.1d: %s\n", f->e.lines[i], pc, tmp);
-			eel_sfree(cdr->state, tmp);
-			pc += eel_i_size(f->e.code[pc]);
-			++i;
-		}
-		printf("  '--------------------------------------\n");
-		if(i != f->e.nlines)
-			printf("WARNING: Line number data does not match actual"
-					" code size! (%d/%d)\n", f->e.nlines, i);
-	})
-#endif
-#if DBG8(1) + 0 == 1
-	printf("(%4.1d)%6.1d: --- new fragment ---\n",
-			find_line(cdr->state->context->bio), f->e.codesize);
-#endif
-	cdr->fragstart = f->e.codesize;
-	cdr->fragline = f->e.nlines;
+	eel_optimize(cdr, 0);
 	return f->e.codesize;
 }
 
@@ -1440,7 +1071,7 @@ int eel_code_target(EEL_coder *cdr)
 static inline int do_code(EEL_coder *cdr, unsigned char *ins, int len)
 {
 	EEL_function *f = o2EEL_function(cdr->f);
-	int i, line = find_line(cdr->state->context->bio);
+	int i, line = eel_code_find_line(cdr);
 	int ipos = f->e.codesize;
 #ifdef EEL_DEAD_CODE_ELIMINATION
 	if(eel_test_exit(cdr->state) != EEL_EYES)
@@ -1508,29 +1139,9 @@ static inline int code(EEL_coder *cdr, unsigned char *ins, int len)
 {
 	int ipos = do_code(cdr, ins, len);
 #ifdef DEBUG
-	int offspos;
-	switch(ins[0])
-	{
-	  case EEL_OJUMP_sAx:
-		offspos = EEL_OSIZE_sAx - 2;
-		break;
-	  case EEL_OJUMPZ_AsBx:
-	  case EEL_OJUMPNZ_AsBx:
-		offspos = EEL_OSIZE_AsBx - 2;
-		break;
-	  case EEL_OSWITCH_ABxsCx:
-		offspos = EEL_OSIZE_ABxsCx - 2;
-		break;
-	  case EEL_OPRELOOP_ABCsDx:
-	  case EEL_OLOOP_ABCsDx:
-		offspos = EEL_OSIZE_ABCsDx - 2;
-		break;
-	  default:
-		offspos = 0;
-		break;
-	}
-	if(offspos && (ins[offspos] || ins[offspos + 1]))
-		eel_ierror(cdr->state, "Tried to code a branch offset directly!");
+	if(eel_code_getjump(cdr, ipos) >= 0)
+		eel_ierror(cdr->state, "Tried to code a branch offset "
+				"directly!");
 #endif
 	if(cdr->codeonly)
 		return ipos;
@@ -2060,6 +1671,30 @@ int eel_codeABCsDx(EEL_coder *cdr, EEL_opcodes op, int a, int b, int c, int d)
 }
 
 
+static inline int eel_get_offset_pos(unsigned char opcode, int *isize)
+{
+	switch(opcode)
+	{
+	  case EEL_OJUMP_sAx:
+		*isize = EEL_OSIZE_sAx;
+		return EEL_OSIZE_sAx - 2;
+	  case EEL_OJUMPZ_AsBx:
+	  case EEL_OJUMPNZ_AsBx:
+		*isize = EEL_OSIZE_AsBx;
+		return EEL_OSIZE_AsBx - 2;
+	  case EEL_OSWITCH_ABxsCx:
+		*isize = EEL_OSIZE_ABxsCx;
+		return EEL_OSIZE_ABxsCx - 2;
+	  case EEL_OPRELOOP_ABCsDx:
+	  case EEL_OLOOP_ABCsDx:
+		*isize = EEL_OSIZE_ABCsDx;
+		return EEL_OSIZE_ABCsDx - 2;
+	  default:
+		return -1;
+	}
+}
+
+
 void eel_code_setjump(EEL_coder *cdr, int pos, int whereto)
 {
 	int isize, offspos;
@@ -2069,32 +1704,34 @@ void eel_code_setjump(EEL_coder *cdr, int pos, int whereto)
 
 	ins = o2EEL_function(cdr->f)->e.code + pos;
 	DBG9(printf("setjump from %d to %d\n", pos, whereto);)
-	switch(ins[0])
-	{
-	  case EEL_OJUMP_sAx:
-		isize = EEL_OSIZE_sAx;
-		offspos = EEL_OSIZE_sAx - 2;
-		break;
-	  case EEL_OJUMPZ_AsBx:
-	  case EEL_OJUMPNZ_AsBx:
-		isize = EEL_OSIZE_AsBx;
-		offspos = EEL_OSIZE_AsBx - 2;
-		break;
-	  case EEL_OSWITCH_ABxsCx:
-		isize = EEL_OSIZE_ABxsCx;
-		offspos = EEL_OSIZE_ABxsCx - 2;
-		break;
-	  case EEL_OPRELOOP_ABCsDx:
-	  case EEL_OLOOP_ABCsDx:
-		isize = EEL_OSIZE_ABCsDx;
-		offspos = EEL_OSIZE_ABCsDx - 2;
-		break;
-	  default:
-		eel_ierror(cdr->state, "Tried to setjump() non-jump instruction!");
-	}
+	offspos = eel_get_offset_pos(ins[0], &isize);
+	if(offspos < 0)
+		eel_ierror(cdr->state, "eel_code_setjump() used on non branch "
+				"instruction!");
+	if(EEL_OS16(ins, offspos))
+		eel_ierror(cdr->state, "eel_code_setjump() used on branch "
+				"instruction that has already been set!");
 	whereto -= pos + isize;
 	if(whereto < -32768 || whereto > 32767)
 		eel_ierror(cdr->state, "Relative jump out of range!");
 	ins[offspos] = whereto & 0xff;
 	ins[offspos + 1] = whereto >> 8;
+}
+
+
+int eel_code_getjump(EEL_coder *cdr, int pos)
+{
+	int isize, offspos, whereto;
+	unsigned char *ins;
+	if(pos < 0)
+		return -2;		/* Code generation was disabled! --> */
+
+	ins = o2EEL_function(cdr->f)->e.code + pos;
+	offspos = eel_get_offset_pos(ins[0], &isize);
+	if(offspos < 0)
+		return -2;		/* Not a branch instruction! */
+	whereto = EEL_OS16(ins, offspos);
+	if(!whereto)
+		return -1;		/* Branch has not been set! */
+	return whereto - pos + isize;
 }

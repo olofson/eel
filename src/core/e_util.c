@@ -805,7 +805,7 @@ static void dump_code(EEL_state *es, EEL_object *fo, int indent)
 		int pc = 0;
 		while(pc < f->e.codesize)
 		{
-			const char *tmp = eel_i_stringrep(es, fo, pc);
+			const char *tmp = eel_i_stringrep(es, fo, pc, NULL);
 			printf("%s%6.1d: %s\n", inds, pc, tmp);
 			eel_sfree(es, tmp);
 			pc += eel_i_size(f->e.code[pc]);

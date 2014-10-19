@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_error.c - EEL Compiler and VM Error Handling
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2008, 2010, 2012 David Olofson
+ * Copyright 2002-2006, 2008, 2010, 2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -382,12 +382,12 @@ static void vm_msg(EEL_vm *vm, EEL_emtype t,
 		pc = cpc;
 		for(i = 0; i < 8; ++i)
 			pc = find_instruction(f, pc - 1, NULL);
- 
+
 		/* List 17 instructions, marking the one PC was at. */
 		last_line = -1;
 		for(i = 0; i < 17; ++i)
 		{
-			const char *tmp = eel_i_stringrep(es, cf->f, pc);
+			const char *tmp = eel_i_stringrep(es, cf->f, pc, NULL);
 			line = -2;
 			find_instruction(f, pc, &line);
 			if((line >= 0) && (line != last_line))

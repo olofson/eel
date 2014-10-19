@@ -227,13 +227,13 @@ FIXME: and of suitable types!
 #define	DBG9(x)		/* Add some extra comments to the code */
 #define	DBG9B(x) 	/* Add conditional/dead status info */
 #define	DBG9C(x) 	/* Print register allocation info */
-#define	DBG9D(x) 	/* Peephole optimizer debug output */
+#define	DBG9D(x) x	/* Peephole optimizer debug output */
 
 /* VM debugging (minor performance impact) */
 #define	DBG6B(x) 	/* VM instruction counter */
 
 /* VM debugging (insane bandwidth!) */
-#define	DBG4(x)	x	/* Run-time code dumping */
+#define	DBG4(x)		/* Run-time code dumping */
 #define	DBG4B(x) 	/* Function entrance info */
 #define	DBG4C(x) 	/* eel_argf() and call frame info */
 #define	DBG4D(x) 	/* Dump names of called functions */
@@ -250,14 +250,14 @@ FIXME: and of suitable types!
 #define	PSDBG2(x) 	/* Pooled string find/add/destroy messages */
 #define	PSDBG3(x) 	/* Pooled string cache messages */
 #define	DBGK3(x) 	/* Refcount + limbo messages */
-#define	DBGK4(x) x	/* eel_v_receive() and result passing */
+#define	DBGK4(x) 	/* eel_v_receive() and result passing */
 #define	DBGL(x)		/* Print size of allocated objects */
 
 /* Resource management */
 #define	PSDBG(x) 	/* String pool analysis when closing */
-#define	DBG1(x)	x	/* Module loading and unloading */
+#define	DBG1(x)		/* Module loading and unloading */
 #define	DBG11(x) 	/* eel_s_add_exports() messages */
-#define	DBG12(x) x	/* Module garbage collection */
+#define	DBG12(x) 	/* Module garbage collection */
 #define	DBGK(x) 	/* Refcount checking (Memory not freed!) */
 #define	DBGK2(x) 	/* Destruction messages in eel_close() */
 #define	DBGM2(x) 	/* Name interesting objects */

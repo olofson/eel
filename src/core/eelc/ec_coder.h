@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_coder.h - EEL VM Code Generation Tools
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009, 2011 David Olofson
+ * Copyright 2004-2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -26,6 +26,7 @@
 
 #include "e_eel.h"
 #include "e_operate.h"
+#include "ec_optimizer.h"
 
 typedef struct EEL_mlist EEL_mlist;
 typedef struct EEL_manipulator EEL_manipulator;
@@ -44,7 +45,7 @@ struct EEL_coder
 	int		fragstart;	/* Start of current code fragment */
 	int		maxcode;	/* Bytes of code allocated */
 	int		peephole;	/* Enable peephole optimizer */
-	int		codeonly;	/* Disable targets, optimizations etc */
+	int		codeonly;	/* Disable targets, optimization etc */
 
 	/* Debug info */
 	int		fragline;	/* 'lines' index for fragment start */
@@ -151,13 +152,14 @@ EEL_regspec *eel_r_spec(EEL_coder *cdr, int r);
 ----------------------------------------------------------*/
 /*
  * Instruction generators.
- * In some cases (branch instructions that need later fixup),
- * these return the position of the generated instruction,
- * or -1 if the instruction was not generated. (Dead code,
- * for example.)
- * For normal instructions, they return -1, since these
- * instructions may be moved around by the optimizer,
- * rendering the original positions pretty much useless.
+ *
+ *	In some cases (branch instructions that need later fixup), these return
+ *	the position of the generated instruction, or -1 if the instruction was
+ *	not generated. (Dead code, for example.)
+ *
+ *	For normal instructions, they return -1, since these instructions may
+ *	be moved around by the optimizer, rendering the original positions
+ *	pretty much useless.
  */
 int eel_code0(EEL_coder *cdr, EEL_opcodes op);
 int eel_codeA(EEL_coder *cdr, EEL_opcodes op, int a);
@@ -178,24 +180,47 @@ int eel_codeABCDx(EEL_coder *cdr, EEL_opcodes op, int a, int b, int c, int d);
 int eel_codeABCsDx(EEL_coder *cdr, EEL_opcodes op, int a, int b, int c, int d);
 
 /*
- * Make the current code position a jump target, and return
- * the position. This may also performs optimizations on the
- * previous code fragment, prior to getting the position.
+ * Make the current code position a jump target, and return the position. This
+ * may also performs optimizations on the previous code fragment, prior to
+ * getting the position.
  */
 int eel_code_target(EEL_coder *cdr);
 
 /*
- * Adjust the target position of the jump instruction
- * at 'pos' so it lands at 'whereto'.
+ * Adjust the target position of the jump instruction at 'pos' so it lands at
+ * 'whereto'.
  */
 void eel_code_setjump(EEL_coder *cdr, int pos, int whereto);
+
+/*
+ * If the instruction at 'pos' is a branch instruction, the target PC is
+ * returned, unless the target position has not yet been calculated, in which
+ * case -1 is returned.
+ *
+ * If the instruction is not a branch instruction, -2 is returned.
+ */
+int eel_code_getjump(EEL_coder *cdr, int pos);
+
+/* Calculate source code line corresponding to the current code position. */
+int eel_code_find_line(EEL_coder *cdr);
+
+/* Remove debug line info for 'count' instructions starting at 'start' */
+void eel_code_remove_lineinfo(EEL_coder *cdr, int start, int count);
+
+/* Remove 'count' bytes, starting at position 'start' */
+void eel_code_remove_bytes(EEL_coder *cdr, int start, int count);
 
 
 /*----------------------------------------------------------
 	Tools
 ----------------------------------------------------------*/
-/* Returns a disassembly of the instruction at 'pc' in function 'f'. */
-const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc);
+/*
+ * Returns a disassembly of the instruction at 'pc' in function 'f'. If 'code'
+ * is NULL, disassembly is done from the code buffer of 'fo', otherwise 'code'
+ * is used.
+ */
+const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc,
+		unsigned char *code);
 
 /* Returns a string with the name of opcode 'opcode'. */
 const char *eel_i_name(int opcode);

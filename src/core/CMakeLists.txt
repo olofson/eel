@@ -80,6 +80,7 @@ set(sources ${sources}
 	eelc/ec_mlist.c
 	eelc/ec_parser.c
 	eelc/ec_symtab.c
+	eelc/ec_optimizer.c
 )
 
 # dir module
