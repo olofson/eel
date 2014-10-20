@@ -74,6 +74,12 @@ static void m_release(EEL_manipulator *m)
 	Manipulator list/tree building API
 ----------------------------------------------------------*/
 
+void eel_m_void(EEL_mlist *ml)
+{
+	m_open(ml, EEL_MVOID);
+}
+
+
 void eel_m_constant(EEL_mlist *ml, EEL_value *v)
 {
 	EEL_manipulator *m = m_open(ml, EEL_MCONSTANT);
@@ -295,11 +301,6 @@ int eel_m_writable(EEL_manipulator *m)
 		return 0;
 	  case EEL_MVARIABLE:
 	  case EEL_MSTATVAR:
-#if 0
-	  case EEL_MARGUMENT:
-	  case EEL_MOPTARG:
-	  case EEL_MTUPARG:
-#endif
 	  case EEL_MINDEX:	/* Can't know at compile time, actually... */
 	  case EEL_MARGS:
 	  case EEL_MTUPARGS:
@@ -542,6 +543,65 @@ void eel_m_get_constant(EEL_manipulator *m, EEL_value *v)
 	}
 	eel_ierror(cdr->state, "eel_m_get_constant() used on something"
 			" not a constant!");
+}
+
+
+int eel_m_independent(EEL_manipulator *m1, EEL_manipulator *m2)
+{
+	switch(m1->kind)
+	{
+	  case EEL_MVOID:
+	  case EEL_MCONSTANT:
+	  case EEL_MOP:
+	  case EEL_MCAST:
+	  case EEL_MARGS:
+	  case EEL_MTUPARGS:
+		/* These are immutable or otherwise uninteresting here. */
+		return 1;
+	  case EEL_MRESULT:
+	  case EEL_MREGISTER:
+		return (((m2->kind != EEL_MRESULT) &&
+				(m2->kind != EEL_MREGISTER)) ||
+				(m2->v.reg != m1->v.reg));
+	  case EEL_MARGUMENT:
+	  case EEL_MOPTARG:
+	  case EEL_MTUPARG:
+		return ((m2->kind != m1->kind) ||
+				(m2->v.argument.level != m1->v.argument.level)
+				|| (m2->v.argument.arg != m1->v.argument.arg));
+	  case EEL_MVARIABLE:
+		return ((m2->kind != m1->kind) ||
+				(m2->v.variable.level != m1->v.variable.level)
+				|| (m2->v.variable.r != m1->v.variable.r));
+	  case EEL_MSTATVAR:
+		return ((m2->kind != m1->kind) ||
+				(m2->v.statvar.index != m1->v.statvar.index));
+	  case EEL_MINDEX:
+	  {
+		EEL_xno x;
+		EEL_value v1, v2, r;
+		if(m2->kind != m1->kind)
+			return 1;	/* m2 is not INDEX! Probably safe... */
+		/*
+		 * We don't even care about the 'object' fields, as there's no
+		 * way to tell anything about instances at compile time anyway.
+		 * We're just going to assume both refer to the same object!
+		 *    That leaves us with one possibility of these manipulators
+		 * referring to different items: Constant indexes that evaluate
+		 * to different values.
+		 */
+		if(!eel_m_is_constant(m1->v.index.index) ||
+				!eel_m_is_constant(m2->v.index.index))
+			return 0;	/* Non-constants! All bets off. */
+		eel_m_get_constant(m1->v.index.index, &v1);
+		eel_m_get_constant(m2->v.index.index, &v2);
+		if((x = eel_op_eq(&v1, &v2, &r)))
+			eel_ierror(m1->coder->state, "Could not compare index "
+					"values in eel_m_independent()!");
+		return !r.integer.v;
+	  }
+	}
+	return 1;
 }
 
 
@@ -868,21 +928,15 @@ int eel_m_prepare_constant(EEL_manipulator *m)
 	  case EEL_TINTEGER:
 		if((cv->integer.v >= -32768) && (cv->integer.v <= 32767))
 			return -1;
-		else
-			return (*ci = eel_coder_add_constant(cdr, cv));
+		return (*ci = eel_coder_add_constant(cdr, cv));
 	  case EEL_TTYPEID:
-#if 0
-		if(cv->integer.v <= 255)
-			return -1;
-		/* ...else fall through! */
-#endif
 	  case EEL_TREAL:
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
 		/* Add/find constant and try again! */
 		return (*ci = eel_coder_add_constant(cdr, cv));
 	}
-	eel_ierror(cdr->state, "CONSTANT manipulator with illegal value type!");
+	eel_ierror(cdr->state, "CONSTANT manipulator with illegal type!");
 }
 
 
@@ -890,24 +944,20 @@ static void read_constant(EEL_manipulator *m, int r)
 {
 	EEL_coder *cdr = m->coder;
 	EEL_value *cv = &m->v.constant.v;
-	int *ci = &m->v.constant.index;
 
-	if(*ci >= 0)
+	if(m->v.constant.index < 0)
+		eel_m_prepare_constant(m);
+
+	if(m->v.constant.index >= 0)
 	{
 		/* Ok, it's in the constant table; just grab it... */
-		eel_codeABx(cdr, EEL_OLDC_ABx, r, *ci);
-		return;
-	}
-	else if(eel_m_prepare_constant(m) >= 0)
-	{
-		read_constant(m, r);	/* Try again! */
+		eel_codeABx(cdr, EEL_OLDC_ABx, r, m->v.constant.index);
 		return;
 	}
 
 	/*
-	 * No constant in table!
-	 * Lets figure out some nice way to
-	 * generate this value or something.
+	 * No constant in table! We're supposed to issue an instruction with
+	 * immediate data encoded.
 	 */
 	switch(cv->type)
 	{
@@ -915,32 +965,21 @@ static void read_constant(EEL_manipulator *m, int r)
 		eel_codeA(cdr, EEL_OLDNIL_A, r);
 		return;
 	  case EEL_TINTEGER:
-		if((cv->integer.v >= -32768) && (cv->integer.v <= 32767))
-		{
-			eel_codeAsBx(cdr, EEL_OLDI_AsBx, r, cv->integer.v);
-			return;
-		}
+		eel_codeAsBx(cdr, EEL_OLDI_AsBx, r, cv->integer.v);
+		return;
 	  case EEL_TBOOLEAN:
 		if(cv->integer.v)
 			eel_codeA(cdr, EEL_OLDTRUE_A, r);
 		else
 			eel_codeA(cdr, EEL_OLDFALSE_A, r);
 		return;
-#if 0
-	  case EEL_TTYPEID:
-		if(cv->integer.v <= 255)
-		{
-			eel_codeAB(cdr, EEL_OLDTYPE_AB, r, cv->integer.v);
-			return;
-		}
-#endif
 	  case EEL_TTYPEID:
 	  case EEL_TREAL:
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
 		break;
 	}
-	eel_ierror(cdr->state, "CONSTANT manipulator failed to generate value!");
+	eel_ierror(cdr->state, "CONSTANT manipulator can't generate value!");
 }
 
 

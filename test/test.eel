@@ -38,6 +38,7 @@ export function main<args>
 	run("forscope");
 	run("arithmetics");
 	run("explist");
+	run("xlistswap");
 	run("calling");
 	run("member");
 	run("callback");

@@ -1,0 +1,87 @@
+/////////////////////////////////////////////
+// EEL Test Suite
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+export function main<args>
+{
+	print("Expression list swap tests:\n");
+
+	print("\n  local x, local y, local z, local w = 10, 20, 30, 40;\n");
+	local x, local y, local z, local w = 10, 20, 30, 40;
+	procedure check(cx, cy, cz, cw)
+	{
+		upvalue x, upvalue y, upvalue z, upvalue w;
+		print("\tx: ", x, "\ty: ", y, "\tz: ", z, "\tw: ", w, "\n");
+		if x != cx
+			throw "'x' should be " + (string)cx + ", not " +
+					(string)x + "!";
+		if y != cy
+			throw "'y' should be " + (string)cy + ", not " +
+					(string)y + "!";
+		if z != cz
+			throw "'z' should be " + (string)cz + ", not " +
+					(string)z + "!";
+		if w != cw
+			throw "'w' should be " + (string)cw + ", not " +
+					(string)w + "!";
+		print("    OK!\n");
+	}
+	check(10, 20, 30, 40);
+
+	print("\n  x, y, z, w = w, z, y, x;\n");
+	x, y, z, w = w, z, y, x;
+	check(40, 30, 20, 10);
+
+	x, y, z, w = 10, 20, 30, 40;
+	print("\n  x, y, z, w = y, x, w, z;\n");
+	x, y, z, w = y, x, w, z;
+	check(20, 10, 40, 30);
+
+	x, y, z, w = 10, 20, 30, 40;
+	print("\n  x, y, z = z, y, x;\n");
+	x, y, z = z, y, x;
+	check(30, 20, 10, 40);
+
+	x, y, z, w = 10, 20, 30, 40;
+	print("\n  x, y = y, x;\n");
+	x, y = y, x;
+	check(20, 10, 30, 40);
+
+	print("\n  local a = [10, 20, 30, 40];\n");
+	local a = [10, 20, 30, 40];
+	procedure checka(ta)<v>
+	{
+		for local i = 0, tuples - 1
+			print("\ta[", i, "]: ", ta[i]);
+		print("\n");
+		for local i = 0, tuples - 1
+			if ta[i] != v[i]
+				throw "a[" + (string)i + "] should be " +
+						(string)v[i] + ", not " +
+						(string)ta[i] + "!";
+		print("    OK!\n");
+	}
+
+	print("\n  a[0, 1, 2, 3] = a[3, 2, 1, 0];\n");
+	a[0, 1, 2, 3] = a[3, 2, 1, 0];
+	checka(a, 40, 30, 20, 10);
+
+	a[0, 1, 2, 3] = 10, 20, 30, 40;
+	print("\n  a[0, 1, 2, 3] = a[1, 0, 3, 2];\n");
+	a[0, 1, 2, 3] = a[1, 0, 3, 2];
+	checka(a, 20, 10, 40, 30);
+
+	a[0, 1, 2, 3] = 10, 20, 30, 40;
+	print("\n  a[0, 1, 2] = a[2, 1, 0];\n");
+	a[0, 1, 2] = a[2, 1, 0];
+	checka(a, 30, 20, 10);
+
+	a[0, 1, 2, 3] = 10, 20, 30, 40;
+	print("\n  a[0, 1] = a[1, 0];\n");
+	a[0, 1] = a[1, 0];
+	checka(a, 20, 10);
+
+	print("\nExpression list swap tests done.\n");
+	return 0;
+}

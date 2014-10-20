@@ -2700,19 +2700,21 @@ static int expression(EEL_state *es, EEL_mlist *al, int wantresult)
 static int assignstat(EEL_state *es)
 {
 	int i, count, si, di, dsi, ddi;
-	EEL_mlist *expr, *src;
+	EEL_mlist *dst, *src;
+	EEL_mlist *tmp = NULL;
 	EEL_coder *cdr = es->context->coder;
 	EEL_operators op = EEL_OP_ASSIGN;
 	const char *ops = "assignment";
 	int inplace = 0;
+	int overlap = 0;
 
 	/*
 	 * Parse the (left hand) expression.
 	 */
-	expr = eel_ml_open(cdr);
-	if(TK_WRONG == explist(es, expr, 0))
+	dst = eel_ml_open(cdr);
+	if(TK_WRONG == explist(es, dst, 0))
 	{
-		eel_ml_close(expr);
+		eel_ml_close(dst);
 		return TK(WRONG);
 	}
 
@@ -2724,7 +2726,7 @@ static int assignstat(EEL_state *es)
 	if('}' == es->token)
 	{
 		eel_lex(es, 0);
-		eel_ml_close(expr);
+		eel_ml_close(dst);
 		return TK(STATEMENT);
 	}
 	eel_lex(es, 0);
@@ -2757,12 +2759,12 @@ static int assignstat(EEL_state *es)
 		break;
 	  case ';':
 		eel_lex(es, 0);
-		for(i = 0; i < expr->length; ++i)
-			eel_m_evaluate(eel_ml_get(expr, i));
-		eel_ml_close(expr);
+		for(i = 0; i < dst->length; ++i)
+			eel_m_evaluate(eel_ml_get(dst, i));
+		eel_ml_close(dst);
 		return TK(STATEMENT);
 	  default:
-		if((expr->length >= 1) && eel_m_writable(eel_ml_get(expr, 0)))
+		if((dst->length >= 1) && eel_m_writable(eel_ml_get(dst, 0)))
 			eel_cerror(es, "Expected '=' or ';'!");
 		else
 			eel_cerror(es, "Expected ';' or '('!");
@@ -2771,7 +2773,7 @@ static int assignstat(EEL_state *es)
 	/*
 	 * Ok, this looks like an assignment or inplace operation.
 	 */
-	if(expr->length < 1)
+	if(dst->length < 1)
 		eel_cerror(es, "No target operand for %s!", ops);
 
 	src = eel_ml_open(cdr);
@@ -2784,33 +2786,79 @@ static int assignstat(EEL_state *es)
 	}
 	if(src->length < 1)
 		eel_cerror(es, "No source operand for %s!", ops);
-	else if((src->length != 1) && (expr->length != 1))
+	else if((src->length != 1) && (dst->length != 1))
 	{
-		if(expr->length > src->length)
+		if(dst->length > src->length)
 			eel_cerror(es, "Too few sources in multiple %s!", ops);
-		else if(expr->length < src->length)
+		else if(dst->length < src->length)
 			eel_cerror(es, "Too many sources in multiple %s!", ops);
 	}
 
 	if((op == EEL_OP_ASSIGN || op == EEL_OP_WKASSN) &&
-			(src->length > expr->length))
+			(src->length > dst->length))
 		eel_cerror(es, "Multiple assignment with fewer targets than "
-			       "sources!");
-	si = di = 0;
-	dsi = src->length > 1;
-	ddi = expr->length > 1;
-	count = src->length > expr->length ? src->length : expr->length;
-	if(inplace)
-		for(i = 0; i < count; ++i, si += dsi, di += ddi)
-			eel_m_ipoperate(eel_ml_get(src, si), op,
-					eel_ml_get(expr, di));
-	else
-		for(i = 0; i < count; ++i, si += dsi, di += ddi)
-			eel_m_operate(eel_ml_get(src, si), op,
-					eel_ml_get(expr, di));
+				"sources!");
 
+	/* TODO: Reuse temporary registers when possible! */
+	tmp = eel_ml_open(cdr);
+	for(si = 0; si < src->length; ++si)
+	{
+		EEL_manipulator *srcm = eel_ml_get(src, si);
+		int found_overlap = 0;
+		int maxdi = si > dst->length ? dst->length : si;
+		for(di = 0; di < maxdi; ++di)
+			if(!eel_m_independent(srcm, eel_ml_get(dst, di)))
+			{
+				found_overlap = 1;
+				break;
+			}
+		if(found_overlap)
+		{
+			int r = eel_r_alloc(cdr, 1, EEL_RUTEMPORARY);
+			eel_m_read(srcm, r);
+			eel_m_register(tmp, r);
+			overlap = 1;
+		}
+		else
+			eel_m_void(tmp);
+	}
+
+	if(overlap)
+		eel_optimize(cdr, 0);
+
+	dsi = src->length > 1;
+	ddi = dst->length > 1;
+	count = src->length > dst->length ? src->length : dst->length;
+	for(si = di = i = 0; i < count; ++i, si += dsi, di += ddi)
+	{
+		EEL_manipulator *srcm;
+		if(overlap)
+		{
+			srcm = eel_ml_get(tmp, si);
+			if(srcm->kind == EEL_MVOID)
+				srcm = eel_ml_get(src, si);
+		}
+		else
+			srcm = eel_ml_get(src, si);
+		if(inplace)
+			eel_m_ipoperate(srcm, op, eel_ml_get(dst, di));
+		else
+			eel_m_operate(srcm, op, eel_ml_get(dst, di));
+	}
+
+	if(overlap)
+	{
+		for(i = tmp->length - 1; i >= 0; --i)
+		{
+			int r = eel_m_direct_read(eel_ml_get(tmp, i));
+			if(r >= 0)
+				eel_r_free(cdr, r, 1);
+		}
+		eel_optimize(cdr, EEL_OPTIMIZE_KEEP_REGISTERS);
+	}
+	eel_ml_close(tmp);
 	eel_ml_close(src);
-	eel_ml_close(expr);
+	eel_ml_close(dst);
 
 	expect(es, ';', "Missing ';' after %s statement!", ops);
 	return TK(STATEMENT);
