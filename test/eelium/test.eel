@@ -43,9 +43,9 @@ export function main<args>
 	run("bars.eel");
 	run("balls.eel");
 	run("balls2.eel");
- 	run("pigs.eel");
- 	run("pigs2.eel");
- 	run("pigs3.eel");
+	run("pigs.eel");
+	run("pigs2.eel");
+	run("pigs3.eel");
 	run("texttest.eel");
 	run("guitest.eel");
 	run("beep.eel");
