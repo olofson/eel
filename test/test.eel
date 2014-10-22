@@ -78,6 +78,7 @@ export function main<args>
 	run("randomoop");
 	run("envtest");
 	run("arginit");
+	run("jsontest");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{

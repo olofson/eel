@@ -316,6 +316,16 @@ static int parse_string(EEL_state *es, int delim)
 				if(c < 0)
 					eel_cerror(es, "Illegal hex number!");
 				break;
+			  case 'u':
+				c = get_num(es, 16, 4);
+				if(c < 0)
+					eel_cerror(es, "Bad Unicode escape!");
+				if(c > 255)
+					eel_cerror(es, "Unsupported Unicode "
+							"code point! (Only "
+							"C0 and C1 implemented"
+							" at this point.)");
+				break;
 			  default:
 				lexbuf_bump(es, len + 1);
 				es->lexbuf[len++] = c;

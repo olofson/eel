@@ -1880,7 +1880,9 @@ static int vardecl(EEL_state *es, EEL_mlist *al)
 	tabitem:
 		  '(' expression ',' expression ')'
 		| '.' NAME expression
+		| '.' NAME ':' expression
 		| expression expression
+		| expression ':' expression
 		| funcdecl
 		;
 
@@ -1949,12 +1951,16 @@ static int tablector(EEL_state *es, EEL_mlist *al, int terminator)
 				eel_lex(es, 0);
 			}
 			else
-				/* <key> <value> syntax */
+			{
+				/* <key> [:] <value> syntax */
 				if((expression(es, inits, 1) == TK_WRONG) ||
 						(inits->length - lastcount !=
 						1))
 					eel_cerror(es, "Expected key "
 							"expression!");
+			}
+			if(es->token == ':')
+				eel_lex(es, 0);
 			if((expression(es, inits, 1) == TK_WRONG) ||
 					(inits->length - lastcount != 2))
 				eel_cerror(es, "Expected value expression!");
@@ -2005,6 +2011,7 @@ static int tablector(EEL_state *es, EEL_mlist *al, int terminator)
 		  '[' explist ']'
 		| KW_TABLE '[' tabitemlist ']'
 		| TYPENAME '[' explist ']'
+		| tablector
 		;
 */
 static int ctor(EEL_state *es, EEL_mlist *al)
@@ -2317,6 +2324,7 @@ static int simplexp(EEL_state *es, EEL_mlist *al, int wantresult)
 	int res;
 	EEL_coder *cdr = es->context->coder;
 	int a = al->length;
+	EEL_manipulator *m;
 
 	/* Look for qualifiers for declarations and definitions */
 	es->qualifiers = parse_qualifiers(es);
@@ -2389,6 +2397,27 @@ static int simplexp(EEL_state *es, EEL_mlist *al, int wantresult)
 	if(es->qualifiers)
 		eel_ierror(es, "simplexp2() leaked qualifiers"
 				" without complaining!");
+
+	/*
+	 * FIXME: There are a bunch of things that can't be indexed or called
+	 *        so maybe we should add some sanity checking here, for nicer
+	 *        error messages. For now, we'll just cover some special cases
+	 *        where trying to index is going to break other rules.
+	 */
+
+	/*
+	 * Check for <string_literal>:..., which is nonsense, and conflicts
+	 * with the JSON style table item syntax.
+	 */
+	m = eel_ml_get(al, -1);
+	if(eel_m_is_constant(m))
+	{
+		EEL_value v;
+		eel_m_get_constant(m, &v);
+		if(EEL_TYPE(&v) == (EEL_types)EEL_CSTRING)
+			if(es->token == ':')
+				return res;
+	}
 
 	/* Handle field/member/object indexing */
 	while(1)

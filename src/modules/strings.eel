@@ -25,6 +25,9 @@ export constant STRINGS_NOQUOTES =	0x00000001;
 // quoted separately, C/C++/EEL multiline quoted string literal style.
 export constant STRINGS_MULTILINE =	0x00000002;
 
+// Use valid JSON escapes only
+export constant STRINGS_JSONESCAPES =	0x00000004;
+
 
 constant hexfigures = "0123456789ABCDEF";
 
@@ -76,6 +79,7 @@ export function octstr(val)[figures = 0]
 
 export function quote(data)[flags = 0]
 {
+	local jsonesc = flags & STRINGS_JSONESCAPES;
 	local c = nil;
 	local buf = dstring [];
 	if not (flags & STRINGS_NOQUOTES)
@@ -87,7 +91,10 @@ export function quote(data)[flags = 0]
 		  case '\\'
 			buf.+ "\\\\";
 		  case '\a'
-			buf.+ "\\a";
+			if jsonesc
+				buf.+ "\\u0007";
+			else
+				buf.+ "\\a";
 		  case '\b'
 			buf.+ "\\b";
 		  case '\f'
@@ -109,17 +116,34 @@ export function quote(data)[flags = 0]
 		  case '\t'
 			buf.+ "\\t";
 		  case '\v'
-			buf.+ "\\v";
+			if jsonesc
+				buf.+ "\\u000B";
+			else
+				buf.+ "\\v";
 		  case '"'
 			buf.+ "\\\"";
 		  case '\''
-			// May as well support single-quoted literals as well!
-			buf.+ "\\'";
+			if jsonesc
+				buf.+ "'";
+			else
+			{
+				// Support single-quoted literals as well!
+				buf.+ "\\'";
+			}
 		  default
+			// FIXME: This handles C0 and C1 controls only! (JSON)
 			if (c < 32) or (c > 126)
 			{
-				buf.+ "\\";
-				buf.+ octstr(c, 3);
+				if jsonesc
+				{
+					buf.+ "\\u";
+					buf.+ hexstr(c, 4);
+				}
+				else
+				{
+					buf.+ "\\";
+					buf.+ octstr(c, 3);
+				}
 			}
 			else
 				buf.+ c;

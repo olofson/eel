@@ -11,6 +11,11 @@
 //	tables, and the SERIALIZE_NO_SHORTHAND to disable
 //	shorthand syntax for both arrays and tables.
 //
+//	EEL 0.3.7 also adds JSON support, which relies on
+//	a few parser tweaks, including the shorthand table
+//	constructor syntax. With a 'null' constant added,
+//	JSON becomes valid EEL!
+//
 ////////////////////////////////////////////////////////////
 
 module serialize;
@@ -106,7 +111,63 @@ procedure write_value_eel(buf, v, indent, flags)
 	  }
 	  default
 	  	if not (flags & SERIALIZE_DROP_UNKNOWN)
-			throw "serialize(): Value of unsupported type '" +
+			throw "serialize(eel): Value of unsupported type '" +
+					(string)typeof v + "'!";
+}
+
+
+procedure write_value_json(buf, v, indent, flags)
+{
+	switch typeof v
+	  case nil
+		buf.+ "null";
+	  case integer, real, boolean
+		buf.+ (dstring)v;
+	  case string, dstring
+		buf.+ quote(v, STRINGS_JSONESCAPES);
+	  case table
+	  {
+		local i2 = indent + "\t";
+		buf.+ "{\n";
+		for local i = 0, sizeof v - 1
+		{
+			local tk, local tv = key(v, i), index(v, i);
+			buf.+ i2;
+			switch typeof tk
+			  case string, dstring
+				write_value_json(buf, tk, i2, flags);
+			  default
+				throw "serialize(json): '" +
+						(string)typeof tk +
+						"' object field! (Must be "
+						"string or dstring for JSON.)";
+			buf.+ ": ";
+			write_value_json(buf, tv, i2, flags);
+			if i < (sizeof v - 1)
+				buf.+ ",";
+			buf.+ "\n";
+		}
+		buf.+ indent;
+		buf.+ "}";
+	  }
+	  case array
+	  {
+		local i2 = indent + "\t";
+		buf.+ "[\n";
+		for local i = 0, sizeof v - 1
+		{
+			buf.+ i2;
+			write_value_json(buf, v[i], i2, flags);
+			if i < (sizeof v - 1)
+				buf.+ ",";
+			buf.+ "\n";
+		}
+		buf.+ indent;
+		buf.+ "]";
+	  }
+	  default
+		if not (flags & SERIALIZE_DROP_UNKNOWN)
+			throw "serialize(json): Value of unsupported type '" +
 					(string)typeof v + "'!";
 }
 
@@ -170,7 +231,7 @@ procedure write_value_bin(buf, v, flags)
 	  }
 	  default
 	  	if not (flags & SERIALIZE_DROP_UNKNOWN)
-			throw "serialize(): Value of unsupported type '" +
+			throw "serialize(bin): Value of unsupported type '" +
 					(string)typeof v + "'!";
 }
 
@@ -230,6 +291,12 @@ export function serialize(v)[format = "eel", flags = 0]
 		write_value_eel(buf, v, "", flags);
 		return buf;
 	  }
+	  case "json"
+	  {
+		local buf = dstring [];
+		write_value_json(buf, v, "", flags);
+		return buf;
+	  }
 	  case "bin"
 	  {
 		local buf = memfile [];
@@ -246,12 +313,24 @@ export function deserialize(buf)[format = "eel"]
 	  case "eel"
 	  {
 		local b = dstring [];
-		b.+ 	"export function __deserialize\n"
-			"{\n"
+		b.+ 	"export function __deserialize"
+			"{"
 			"	return ";
 		b.+	buf;
-		b.+	";\n"
-			"}\n";
+		b.+	";"
+			"}";
+		return compile(b).__deserialize();
+	  }
+	  case "json"
+	  {
+		local b = dstring [];
+		b.+ 	"export function __deserialize"
+			"{"
+			"	constant null = nil;"
+			"	return ";
+		b.+	buf;
+		b.+	";"
+			"}";
 		return compile(b).__deserialize();
 	  }
 	  case "bin"
