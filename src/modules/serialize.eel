@@ -33,17 +33,19 @@ export constant SERIALIZE_NO_SHORTHAND = 0x00000002;
 //	CHANGING THESE BREAKS OLD FILES!!!
 //	(Adding new ones is safe in one direction, obviously.)
 //
-constant BIN_UNKNOWN =	0;
-constant BIN_NIL =	1;
-constant BIN_INTEGER =	2;
-constant BIN_REAL =	3;
-constant BIN_BOOLEANT =	4;	// True
-constant BIN_BOOLEANF =	5;	// False
-constant BIN_STRING =	6;
-constant BIN_DSTRING =	7;
-constant BIN_TABLE =	8;
-constant BIN_ARRAY =	9;
-constant BIN_VECTOR_D =	10;
+constant BIN_UNKNOWN =		0;
+constant BIN_NIL =		1;
+constant BIN_INTEGER =		2;
+constant BIN_REAL =		3;
+constant BIN_BOOLEANT =		4;	// True
+constant BIN_BOOLEANF =		5;	// False
+constant BIN_STRING =		6;
+constant BIN_DSTRING =		7;
+constant BIN_TABLE =		8;
+constant BIN_ARRAY =		9;
+constant BIN_VECTOR_D =		10;
+constant BIN_VECTOR_U32 =	11;
+constant BIN_VECTOR_S32 =	12;
 
 
 procedure write_value_eel(buf, v, indent, flags)
@@ -56,6 +58,28 @@ procedure write_value_eel(buf, v, indent, flags)
 	  case vector_d
 	  {
 		buf.+ "vector [";
+		for local j = 0, sizeof v - 1
+		{
+			buf.+ (string)v[j];
+			if j < (sizeof v - 1)
+				buf.+ ", ";
+		}
+		buf.+ "]";
+	  }
+	  case vector_u32
+	  {
+		buf.+ "vector_u32 [";
+		for local j = 0, sizeof v - 1
+		{
+			buf.+ (string)v[j];
+			if j < (sizeof v - 1)
+				buf.+ ", ";
+		}
+		buf.+ "]";
+	  }
+	  case vector_s32
+	  {
+		buf.+ "vector_s32 [";
 		for local j = 0, sizeof v - 1
 		{
 			buf.+ (string)v[j];
@@ -212,6 +236,20 @@ procedure write_value_bin(buf, v, flags)
 		for local j = 0, sizeof v - 1
 			write(buf, v[j]);
 	  }
+	  case vector_u32
+	  {
+		write_typed(buf, BIN_VECTOR_U32);
+		write(buf, sizeof v);
+		for local j = 0, sizeof v - 1
+			write(buf, v[j]);
+	  }
+	  case vector_s32
+	  {
+		write_typed(buf, BIN_VECTOR_S32);
+		write(buf, sizeof v);
+		for local j = 0, sizeof v - 1
+			write(buf, v[j]);
+	  }
 	  case table
 	  {
 		write_typed(buf, BIN_TABLE);
@@ -276,6 +314,22 @@ function read_value_bin(mf)
 		local items = read(mf, integer);
 		for local i = 0, items - 1
 			v.+ read(mf, real);
+		return v;
+	  }
+	  case BIN_VECTOR_U32
+	  {
+		local v = vector_u32 [];
+		local items = read(mf, integer);
+		for local i = 0, items - 1
+			v.+ read(mf, integer);
+		return v;
+	  }
+	  case BIN_VECTOR_S32
+	  {
+		local v = vector_s32 [];
+		local items = read(mf, integer);
+		for local i = 0, items - 1
+			v.+ read(mf, integer);
 		return v;
 	  }
 	throw "deserialize(): Unknown type code " + (string)type + "!";

@@ -1902,7 +1902,6 @@ static int tablector(EEL_state *es, EEL_mlist *al, int terminator)
 	int comma = 0;
 	EEL_coder *cdr;
 	EEL_mlist *inits;
-
 	no_qualifiers(es);
 
 	/* Initializer tuples */
