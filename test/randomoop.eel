@@ -1,15 +1,16 @@
-/////////////////////////////////////////////
+///////////////////////////////////////////////
 // Temporary EEL Test Suite
 // Based on the Lua Random Number Generator
 // test code by Roberto Ierusalimschy, for
 // The Great Computer Language Shootout.
 // EEL version by David Olofson, 2004-2005
 // OOP version by David Olofson, 2011
-/////////////////////////////////////////////
+// Shorthand table syntax, David Olofson, 2014
+///////////////////////////////////////////////
 
 function RNG
 {
-	return table [
+	return {
 		.IM	139968,
 		.IA	3877,
 		.IC	29573,
@@ -24,7 +25,7 @@ function RNG
 			self.LAST = (self.LAST * self.IA + self.IC) % self.IM;
 			return (self.MAX * self.LAST) / self.IM;
 		}
-	];
+	};
 }
 
 export procedure test[n, _rng]

@@ -52,7 +52,7 @@ function Bass
 	constant MINCUT = 1;
 	constant MAXCUT1 = 2;
 	constant MAXCUT2 = 16;
-	local o = table [
+	local o = {
 		.a	0,
 		.d	FASTDECAY,
 		.fa	0,
@@ -160,7 +160,7 @@ function Bass
 			self.a *= self.d;
 			self.fa *= self.fd;
 		}
-	];
+	};
 	for local i = 1, OSCILLATORS
 	{
 		o.ph.+ rnd(2 * PI);
@@ -175,7 +175,7 @@ function Whistle
 	constant FASTDECAY = .5;
 	constant SLOWDECAY = .1;
 	constant OSCILLATORS = 300;
-	local o = table [
+	local o = {
 		.a	0,
 		.ta	0,
 		.d	FASTDECAY,
@@ -225,7 +225,7 @@ function Whistle
 			self.f += self.nf - self.f * .4;
 			self.a += self.ta - self.a * self.d;
 		}
-	];
+	};
 	for local i = 1, OSCILLATORS
 	{
 		o.ph.+ rnd(2 * PI);
@@ -241,7 +241,7 @@ function Strings
 	constant SLOWDECAY = .02;
 	constant OSCILLATORS = 500;
 	constant VOICES = 10;
-	local o = table [
+	local o = {
 		.a	0,
 		.ta	0,
 		.d	FASTDECAY,
@@ -298,7 +298,7 @@ function Strings
 			self.f += self.nf - self.f * .4;
 			self.a += self.ta - self.a * self.d;
 		}
-	];
+	};
 	for local j = 0, VOICES - 1
 		for local i = 1, OSCILLATORS / VOICES
 		{
@@ -315,7 +315,7 @@ function Crash
 	constant FASTDECAY = .95;
 	constant SLOWDECAY = .995;
 	constant OSCILLATORS = 2000;	// Number of oscillators
-	local o = table [
+	local o = {
 		.a	0,		// Amplitude
 		.d	SLOWDECAY,	// Decay factor
 		.nf	0,		// Target frequency (bin)
@@ -370,7 +370,7 @@ function Crash
 			self.f += self.nf - self.f * .5;
 			self.a *= self.d;
 		}
-	];
+	};
 	for local i = 1, OSCILLATORS
 	{
 		local w = i - 1 / OSCILLATORS;
@@ -386,7 +386,7 @@ function HiHat
 	constant FASTDECAY = .93;
 	constant SLOWDECAY = .993;
 	constant OSCILLATORS = 300;
-	local o = table [
+	local o = {
 		.a	0,
 		.d	SLOWDECAY,
 		.nf	0,
@@ -426,7 +426,7 @@ function HiHat
 			self.f += self.nf - self.f * .5;
 			self.a *= self.d;
 		}
-	];
+	};
 	for local i = 1, OSCILLATORS
 	{
 		local w = i - 1 / OSCILLATORS;

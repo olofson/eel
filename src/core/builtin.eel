@@ -265,7 +265,7 @@ export function load(modname)[flags = 0]
 //
 export function exception_info(x)
 {
-	local r = table [];
+	local r = {};
 	r.code = x;
 	try
 		r.name = exception_name(x);
@@ -300,7 +300,7 @@ export function deepclone(src)[level = 0]
 	  }
 	  case table
 	  {
-		local t = table [];
+		local t = {};
 		for local i = 0, sizeof src - 1
 			t[key(src, i)] = deepclone(index(src, i), level + 1);
 		return t;

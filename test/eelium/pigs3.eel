@@ -20,12 +20,12 @@ constant DY = 3;
 constant FRAME = 4;
 constant DFRAME = 5;
 
-static rng = table [
+static rng = {
 	.im	139968,
 	.ia	3877,
 	.ic	29573,
 	.last	42
-];
+};
 
 function rnd(max)
 {

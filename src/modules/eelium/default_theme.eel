@@ -14,7 +14,7 @@ import eelium.drawtools;
 // Theme constructor
 export function Create
 {
-	local no = table [
+	local no = {
 		// Rendering target surface
 		.target			GetTarget(),
 		
@@ -407,7 +407,7 @@ export function Create
 				rbox3d(t, r, c[CASHL, CABG, CASSH, CASHL, CASH]);
 			}
 		}
-	];
+	};
 	no.font:Offset(-1, 1);
 	no:SetPassiveColors(96, 96, 96, 1.1);
 	no:SetActiveColors(128, 96, 64, 1.3);

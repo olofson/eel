@@ -10,8 +10,8 @@ import SDL, SDL_image, math, system as sys;
 export function Open[filename]
 {
 	// Create object
-	local no = table [
-		.glyphs		array [],
+	local no = {
+		.glyphs		[],
 		.spacing	vector [],
 		.xoffs		0,
 		.yoffs		0,
@@ -101,7 +101,7 @@ export function Open[filename]
 		{
 			self.(xoffs, yoffs) = x, y;
 		}
-	];
+	};
 
 	// Load and process font
 	if specified filename

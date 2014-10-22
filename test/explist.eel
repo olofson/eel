@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // EEL Test Suite
-// Copyright 2005 David Olofson
+// Copyright 2005, 2014 David Olofson
 /////////////////////////////////////////////
 
 export function main<args>
@@ -58,11 +58,11 @@ export function main<args>
 
 	print("\n Indexing:\n");
 	local a = table [
-			"ten"		10,
-			"twenty"	20,
-			"thirty"	30,
-			"fourty"	40
-		];
+		"ten"		10,
+		"twenty"	20,
+		"thirty"	30,
+		"fourty"	40
+	];
 	print("  (a is a table of <word, number>)\n");
 
 	print("  x, y, z, w = a.(ten, twenty, thirty, fourty);\n");
@@ -83,12 +83,13 @@ export function main<args>
 	x, y, z, w = a.(twenty, thirty, fourty, ten) + (-10, -10, -10, 30);
 	check();
 
-	a = table [
-			"ten"		table ["num" 10],
-			"twenty"	table ["num" 20],
-			"thirty"	table ["num" 30],
-			"fourty"	table ["num" 40]
-		];
+	// Shorthand table constructor syntax (EEL 0.3.7)
+	a = {
+		"ten"		{ "num" 10 },
+		"twenty"	{ "num" 20 },
+		"thirty"	{ "num" 30 },
+		"fourty"	{ "num" 40 }
+	};
 	print("  (a is a table of <word, table of <\"num\", number>>)\n");
 
 	print("  x, y, z, w = a.(ten, twenty, thirty, fourty).num;\n");

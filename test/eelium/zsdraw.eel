@@ -35,7 +35,7 @@ static bumpdepth = .5;
 
 // Entity list
 static entitylist;
-static selection = table [];
+static selection = {};
 
 
 procedure DeselectAll
@@ -394,7 +394,7 @@ function EntityWidgetXYRH(parent, entity)
 // Entity base class
 function Entity(canvas, name)
 {
-	local e = table [
+	local e = {
 		.name		name,	// Name of entity
 		.editor		nil,	// Editor popup, if shown
 		.item		nil,	// Entity list item, if present
@@ -487,7 +487,7 @@ print("  Entity.self.widget:Delete()\n");
 			self.canvas:Invalidate();
 			self.canvas.widget:Invalidate();
 		}
-	];
+	};
 	return e;
 }
 
@@ -753,7 +753,7 @@ print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
 			c:Present(tg);
 		};
 //	w.Invalidate = procedure(s) { s.parent:Invalidate(); };
-	w.canvas = table [
+	w.canvas = {
 		.background	nil,	// Special handling for this...
 		.entities	[],
 		.needs_rebuild	true,
@@ -831,7 +831,7 @@ for local i = 0, 1000, 10
 			}
 			entitylist:Add(entity);
 		}
-	];
+	};
 	w.canvas.widget (=) w;
 	w.canvas.overlay (=) gui.Panel(w, "none"):SetAlign("relative");
 	w.canvas:Resize(10, 10);

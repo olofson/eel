@@ -51,7 +51,7 @@ static roots = [];
 
 // Table of dirty widgets, all roots. (table is used only to filter out
 // multiple invalidations between refreshes. Values are ignored.)
-static dirtywidgets = table [];
+static dirtywidgets = {};
 
 
 
@@ -101,7 +101,7 @@ export function DefaultTheme
 // Table of <type, subscribers>, where 'subscribers' is an array
 // of arrays where [0] = 'func' and [1] = 'data', as passed to
 // Subscribe().
-static subscribers = table [];
+static subscribers = {};
 
 
 // Send a message to every subscriber of 'type'. 'args' can be of
@@ -1177,7 +1177,7 @@ function set_align(self, a)<params>
 
 export function Widget(parent)[rect]
 {
-	local no = table [
+	local no = {
 		// Various flags
 		.enabled		true,	// Accepts user interaction
 		.visible		true,
@@ -1565,7 +1565,7 @@ export procedure Close
 {
 	while sizeof roots
 		roots[0]:Delete();
-	dirtywidgets = table [];
+	dirtywidgets = {};
 	target = nil;
 //	default_theme_cons = nil;
 	user_theme = nil;
@@ -1876,8 +1876,7 @@ procedure graph_render_ring(self, graph)
 
 function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 {
-	local nc = table
-	[
+	local nc = {
 		.name		name,
 		.color		SDL.MapColor(target, r, g, b),
 		.linecolor	SDL.MapColor(target,
@@ -1939,7 +1938,7 @@ function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 			}
 		}
 		.RenderLines	graph_render_lines
-	];
+	};
 	if specified lines
 		nc.lines = lines;
 	switch glyph
@@ -1966,7 +1965,7 @@ export function Graph(parent)
 	w.paper_g = 48;
 	w.paper_b = 64;
 	w.paper = SDL.MapColor(target, w.paper_r, w.paper_g, w.paper_b);
-	w.curves = table [];
+	w.curves = {};
 	w.Curve = graph_new_curve;
 	w.RenderBackground = procedure(self)
 	{

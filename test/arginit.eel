@@ -5,7 +5,7 @@
 
 function create_object(base)
 {
-	return table [
+	return {
 		.field1 base,
 		.field2 base + 1,
 		.field3 base * 10,
@@ -16,7 +16,7 @@ function create_object(base)
 			print("      field2:", self.field2, ":\n");
 			print("      field3:", self.field3, ":\n");
 		}
-	];
+	};
 }
 
 export function main<args>

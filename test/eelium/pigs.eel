@@ -8,12 +8,12 @@ import SDL;
 import SDL_image as IMG;
 import eelium.text as text;
 
-static rng = table [
+static rng = {
 	.im	139968,
 	.ia	3877,
 	.ic	29573,
 	.last	42
-];
+};
 
 function rnd(max)
 {
@@ -57,12 +57,14 @@ export function main<args>
 	// Initialize pigs
 	local pigs = [];
 	for local i = 0, npigs - 1
-		pigs[i] = table[.x	rnd(640 - 64),
-				.y	rnd(300),
-				.dx	rnd(400) - 200,
-				.dy	0,
-				.frame	0,
-				.dframe	rnd(100) - 50];
+		pigs[i] = {
+			.x	rnd(640 - 64),
+			.y	rnd(300),
+			.dx	rnd(400) - 200,
+			.dy	0,
+			.frame	0,
+			.dframe	rnd(100) - 50
+		};
 
 	local dr = Rect[];
 	local lt, local fps_start, local fps_total_start = GetTicks();

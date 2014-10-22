@@ -7,7 +7,7 @@ import SDL, math, eelium.line;
 
 export function create(screen)[buffer]
 {
-	local pen = table [
+	local pen = {
 		// Private stuff
 		.lastx		0,
 		.lasty		0,
@@ -44,7 +44,7 @@ export function create(screen)[buffer]
 		{
 			self.drawing = false;
 		}
-	];
+	};
 
 	// Alternate move or draw for back buffer
 	procedure To_back(self, x, y)

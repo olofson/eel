@@ -48,7 +48,7 @@ import OpenGL as gl;
 // Create a tiled layer manager
 function TiledLayer(tw, th, tb, tbpp)
 {
-	local t = table [
+	local t = {
 		// Tile texture size, border width and depth
 		.tw		tw,
 		.th		th,
@@ -82,7 +82,7 @@ function TiledLayer(tw, th, tb, tbpp)
 		.lam		nil,	// (array of vectors of texture names)
 
 		// Table of <texname, vector [x, y]> for tiles to redraw
-		.dirty		table [],
+		.dirty		{},
 
 		// Set view to 'w' x 'h' tiles with a LAM of 'lw' x 'lh' tiles.
 		// NOTE:
@@ -289,7 +289,7 @@ function TiledLayer(tw, th, tb, tbpp)
 				sy += 1;
 			}
 		}
-	];
+	};
 	t:View(10, 10, 13, 13);
 	t:Move(0, 0);
 	return t;
@@ -368,7 +368,7 @@ export function main<args>
 	local right = 0;
 
 	// Main loop
-	local start, local lt, local t0 = SDL.GetTicks();;
+	local start, local lt, local t0 = SDL.GetTicks();
 	local frames = 0;
 	local ftimes = vector [];
 	ftimes[20] = 0;

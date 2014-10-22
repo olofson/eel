@@ -1,6 +1,6 @@
 /////////////////////////////////////////////
 // Weak Reference Tests
-// Copyright 2010 David Olofson
+// Copyright 2010, 2014 David Olofson
 /////////////////////////////////////////////
 
 static a;
@@ -8,9 +8,9 @@ static b;
 
 procedure test_static_1
 {
-	a = table [
+	a = {
 		.Test	42
-	];
+	};
 	b (=) a;
 	print("  a = ", a, ", b = ", b, "\n");
 }
@@ -23,7 +23,9 @@ procedure test_static_2
 
 procedure test_table_1(t)
 {
-	t.a = table [.Test	42];
+	t.a = {
+	    .Test	42
+	};
 	t.b (=) t.a;
 	print("  t.a = ", t.a, ", t.b = ", t.b, "\n");
 }

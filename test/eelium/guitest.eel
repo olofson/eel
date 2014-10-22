@@ -10,7 +10,7 @@ static askexit_up = false;
 static screen;
 static bcnt, static tcnt = 0;
 static work, static container;
-static ls = array [];
+static ls = [];
 
 
 procedure ask_exit
@@ -269,7 +269,7 @@ export function main<args>
 				ls[i].time = t;
 			}
 
-		local dr = array [];
+		local dr = [];
 		gui.Refresh(dr);
 		if sizeof dr
 			SDL.Update(dr);

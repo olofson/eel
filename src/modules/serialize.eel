@@ -2,6 +2,16 @@
   // serialize.eel - (De)serialize EEL structures as EEL code
  // Copyright 2011, 2014 David Olofson
 ////////////////////////////////////////////////////////////
+//
+// NOTE:
+//	Before EEL 0.3.7, serialize() to "eel" format used
+//	the [ ... ] shorthand syntax for arrays.
+//
+//	EEL 0.3.7 adds the new { ... } shorthand syntax for
+//	tables, and the SERIALIZE_NO_SHORTHAND to disable
+//	shorthand syntax for both arrays and tables.
+//
+////////////////////////////////////////////////////////////
 
 module serialize;
 
@@ -10,6 +20,7 @@ import io, strings;
 
 // Flags for serialize()
 export constant SERIALIZE_DROP_UNKNOWN = 0x00000001;
+export constant SERIALIZE_NO_SHORTHAND = 0x00000002;
 
 
 // Binary format type IDs.
@@ -50,8 +61,12 @@ procedure write_value_eel(buf, v, indent, flags)
 	  }
 	  case table
 	  {
+		local ns = flags & SERIALIZE_NO_SHORTHAND;
 		local i2 = indent + "\t";
-		buf.+ "table [\n";
+		if ns
+			buf.+ "table [\n";
+		else
+			buf.+ "{\n";
 		for local i = 0, sizeof v - 1
 		{
 			local tk, local tv = key(v, i), index(v, i);
@@ -66,12 +81,18 @@ procedure write_value_eel(buf, v, indent, flags)
 			buf.+ "\n";
 		}
 		buf.+ indent;
-		buf.+ "]";
+		if ns
+			buf.+ "]";
+		else
+			buf.+ "}";
 	  }
 	  case array
 	  {
 		local i2 = indent + "\t";
-		buf.+ "[\n";
+		if flags & SERIALIZE_NO_SHORTHAND
+			buf.+ "array [\n";
+		else
+			buf.+ "[\n";
 		for local i = 0, sizeof v - 1
 		{
 			buf.+ i2;

@@ -36,7 +36,7 @@ export function main<args>
 				self.parent.scrollbox:SetScrollPos(v, nil);
 			});
 
-// TODO: Somehow hook into the aligment system and reset
+// TODO: Somehow hook into the alignment system and reset
 // TODO: scroll positions and gray out sliders as needed.
 // TODO: Implement optional standard sliders in Panel?
 

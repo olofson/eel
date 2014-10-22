@@ -1894,22 +1894,12 @@ static int vardecl(EEL_state *es, EEL_mlist *al)
 		| KW_TABLE '[' tabitemlist ']'
 		...
 */
-static int tablector(EEL_state *es, EEL_mlist *al)
+static int tablector(EEL_state *es, EEL_mlist *al, int terminator)
 {
 	int r, lastcount;
 	int comma = 0;
 	EEL_coder *cdr;
 	EEL_mlist *inits;
-
-	/* "header" */
-	switch(es->token)
-	{
-	  case '[':
-		eel_lex(es, 0);
-		break;
-	  default:
-		return TK(WRONG);
-	}
 
 	no_qualifiers(es);
 
@@ -1920,19 +1910,19 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 	while(1)
 	{
 		int func_by_name = 0;
-		if(']' == es->token)
+		if(es->token == terminator)
 			break;
 		lastcount = inits->length;
-		if('(' == es->token)
+		if(es->token == '(')
 		{
 			/* (key, value) syntax */
 			eel_lex(es, 0);
-			if(TK_WRONG == explist(es, inits, 1) ||
+			if((explist(es, inits, 1) == TK_WRONG) ||
 					(inits->length - lastcount != 2))
 				eel_cerror(es, "Expected (key, value) tuple!");
 			expect(es, ')', NULL);
 		}
-		else if(TK_WRONG != funcdef(es, inits, 1))
+		else if(funcdef(es, inits, 1) != TK_WRONG)
 		{
 			EEL_manipulator *fm = eel_ml_get(inits, -1);
 			EEL_object *fo = fm->v.constant.v.objref.v;
@@ -1960,10 +1950,12 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 			}
 			else
 				/* <key> <value> syntax */
-				if(TK_WRONG == expression(es, inits, 1) ||
-						(inits->length - lastcount != 1))
-					eel_cerror(es, "Expected key expression!");
-			if(TK_WRONG == expression(es, inits, 1) ||
+				if((expression(es, inits, 1) == TK_WRONG) ||
+						(inits->length - lastcount !=
+						1))
+					eel_cerror(es, "Expected key "
+							"expression!");
+			if((expression(es, inits, 1) == TK_WRONG) ||
 					(inits->length - lastcount != 2))
 				eel_cerror(es, "Expected value expression!");
 		}
@@ -1971,7 +1963,7 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 		if(func_by_name)
 		{
 			/* Coma is optional after "function by name"! */
-			if(',' == es->token)
+			if(es->token == ',')
 			{
 				comma = 1;
 				eel_lex(es, 0);
@@ -1979,7 +1971,7 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 		}
 		else
 		{
-			if(',' != es->token)
+			if(es->token != ',')
 				break;
 			eel_lex(es, 0);
 			comma = 1;
@@ -1990,7 +1982,7 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 		eel_cwarning(es, "Trailing comma in table constructor.");
 
 	/* Closing brace */
-	expect(es, ']', NULL);
+	expect(es, terminator, NULL);
 
 	if(inits->length & 1)
 		eel_ierror(es, "tablector somehow generated an odd"
@@ -2017,13 +2009,14 @@ static int tablector(EEL_state *es, EEL_mlist *al)
 */
 static int ctor(EEL_state *es, EEL_mlist *al)
 {
-	int r, t;
+	int r, t, terminator;
 	EEL_mlist *inits;
 	EEL_coder *cdr = es->context->coder;
 
-	/* TYPENAME */
-	if(TK_SYM_CLASS == es->token)
+	switch(es->token)
 	{
+	  case TK_SYM_CLASS:
+		/* Generic TYPENAME [ ... ] constructor syntax */
 		t = eel_class_typeid(es->lval.v.symbol->v.object);
 		eel_lex(es, 0);
 		if(es->token != '[')
@@ -2031,35 +2024,39 @@ static int ctor(EEL_state *es, EEL_mlist *al)
 			eel_unlex(es);
 			return TK(WRONG);
 		}
-	}
-	else
-	{
-		if(es->token != '[')
-			return TK(WRONG);
-		t = EEL_CARRAY;
-	}
-	check_constructor(es, t);
-	switch(t)
-	{
-	  case EEL_CTABLE:
-		return tablector(es, al);
-	  default:
-		/* gctor */
+		terminator = ']';
 		break;
+	  case'[':
+		/* [ ... ] shorthand syntax for arrays */
+		t = EEL_CARRAY;
+		terminator = ']';
+		break;
+	  case'{':
+		/* { ... } shorthand syntax for tables */
+		t = EEL_CTABLE;
+		terminator = '}';
+		break;
+	  default:
+		return TK(WRONG);
 	}
 	eel_lex(es, 0);
+
+	check_constructor(es, t);
+
+	if(t == EEL_CTABLE)
+		return tablector(es, al, terminator);
 
 	no_qualifiers(es);
 
 	/* Initializers */
 	r = eel_m_result(al);
 	inits = eel_ml_open(cdr);
-	if(es->token != ']')
+	if(es->token != terminator)
 		if(TK_WRONG == explist(es, inits, 1))
 			eel_cerror(es, "Expected list of initializers!");
 
 	/* Closing bracket */
-	expect(es, ']', NULL);
+	expect(es, terminator, NULL);
 
 	/* Generate actual constructor code */
 	eel_ml_push(inits);
