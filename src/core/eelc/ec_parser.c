@@ -2323,7 +2323,6 @@ static int simplexp(EEL_state *es, EEL_mlist *al, int wantresult)
 	int res;
 	EEL_coder *cdr = es->context->coder;
 	int a = al->length;
-	EEL_manipulator *m;
 
 	/* Look for qualifiers for declarations and definitions */
 	es->qualifiers = parse_qualifiers(es);
@@ -2408,14 +2407,17 @@ static int simplexp(EEL_state *es, EEL_mlist *al, int wantresult)
 	 * Check for <string_literal>:..., which is nonsense, and conflicts
 	 * with the JSON style table item syntax.
 	 */
-	m = eel_ml_get(al, -1);
-	if(eel_m_is_constant(m))
+	if((es->token == ':') && al->length)
 	{
-		EEL_value v;
-		eel_m_get_constant(m, &v);
-		if(EEL_TYPE(&v) == (EEL_types)EEL_CSTRING)
-			if(es->token == ':')
+		EEL_manipulator *m = eel_ml_get(al, -1);
+		if(eel_m_is_constant(m))
+		{
+			EEL_value v;
+			eel_m_get_constant(m, &v);
+			eel_v_disown_nz(&v);
+			if(EEL_TYPE(&v) == (EEL_types)EEL_CSTRING)
 				return res;
+		}
 	}
 
 	/* Handle field/member/object indexing */
