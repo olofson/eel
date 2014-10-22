@@ -1502,8 +1502,7 @@ export function Widget(parent)[rect]
 					self.widgets[i]:ApplyTheme(theme);
 			self:Invalidate();
 		}
-
-	];
+	};
 
 	// 'logicrect' holds the logic position and size of the
 	// widget. Note that some aligners will ignore some or
