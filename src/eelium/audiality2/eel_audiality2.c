@@ -348,12 +348,16 @@ static EEL_xno ea2_Load(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	const char *fn;
+	unsigned flags = 0;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	if(!(fn = eel_v2s(args + 1)))
 		return EEL_XWRONGTYPE;
+	if(vm->argc >= 3)
+		flags = eel_v2l(args + 2);
 	eel_l2v(vm->heap + vm->resv,
-			a2_Load(o2EA2_state(args->objref.v)->state, fn));
+			a2_Load(o2EA2_state(args->objref.v)->state, fn,
+			flags));
 	return 0;
 }
 
@@ -866,7 +870,7 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	/* Object loading/creation */
 	addfunc(m, t, 1, "NewBank", 2, 1, 0, ea2_NewBank);
 	addfunc(m, t, 1, "LoadString", 2, 1, 0, ea2_LoadString);
-	addfunc(m, t, 1, "Load", 2, 0, 0, ea2_Load);
+	addfunc(m, t, 1, "Load", 2, 1, 0, ea2_Load);
 	addfunc(m, t, 1, "NewString", 2, 0, 0, ea2_NewString);
 	addfunc(m, t, 1, "UnloadAll", 2, 0, 0, ea2_UnloadAll);
 
