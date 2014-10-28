@@ -1,6 +1,8 @@
-# For stand-alone build, linking to the system EEL library
+# For stand-alone build, linking to the system EEL and Eelium libraries
 #find_package(EEL REQUIRED)
 #include_directories(${EEL_INCLUDE_DIR})
+#find_package(EELIUM REQUIRED)
+#include_directories(${EELIUM_INCLUDE_DIR})
 
 # For local build, not relying on an installed library
 include_directories(${EEL_SOURCE_DIR}/include)
@@ -13,25 +15,11 @@ include_directories(${EEL_SOURCE_DIR})
 include_directories(${EEL_SOURCE_DIR}/src/core)
 if(BUILD_EELIUM)
 	include_directories(${EEL_SOURCE_DIR}/src/eelium)
-	include_directories(${EEL_SOURCE_DIR}/src/eelium/audiality2)
-	include_directories(${EEL_SOURCE_DIR}/src/eelium/midi)
-	include_directories(${EEL_SOURCE_DIR}/src/eelium/net2)
-	include_directories(${EEL_SOURCE_DIR}/src/eelium/zeedraw)
-	include_directories(${EEL_SOURCE_DIR}/src/eelium/zeespace)
 endif(BUILD_EELIUM)
 
 add_executable(eel WIN32 MACOSX_BUNDLE eel.c)
 target_link_libraries(eel libeel)
 
-#find_package(SDL)
-#if(SDL_FOUND)
-#	include_directories(${SDL_INCLUDE_DIR})
-#	link_libraries(${SDL_LIBRARY})
-#	target_link_libraries(eel libeelium)
-#	set(EEL_HAVE_EELIUM ON)
-#else(SDL_FOUND)
-#	set(EEL_HAVE_EELIUM OFF)
-#endif(SDL_FOUND)
 if(BUILD_EELIUM)
 	target_link_libraries(eel libeelium)
 endif(BUILD_EELIUM)

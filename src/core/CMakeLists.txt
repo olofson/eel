@@ -112,8 +112,7 @@ set(sources ${sources}
 )
 
 
-#add_library(libeel SHARED ${sources})
-add_library(libeel STATIC ${sources})
+add_library(libeel ${sources})
 
 if(UNIX)
 	target_link_libraries(libeel m)

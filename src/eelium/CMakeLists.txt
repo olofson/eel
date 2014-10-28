@@ -1,3 +1,12 @@
+###############################################################################
+# NOTE:
+#	We do build and install Eelium as a proper library now, but it's still
+#	"hardwired" to the standard 'eel' executive. Once EEL supports native
+#	modules (again), Eelium should be installed as one or more modules that
+#	can be imported on demand.
+#
+###############################################################################
+
 include(CheckIncludeFiles)
 include(CheckFunctionExists)
 
@@ -69,8 +78,8 @@ if(ALSA_FOUND)
 endif(ALSA_FOUND)
 
 
-#add_library(libeelium SHARED ${sources})
-add_library(libeelium STATIC ${sources})
+add_library(libeelium ${sources})
+
 target_link_libraries(libeelium ${SDL_LIBRARY} ${SDLNET_LIBRARY}
 	${SDLIMAGE_LIBRARY} ${PNG_LIBRARY} ${AUDIALITY2_LIBRARIES})
 if(WIN32)
@@ -83,20 +92,16 @@ endif(WIN32)
 set_target_properties(libeelium PROPERTIES VERSION ${VERSION_STRING}
 	SOVERSION ${VERSION_STRING})
 
+set_target_properties(libeelium PROPERTIES OUTPUT_NAME "eelium")
+
 if(HAS_SDL_OPENGL_H)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAS_SDL_OPENGL_H")
 endif(HAS_SDL_OPENGL_H)
 
-set_target_properties(libeelium PROPERTIES OUTPUT_NAME "eelium")
+configure_file(eelium.pc.cmake ${CMAKE_BINARY_DIR}/eelium.pc @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/eelium.pc
+	DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/")
 
-#add_library(libeelium STATIC ${sources})
-#target_link_libraries(libeelium m)
-#if(WIN32)
-#	add_library(libeelium STATIC ${sources})
-#	target_link_libraries(libeelium m ${SDL_LIBRARY} -lwinmm -ldxguid)
-#else(WIN32)
-#	add_library(libeelium SHARED ${sources})
-#	target_link_libraries(libeelium m ${SDL_LIBRARY})
-#endif(WIN32)
+install(FILES eelium.h DESTINATION include/EEL)
 
-#install(TARGETS libeelium DESTINATION lib)
+install(TARGETS libeelium DESTINATION lib)

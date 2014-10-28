@@ -47,7 +47,7 @@ setup_cross() {
 	local target=$4
 	local opts=$5
 	create_build_dir $dname $btype $desc
-	cmake "$opts" -DCMAKE_TOOLCHAIN_FILE=$SOURCEDIR/mingw32-cross.cmake $SOURCEDIR -DCMAKE_BUILD_TYPE="$btype" -DCMAKE_TOOLCHAIN_FILE=$MXEPATH/usr/$target/share/cmake/mxe-conf.cmake
+	cmake "$opts" -DCMAKE_TOOLCHAIN_FILE=$SOURCEDIR/mingw32-cross.cmake $SOURCEDIR -DCMAKE_BUILD_TYPE="$btype" -DCMAKE_TOOLCHAIN_FILE=$MXEPATH/usr/$target/share/cmake/mxe-conf.cmake -DBUILD_SHARED_LIBS=OFF
 	cd $SOURCEDIR
 }
 

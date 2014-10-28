@@ -1,27 +1,27 @@
-# Locate Audiality 2 library
+# Locate EEL library
 #
 # This module defines:
-#  AUDIALITY2_FOUND, true if Audiality 2 was found
-#  AUDIALITY2_INCLUDE_DIR, where the C headers are found
-#  AUDIALITY2_LIBRARY, where the library is found
+#  EEL_FOUND, true if EEL was found
+#  EEL_INCLUDE_DIR, where the C headers are found
+#  EEL_LIBRARY, where the library is found
 #
 # Created by David Olofson
 
-FIND_PATH(AUDIALITY2_INCLUDE_DIR audiality2.h
+FIND_PATH(EEL_INCLUDE_DIR EEL.h
 	PATH_SUFFIXES include
 	PATHS
 	~/Library/Frameworks
 	/Library/Frameworks
-	/usr/local/include/Audiality2
-	/usr/include/Audiality2
-	/sw/include/Audiality2
-	/opt/local/include/Audiality2
-	/opt/csw/include/Audiality2
-	/opt/include/Audiality2
+	/usr/local/include/EEL
+	/usr/include/EEL
+	/sw/include/EEL
+	/opt/local/include/EEL
+	/opt/csw/include/EEL
+	/opt/include/EEL
 )
 
-FIND_LIBRARY(AUDIALITY2_LIBRARY
-	NAMES audiality2
+FIND_LIBRARY(EEL_LIBRARY
+	NAMES eel
 	PATH_SUFFIXES lib64 lib
 	PATHS
 	~/Library/Frameworks
@@ -34,7 +34,7 @@ FIND_LIBRARY(AUDIALITY2_LIBRARY
 	/opt
 )
 
-SET(AUDIALITY2_FOUND "NO")
-IF(AUDIALITY2_LIBRARY AND AUDIALITY2_INCLUDE_DIR)
-	SET(AUDIALITY2_FOUND "YES")
-ENDIF(AUDIALITY2_LIBRARY AND AUDIALITY2_INCLUDE_DIR)
+SET(EEL_FOUND "NO")
+IF(EEL_LIBRARY AND EEL_INCLUDE_DIR)
+	SET(EEL_FOUND "YES")
+ENDIF(EEL_LIBRARY AND EEL_INCLUDE_DIR)

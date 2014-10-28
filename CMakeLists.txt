@@ -5,6 +5,8 @@ project(EEL)
 option(BUILD_EELIUM "Build Eelium SDL/OpenGL/Audiality2 binding" ON)
 set(EEL_HAVE_EELIUM ${BUILD_EELIUM})
 
+option(BUILD_SHARED_LIBS "Build shared libraries." ON)
+
 set(VERSION_MAJOR 0)
 set(VERSION_MINOR 3)
 set(VERSION_PATCH 7)
