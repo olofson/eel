@@ -26,6 +26,7 @@ create_build_dir() {
 	fi
 	cp $SOURCEDIR/test/*.eel $BUILDDIR/$dname/test
 	cp $SOURCEDIR/test/wc-input.txt $BUILDDIR/$dname/test
+	cp $SOURCEDIR/test/*.json $BUILDDIR/$dname/test
 	cd $BUILDDIR/$dname
 }
 
