@@ -441,10 +441,12 @@ EELAPI(void)eel_copy(EEL_value *value, const EEL_value *from);
 EELAPI(long)eel_length(EEL_object *io);
 EELAPI(EEL_xno)eel_getindex(EEL_object *io, EEL_value *key, EEL_value *value);
 EELAPI(EEL_xno)eel_getlindex(EEL_object *io, long ind, EEL_value *value);
-EELAPI(EEL_xno)eel_getsindex(EEL_object *io, const char *key, EEL_value *value);
+EELAPI(EEL_xno)eel_getsindex(EEL_object *io, const char *key,
+		EEL_value *value);
 EELAPI(EEL_xno)eel_setindex(EEL_object *io, EEL_value *key, EEL_value *value);
 EELAPI(EEL_xno)eel_setlindex(EEL_object *io, long ind, EEL_value *value);
-EELAPI(EEL_xno)eel_setsindex(EEL_object *io, const char *key, EEL_value *value);
+EELAPI(EEL_xno)eel_setsindex(EEL_object *io, const char *key,
+		EEL_value *value);
 
 EELAPI(EEL_xno)eel_delete(EEL_object *io, EEL_value *key);
 EELAPI(EEL_xno)eel_idelete(EEL_object *io, long ind, long count);
@@ -476,17 +478,21 @@ EELAPI(const char *)eel_v_stringrep(EEL_vm *vm, const EEL_value *value);
  *		Use only on actual tables!
  */
 EELAPI(EEL_xno)eel_table_get(EEL_object *to, EEL_value *key, EEL_value *value);
-EELAPI(EEL_xno)eel_table_gets(EEL_object *to, const char *key, EEL_value *value);
+EELAPI(EEL_xno)eel_table_gets(EEL_object *to, const char *key,
+		EEL_value *value);
 EELAPI(const char *)eel_table_getss(EEL_object *to, const char *key);
 
 EELAPI(EEL_xno)eel_table_set(EEL_object *to, EEL_value *key, EEL_value *value);
-EELAPI(EEL_xno)eel_table_sets(EEL_object *to, const char *key, EEL_value *value);
-EELAPI(EEL_xno)eel_table_setss(EEL_object *to, const char *key, const char *value);
+EELAPI(EEL_xno)eel_table_sets(EEL_object *to, const char *key,
+		EEL_value *value);
+EELAPI(EEL_xno)eel_table_setss(EEL_object *to, const char *key,
+		const char *value);
 
 EELAPI(EEL_xno)eel_table_delete(EEL_object *to, EEL_value *key);
 EELAPI(EEL_xno)eel_table_deletes(EEL_object *to, const char *key);
 
-EELAPI(EEL_xno)eel_insert_lconstants(EEL_object *to, const EEL_lconstexp *data);
+EELAPI(EEL_xno)eel_insert_lconstants(EEL_object *to,
+		const EEL_lconstexp *data);
 
 
 /*---------------------------------------------------------
@@ -495,8 +501,8 @@ EELAPI(EEL_xno)eel_insert_lconstants(EEL_object *to, const EEL_lconstexp *data);
 
 /*
  * Get raw data of object 'o'. This typically returns a direct pointer to the
- * internal buffer/table/array of the object - and obviously, the layout of that
- * depends entirely on the implementation of the object.
+ * internal buffer/table/array of the object - and obviously, the layout of
+ * that depends entirely on the implementation of the object.
  *
  * WARNING
  *	Never use this unless you REALLY know what you're doing! It's really
