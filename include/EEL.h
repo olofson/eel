@@ -139,36 +139,6 @@ EELAPI(const char *)eel_v2s(EEL_value *v);
  */
 EELAPI(EEL_object *)eel_new_indexable(EEL_vm *vm, EEL_types itype, int length);
 
-#if 0
-/*
- * Read 'count' elements from vector 'v', starting at 'start',
- * into 'buf'. 'vstride' and 'bstride' is the step size used
- * when reading the vector and writing the buffer, respectively.
- * Returns 0 if the operation is successful, otherwise an EEL
- * exception code describing the problem.
- */
-EELAPI(EEL_xno)eel_iread_i(EEL_object *v, int start, int vstride,
-		int *buf, int count, int bstride);
-EELAPI(EEL_xno)eel_iread_f(EEL_object *v, int start, int vstride,
-		float *buf, int count, int bstride);
-EELAPI(EEL_xno)eel_iread_d(EEL_object *v, int start, int vstride,
-		double *buf, int count, int bstride);
-
-/*
- * Write 'count' elements from 'buf' into vector 'v', starting
- * at 'start'. 'vstride' and 'bstride' is the step size used
- * when writing the vector and reading the buffer, respectively.
- * Returns 0 if the operation is successful, otherwise an EEL
- * exception code describing the problem.
- */
-EELAPI(EEL_xno)eel_iwrite_i(EEL_object *v, int start, int vstride,
-		const int *buf, int count, int bstride);
-EELAPI(EEL_xno)eel_iwrite_f(EEL_object *v, int start, int vstride,
-		const float *buf, int count, int bstride);
-EELAPI(EEL_xno)eel_iwrite_d(EEL_object *v, int start, int vstride,
-		const double *buf, int count, int bstride);
-#endif
-
 #ifdef __cplusplus
 };
 #endif

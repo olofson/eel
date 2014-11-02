@@ -345,49 +345,6 @@ EEL_object *eel_new_indexable(EEL_vm *vm, EEL_types itype, int length)
 	return o;
 }
 
-#if 0
-EEL_xno eel_iread_i(EEL_object *v, int start, int vstride,
-		int *buf, int count, int bstride)
-{
-	return EEL_XNOTIMPLEMENTED;
-}
-
-
-EEL_xno eel_iread_f(EEL_object *v, int start, int vstride,
-		float *buf, int count, int bstride)
-{
-	return EEL_XNOTIMPLEMENTED;
-}
-
-
-EEL_xno eel_iread_d(EEL_object *v, int start, int vstride,
-		double *buf, int count, int bstride)
-{
-	return EEL_XNOTIMPLEMENTED;
-}
-
-
-EEL_xno eel_iwrite_i(EEL_object *v, int start, int vstride,
-		const int *buf, int count, int bstride)
-{
-	return EEL_XNOTIMPLEMENTED;
-}
-
-
-EEL_xno eel_iwrite_f(EEL_object *v, int start, int vstride,
-		const float *buf, int count, int bstride)
-{
-	return EEL_XNOTIMPLEMENTED;
-}
-
-
-EEL_xno eel_iwrite_d(EEL_object *v, int start, int vstride,
-		const double *buf, int count, int bstride)
-{
-	return EEL_XNOTIMPLEMENTED;
-}
-#endif
-
 
 /*----------------------------------------------------------
 	Symbol table related utilities
