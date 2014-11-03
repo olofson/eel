@@ -38,6 +38,8 @@
 #include "eel_dir.h"
 #include "eel_math.h"
 #include "eel_dsp.h"
+#include "e_sharedstate.h"
+
 
 /*----------------------------------------------------------
 	EEL Engine State
@@ -98,6 +100,9 @@ EEL_vm *eel_open(int argc, const char *argv[])
 	EEL_vm *vm;
 	EEL_state *es = (EEL_state *)calloc(1, sizeof(EEL_state));
 	if(!es)
+		return NULL;
+
+	if(eel_add_api_user() != EEL_XOK)
 		return NULL;
 
 	if(eel_sbuffer_open(es))
@@ -684,6 +689,7 @@ static void es_close(EEL_state *es)
 	eel_sbuffer_close(es);
 	DBGK2(printf("eel_close(): Freeing state struct.\n");)
 	free(es);
+	eel_remove_api_user();
 }
 
 

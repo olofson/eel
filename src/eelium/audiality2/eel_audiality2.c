@@ -37,17 +37,13 @@ typedef struct
 static A2_moduledata a2_md;
 
 
-static EEL_xno ea2_translate_error(A2_errors a2e)
+static int ea2_error_base;
+
+static inline EEL_xno ea2_translate_error(A2_errors a2e)
 {
-	switch(a2e)
-	{
-	  case A2_REFUSE:	return EEL_XREFUSE;
-	  case A2_OOMEMORY:	return EEL_XMEMORY;
-	  case A2_OOHANDLES:	return EEL_XMEMORY;
-	  /*...*/
-	  default:		return EEL_XDEVICEERROR;
-	}
+	return (EEL_xno)a2e + ea2_error_base;
 }
+
 
 /*----------------------------------------------------------
 	Audiality 2 state class
@@ -165,6 +161,22 @@ static EEL_xno ea2_LastError(EEL_vm *vm)
 static EEL_xno ea2_ErrorString(EEL_vm *vm)
 {
 	eel_s2v(vm, vm->heap + vm->resv, a2_ErrorString(
+			eel_v2l(vm->heap + vm->argv)));
+	return 0;
+}
+
+
+static EEL_xno ea2_ErrorName(EEL_vm *vm)
+{
+	eel_s2v(vm, vm->heap + vm->resv, a2_ErrorName(
+			eel_v2l(vm->heap + vm->argv)));
+	return 0;
+}
+
+
+static EEL_xno ea2_ErrorDescription(EEL_vm *vm)
+{
+	eel_s2v(vm, vm->heap + vm->resv, a2_ErrorDescription(
 			eel_v2l(vm->heap + vm->argv)));
 	return 0;
 }
@@ -578,6 +590,7 @@ static EEL_xno ea2_WaveUpload(EEL_vm *vm)
 	A2_sampleformats fmt;
 	const void *data;
 	unsigned size;
+	A2_handle h;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
@@ -611,9 +624,11 @@ static EEL_xno ea2_WaveUpload(EEL_vm *vm)
 	  default:
 		return EEL_XWRONGTYPE;
 	}
-	eel_l2v(vm->heap + vm->resv, a2_WaveUpload(ea2s->state,
-			eel_v2l(args + 1), eel_v2l(args + 3), eel_v2l(args + 4),
-			fmt, data, size));
+	h = a2_WaveUpload(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+			eel_v2l(args + 3), fmt, data, size);
+	if(h < 0)
+		return ea2_translate_error(-h);
+	eel_l2v(vm->heap + vm->resv, h);
 	return 0;
 }
 
@@ -655,9 +670,8 @@ static EEL_xno ea2_GetProperty(EEL_vm *vm)
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	ae = a2_GetProperty(ea2s->state, eel_v2l(args + 1),
-			eel_v2l(args + 2), &v);
-	if(ae)
+	if((ae = a2_GetProperty(ea2s->state, eel_v2l(args + 1),
+			eel_v2l(args + 2), &v)))
 		return ea2_translate_error(ae);
 	eel_l2v(vm->heap + vm->resv, v);
 	return 0;
@@ -667,14 +681,15 @@ static EEL_xno ea2_GetProperty(EEL_vm *vm)
 /* SetProperty(state, handle, property, value) */
 static EEL_xno ea2_SetProperty(EEL_vm *vm)
 {
+	A2_errors ae;
 	EEL_value *args = vm->heap + vm->argv;
 	EA2_state *ea2s;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	if(a2_SetProperty(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
-			eel_v2l(args + 3)))
-		return EEL_XWRONGINDEX;
+	if((ae = a2_SetProperty(ea2s->state, eel_v2l(args + 1),
+			eel_v2l(args + 2), eel_v2l(args + 3))))
+		return ea2_translate_error(ae);
 	return 0;
 }
 
@@ -815,6 +830,19 @@ static const EEL_lconstexp eel_a2_constants[] =
 };
 
 
+/*
+ * FIXME: Nice and simple, but we're duplicating all the name and description
+ * strings already compiled into libaudiality2... :-/
+ */
+#define	A2_DEFERR(x, y)	{ A2_##x, #x, y },
+static const EEL_xdef eel_a2_exceptions[] =
+{
+	A2_ALLERRORS
+	{ 0, NULL,  NULL }
+};
+#undef	A2_DEFERR
+
+
 static void addfunc(EEL_object *m, EEL_object *t,
 		int results, const char *name,
 		int reqargs, int optargs, int tupargs,
@@ -841,6 +869,10 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	if(!m)
 		return EEL_XMODULEINIT;
 
+	/* Exception code translation */
+	if((ea2_error_base = eel_x_register(vm, eel_a2_exceptions)) < 0)
+		return -ea2_error_base;
+
 	/* Register class 'a2state' */
 	c = eel_export_class(m, "a2state", -1, a2s_construct, a2s_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, a2s_getindex);
@@ -855,6 +887,9 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	/* Error handling */
 	eel_export_cfunction(m, 1, "LastError", 0, 0, 0, ea2_LastError);
 	eel_export_cfunction(m, 1, "ErrorString", 1, 0, 0, ea2_ErrorString);
+	eel_export_cfunction(m, 1, "ErrorName", 1, 0, 0, ea2_ErrorName);
+	eel_export_cfunction(m, 1, "ErrorDescription", 1, 0, 0,
+			ea2_ErrorDescription);
 
 	/* Handle management */
 	addfunc(m, t, 1, "RootVoice", 1, 0, 0, ea2_RootVoice);

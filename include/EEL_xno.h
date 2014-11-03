@@ -31,6 +31,11 @@
 extern "C" {
 #endif
 
+
+/*----------------------------------------------------------
+	EEL core exception codes (base 0)
+----------------------------------------------------------*/
+
 /*
  * NOTE:
  *	Add new codes LAST, to preserve binary compatibility.
@@ -71,7 +76,7 @@ extern "C" {
   /* Argument and operand errors */\
   EEL_DEFEX(XARGUMENTS,		"Incorrect argument list")\
   EEL_DEFEX(XFEWARGS,		"Too few arguments")\
-  EEL_DEFEX(XMANYARGS,		"Too manp arguments")\
+  EEL_DEFEX(XMANYARGS,		"Too many arguments")\
   EEL_DEFEX(XTUPLEARGS,		"Incomplete argument tuple")\
   EEL_DEFEX(XNORESULT,		"No result available")\
   EEL_DEFEX(XNEEDREAL,		"Argument must be real type")\
@@ -144,31 +149,40 @@ extern "C" {
   EEL_DEFEX(XMODULELOAD,	"Module loading failed")\
   EEL_DEFEX(XMODULEINIT,	"Module initialization failed")\
   EEL_DEFEX(XCANTSETMETHOD,	"Could not set (meta)method")\
-\
-  EEL_DEFEX(_XCOUNT,		"(Total number of exception codes)")
+  EEL_DEFEX(XNEEDNAME,		"Object needs a name")\
+  EEL_DEFEX(XBADXCODE,		"Illegal exception code")\
+  EEL_DEFEX(XWIDEXRANGE,	"Too wide range of exception codes")\
+  EEL_DEFEX(XNOFREEBLOCKS,	"No more exception code blocks available")
 
 #define	EEL_DEFEX(x, y)	EEL_##x,
 typedef enum EEL_xno
 {
 	EEL_XOK = 0,
 	EEL_ALLEXCEPTIONS
+	EEL__XCOUNT
 } EEL_xno;
 #undef	EEL_DEFEX
 
 
-/*
- * Exception name strings.
- */
+/*----------------------------------------------------------
+	Exception code registry
+----------------------------------------------------------*/
 
-#if 0
-/*TODO*/
-/*
- * User exception registry
- */
+typedef struct EEL_xdef
+{
+	int		code;		/* Client exception code */
+	const char	*name;		/* Exception name */
+	const char	*description;	/* For exception_description() */
+} EEL_xdef;
 
-/* Allocate a range of 'count' exception codes for module 'mo' */
-EELAPI(unsigned)eel_x_alloc_range(EEL_object *mo, unsigned count);
-#endif
+/*
+ * Register a range of exceptions as described by the array 'exceptions', which
+ * should be terminated with a "{ 0, NULL, NULL }" entry.
+ *
+ * Returns an offset that is to be added to client exception codes to get valid
+ * EEL exception codes, or if the operation fails, a negated EEL_xno error.
+ */
+EELAPI(int)eel_x_register(EEL_vm *vm, const EEL_xdef *exceptions);
 
 /* Get exception description for 'x' */
 EELAPI(const char *)eel_x_description(EEL_vm *vm, EEL_xno x);

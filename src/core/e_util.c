@@ -141,32 +141,6 @@ void eel_sfree(EEL_state *es, const char *s)
 }
 
 
-#define	EEL_DEFEX(x, y)	case EEL_##x: return #x;
-const char *eel_x_name(EEL_vm *vm, EEL_xno x)
-{
-	switch(x)
-	{
-	  case EEL_XOK:		return "XOK";
-	  EEL_ALLEXCEPTIONS
-	}
-	return "<unknown>";
-}
-#undef	EEL_DEFEX
-
-
-#define	EEL_DEFEX(x, y)	case EEL_##x: return y;
-const char *eel_x_description(EEL_vm *vm, EEL_xno x)
-{
-	switch(x)
-	{
-	  case EEL_XOK:		return "<no exception>";
-	  EEL_ALLEXCEPTIONS
-	}
-	return "<unknown - no description>";
-}
-#undef	EEL_DEFEX
-
-
 #define	MMN(n)	case EEL_MM_##n:	return #n;
 const char *eel_mm_name(EEL_mmindex mm)
 {

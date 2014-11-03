@@ -67,6 +67,8 @@ set(sources
 	e_error.c
 	e_module.c
 	e_operate.c
+	e_exceptions.c
+	e_sharedstate.c
 )
 
 # Compiler files
