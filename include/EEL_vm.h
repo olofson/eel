@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_vm.h - EEL Virtual Machine (API)
 ---------------------------------------------------------------------------
- * Copyright 2005, 2006, 2009, 2011 David Olofson
+ * Copyright 2005, 2006, 2009, 2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -76,8 +76,6 @@ int	resv;		/* Result */
 int	argv;		/* First argument */
 int	argc;		/* Argument count */
 /*FIXME:*/
-
-/*FIXME:*/EEL_xno	lasterror;	/* For errors via load() and compile(). */
 };
 
 /* Get currently executing function object. */
@@ -91,9 +89,9 @@ EELAPI(EEL_object *)eel_calling_function(EEL_vm *vm);
  * arguments to functions.
  *
  * IMPORTANT:
- *	As of 0.3.0, objects pushed onto the argument stack have their refcounts
- *	incremented normally, and the refcounts are then decremented as the
- *	stack is cleared.
+ *	As of 0.3.0, objects pushed onto the argument stack have their
+ *	refcounts incremented normally, and the refcounts are then decremented
+ *	as the stack is cleared.
  *
  * Allowed control characters for 'fmt':
  *
@@ -118,7 +116,8 @@ EELAPI(EEL_object *)eel_calling_function(EEL_vm *vm);
  *	v    <any>	EEL_value *
  *		Push an integer, real, boolean, string, object or EEL value,
  *		respectively. A string value will be copied into a native EEL
- *		string as needed to function properly within the VM environment.
+ *		string as needed to function properly within the VM 
+ *		environment.
  *
  * Returns 0 upon success, or a VM exception code if there was an error.
  */
@@ -146,14 +145,15 @@ EELAPI(EEL_xno)eel_calln(EEL_vm *vm, EEL_object *m, const char *fn);
  *
  * eel_callf() takes the function object to call.
  *
- * eel_callnf() takes a module object and the name of the function in the module
- * to call.
+ * eel_callnf() takes a module object and the name of the function in the
+ * module to call.
  *
  * NOTE:
  *	These calls reset the argument passing mechanism before parsing 'fmt',
  *	as if the first control character was '*' - which consequently, is not
- *	needed with this call. This means that you cannot use them together with
- *	eel_argf(), since they'll throw away whatever values you have pushed.
+ *	needed with this call. This means that you cannot use them together
+ *	with eel_argf(), since they'll throw away whatever values you have
+ *	pushed.
  *
  * Returns 0 upon success, or a VM exception code if there was an error.
  */
