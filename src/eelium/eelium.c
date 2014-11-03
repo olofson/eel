@@ -120,8 +120,11 @@ EEL_xno eelium_init_bindings(EEL_vm *vm)
 		x = bindings[i].fn(vm);
 		if(x)
 		{
-			fprintf(stderr, "Could not initialize module \"%s\"!\n",
-					bindings[i].name);
+			fprintf(stderr, "Could not initialize module \"%s\"!\n"
+					"  (%s: %s)\n",
+					bindings[i].name,
+					eel_x_name(vm, x),
+					eel_x_description(vm, x));
 			return x;
 		}
 	}

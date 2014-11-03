@@ -242,7 +242,7 @@ int main(int argc, const char *argv[])
 #ifdef EEL_HAVE_EELIUM
 	if((x = eelium_init_bindings(vm)))
 	{
-		eel_perror(vm, 1);
+		eel_perror(vm, 0);
 		fprintf(stderr, "Could not initialize Eelium!\n");
 		return 3;
 	}
