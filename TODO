@@ -32,10 +32,6 @@
 	  compiler is NOT to be used in realtime context!
 	* Are we using eel_malloc() etc where intended?
 
-* Broken tests:
-	zsgl2.eel
-	zsgl.eel
-
 * There are some functions in the builtin module that probably belong in
   system.
 
@@ -54,40 +50,6 @@
 * EEL probably has the same bug that I reinvented in Audiality 2: If the
   last token is invalid (after Unlex() usually), the start position is
   bogus, and should not be used!
-
-* OS threads!
-	* To avoid complexity and runtime performance impact, handle
-	  threads like isolated processes. One VM state per thread!
-	* Inter-thread communication:
-		* Streams
-			* Raw FIFO buffers of one sort or another.
-			* Since these will all be single-reader/single-
-			  writer, we could implement them using lock-free
-			  FIFOs, but we should probably provide a few
-			  options here, for different use cases.
-				* Lock-free FIFOs with busy-waiting
-				  polling are really efficient when buffers
-				  are never expected to be full, and both
-				  parties block on other things.
-				* For worker threads and the like, we're
-				  typically better off with something that
-				  we can block on properly.
-				* Maybe we can come up with a hybrid that
-				  uses OS locks of some sort for blocking,
-				  but with lock-free checks before touching
-				  those?
-		Message passing
-			* Objects are cloned when sent via - containers
-			  recursively so.
-			* Special case allowing objects to be transferred?
-			  Simple in theory (refcount == 1), but:
-				* In actual code, you'd probably have
-				  extra refs due to argument handling etc.
-				* We need to recursively check and handle
-				  any children.
-		* Shared objects
-			* Hide the actual objects from the VMs!
-			* Access through thread safe proxy objects.
 
 * Accessing parent function arguments (upvalues) from within
   'try' handlers seems broken in strange ways, at least when the
@@ -114,9 +76,6 @@ Also Kobo II - uninitialized hashes in tables...?
 ==28430==    by 0x4E502DF: eel_calln (e_vm.c:2905)
 ==28430==    by 0x40536C: main (eelbox.c:306)
 ==28430== 
-
-
-* Implement vacall()!
 
 * PUSHA instruction for pushing items of an indexable object as
   arguments + language syntax for using that in argument and
