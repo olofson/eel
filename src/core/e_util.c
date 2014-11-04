@@ -41,37 +41,19 @@
 	"Alloc and forget" string handling
 ----------------------------------------------------------*/
 
-/* Auto-recycled result string buffers */
-struct EEL_sbuffer
-{
-	char		buffer[EEL_SBUFSIZE];
-	EEL_sbuffer	*prev, *next;
-#ifdef DEBUG
-	int		inuse;
-#endif
-};
-
-/*
- * Pool of sbuffers.
- * NOTE:
- *	There has to be exactly EEL_SBUFFERS sbuffers, and they all need to be
- *	allocated from this single memory block, for the "is this an sbuffer?"
- *	test in eel_sfree()!
- */
-static EEL_sbuffer *sbuffers = NULL;
-
-
 EEL_DLLIST(asb_, EEL_state, firstasb, lastasb, EEL_sbuffer, prev, next)
 EEL_DLLIST(fsb_, EEL_state, firstfsb, lastfsb, EEL_sbuffer, prev, next)
+
 
 int eel_sbuffer_open(EEL_state *es)
 {
 	int i;
-	sbuffers = (EEL_sbuffer *)calloc(EEL_SBUFFERS, sizeof(EEL_sbuffer));
-	if(!sbuffers)
+	es->sbuffers = (EEL_sbuffer *)calloc(EEL_SBUFFERS,
+			sizeof(EEL_sbuffer));
+	if(!es->sbuffers)
 		return -1;
 	for(i = 0; i < EEL_SBUFFERS; ++i)
-		fsb_link(es, sbuffers + i);
+		fsb_link(es, es->sbuffers + i);
 	return 0;
 }
 
@@ -79,8 +61,8 @@ int eel_sbuffer_open(EEL_state *es)
 void eel_sbuffer_close(EEL_state *es)
 {
 	es->firstasb = es->firstfsb = NULL;
-	free(sbuffers);
-	sbuffers = NULL;
+	free(es->sbuffers);
+	es->sbuffers = NULL;
 }
 
 
@@ -109,19 +91,20 @@ char *eel_salloc(EEL_state *es)
 
 void eel_sfree(EEL_state *es, const char *s)
 {
-	if(s < (const char *)sbuffers)
+	if(s < (const char *)(es->sbuffers))
 	{
 		SDBG(fprintf(stderr, "WARNING: Someone tried to eel_sfree() "
 				"something located before the pool!\n");)
 		return;
 	}
-	if(s >= (const char *)sbuffers + sizeof(EEL_sbuffer) * EEL_SBUFFERS)
+	if(s >= (const char *)(es->sbuffers) +
+			sizeof(EEL_sbuffer) * EEL_SBUFFERS)
 	{
 		SDBG(fprintf(stderr, "WARNING: Someone tried to eel_sfree() "
 				"something located after the pool!\n");)
 		return;
 	}
-	if((s - (const char *)sbuffers) % sizeof(EEL_sbuffer))
+	if((s - (const char *)(es->sbuffers)) % sizeof(EEL_sbuffer))
 	{
 		fprintf(stderr, "INTERNAL ERROR: Someone tried to eel_sfree() "
 				"part of an sbuffer!\n");

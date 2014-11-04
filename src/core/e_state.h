@@ -61,11 +61,25 @@
 
 
 /*----------------------------------------------------------
-	EEL Engine State
+	"Alloc and forget" string handling
 ----------------------------------------------------------*/
 
 #define	EEL_SBUFFERS	16
 #define	EEL_SBUFSIZE	256
+
+struct EEL_sbuffer
+{
+	char		buffer[EEL_SBUFSIZE];
+	EEL_sbuffer	*prev, *next;
+#ifdef DEBUG
+	int		inuse;
+#endif
+};
+
+
+/*----------------------------------------------------------
+	EEL Engine State
+----------------------------------------------------------*/
 
 struct EEL_state
 {
@@ -107,9 +121,17 @@ struct EEL_state
 	int		include_depth;	/* Circular include detection */
 	EEL_object	*modnames;	/* Circular import detection */
 
-	/* Misc */
+	/*
+	 * NOTE:
+	 *	There has to be exactly EEL_SBUFFERS sbuffers, and they all
+	 *	need to be allocated from this single memory block, for the
+	 *	"is this an sbuffer?" test in eel_sfree()!
+	 */
+	EEL_sbuffer	*sbuffers;		/* Pool memory block */
 	EEL_sbuffer	*firstfsb, *lastfsb;	/* Free sbuffers */
 	EEL_sbuffer	*firstasb, *lastasb;	/* Allocated sbuffers */
+
+	/* Misc */
 	int		unique;		/* For eel_unique() */
 
 	/* Modules */
