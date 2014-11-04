@@ -99,7 +99,6 @@ export function main<args>
 	print("\n");
 
 	print("\nBitwise operations:\n");
-	a = 0x12345678 & true;
 	a = 0x12345678 & 0x00ff00ff;
 	a = a << 8;
 	b = a & false;

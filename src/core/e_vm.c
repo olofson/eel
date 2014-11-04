@@ -2081,154 +2081,25 @@ EEL_xno eel_run(EEL_vm *vm)
 		eel_v_receive(&R[A]);
 
 	  EEL_INEG
-		EEL_value *right = &R[B];
-		switch(right->type)
-		{
-		  case EEL_TREAL:
-			R[A].type = EEL_TREAL;
-			R[A].real.v = -right->real.v;
-			NEXT;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-			R[A].type = EEL_TINTEGER;
-			R[A].integer.v = -right->integer.v;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			THROW(EEL_XNOTIMPLEMENTED);
-		  case EEL_TNIL:
-		  case EEL_TTYPEID:
-			THROW(EEL_XWRONGTYPE);
-		}
-		THROW(EEL_XWRONGTYPE);
+		XCHECK(eel_op_neg(&R[B], &R[A]));
 
 	  EEL_IBNOT
-		EEL_value *right = &R[B];
-		if(EEL_TINTEGER != right->type)
-			THROW(EEL_XWRONGTYPE);
-		R[A].type = EEL_TINTEGER;
-		R[A].integer.v = ~right->integer.v;
+		XCHECK(eel_op_bnot(&R[B], &R[A]));
 
 	  EEL_INOT
-		EEL_value *right = &R[B];
-		switch(right->type)
-		{
-		  case EEL_TNIL:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = 1;
-			NEXT;
-		  case EEL_TREAL:
-			R[A].type = EEL_TREAL;
-			R[A].real.v = 0 == right->real.v;
-			NEXT;
-		  case EEL_TINTEGER:
-			R[A].type = EEL_TINTEGER;
-			R[A].integer.v = !right->integer.v;
-			NEXT;
-		  case EEL_TBOOLEAN:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = !right->integer.v;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-		  case EEL_TTYPEID:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = 0;
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_not(&R[B], &R[A]));
 
 	  EEL_ICASTR
-		EEL_value *right = &R[B];
-		switch(right->type)
-		{
-		  case EEL_TNIL:
-			R[A].type = EEL_TREAL;
-			R[A].real.v = 0.0;
-			NEXT;
-		  case EEL_TREAL:
-			R[A].type = EEL_TREAL;
-			R[A].real.v = right->real.v;
-			NEXT;
-		  case EEL_TINTEGER:
-		  case EEL_TTYPEID:
-			R[A].type = EEL_TREAL;
-			R[A].real.v = right->integer.v;
-			NEXT;
-		  case EEL_TBOOLEAN:
-			R[A].type = EEL_TREAL;
-			R[A].real.v = right->integer.v ? 1.0 : 0.0;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			XCHECK(eel_cast(vm, right, &R[A], EEL_TREAL));
-			eel_v_receive(&R[A]);
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_castr(&R[B], &R[A]));
+		eel_v_receive(&R[A]);
 
 	  EEL_ICASTI
-		EEL_value *right = &R[B];
-		switch(right->type)
-		{
-		  case EEL_TNIL:
-			R[A].type = EEL_TINTEGER;
-			R[A].integer.v = 0;
-			NEXT;
-		  case EEL_TREAL:
-			R[A].type = EEL_TINTEGER;
-			R[A].integer.v = floor(right->real.v);
-			NEXT;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
-			R[A].type = EEL_TINTEGER;
-			R[A].integer.v = right->integer.v;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			XCHECK(eel_cast(vm, right, &R[A], EEL_TINTEGER));
-			eel_v_receive(&R[A]);
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_casti(&R[B], &R[A]));
+		eel_v_receive(&R[A]);
 
 	  EEL_ICASTB
-		EEL_value *right = &R[B];
-		switch(right->type)
-		{
-		  case EEL_TNIL:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = 0;
-			NEXT;
-		  case EEL_TREAL:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = 0.0 != right->real.v;
-			NEXT;
-		  case EEL_TINTEGER:
-		  case EEL_TTYPEID:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = 0 != right->integer.v;
-			NEXT;
-		  case EEL_TBOOLEAN:
-			R[A].type = EEL_TBOOLEAN;
-			R[A].integer.v = right->integer.v;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			XCHECK(eel_cast(vm, right, &R[A], EEL_TBOOLEAN));
-			eel_v_receive(&R[A]);
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_castb(&R[B], &R[A]));
+		eel_v_receive(&R[A]);
 
 	  EEL_ICAST
 		EEL_value *right = &R[B];
@@ -2252,48 +2123,10 @@ EEL_xno eel_run(EEL_vm *vm)
 #endif
 
 	  EEL_ITYPEOF
-		switch(R[B].type)
-		{
-		  case EEL_TNIL:
-			R[A].type = EEL_TNIL;
-			NEXT;
-		  case EEL_TREAL:
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
-			R[A].integer.v = R[B].type;
-			R[A].type = EEL_TTYPEID;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			R[A].integer.v = R[B].objref.v->type;
-			R[A].type = EEL_TTYPEID;
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_typeof(&R[B], &R[A]));
 
 	  EEL_ISIZEOF
-		switch(R[B].type)
-		{
-		  case EEL_TNIL:
-		  case EEL_TREAL:
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
-			R[A].type = EEL_TINTEGER;
-			R[A].integer.v = 1;
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			XCHECK(eel_o__metamethod(R[B].objref.v,
-					EEL_MM_LENGTH, NULL, &R[A]));
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_sizeof(&R[B], &R[A]));
 
 	  EEL_IWEAKREF
 		if(R[B].type == EEL_TNIL)
@@ -2368,24 +2201,8 @@ EEL_xno eel_run(EEL_vm *vm)
 		stack_clear(vm);
 
 	  EEL_ICLONE
-		switch(R[B].type)
-		{
-		  case EEL_TNIL:
-		  case EEL_TREAL:
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
-			eel_v_qcopy(&R[A], &R[B]);
-			NEXT;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			XCHECK(eel_cast(vm, &R[B], &R[A], EEL_TYPE(&R[B])));
-			eel_v_receive(&R[A]);
-			NEXT;
-		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
+		XCHECK(eel_op_clone(&R[B], &R[A]));
+		eel_v_receive(&R[A]);
 
 	  /* Exception handling */
 	  EEL_ITRY

@@ -34,7 +34,8 @@
 #include "e_config.h"
 
 #define	EEL_NTYPES		(EEL_TLASTTYPE + 1)
-#define	EEL_MK2TYPES(l, r)	((EEL_NTYPES * EEL_NTYPES) + (l) * EEL_NTYPES + (r))
+#define	EEL_MK2TYPES(l, r)	((EEL_NTYPES * EEL_NTYPES) + \
+						(l) * EEL_NTYPES + (r))
 
 
 /*----------------------------------------------------------
@@ -53,7 +54,7 @@ typedef enum
 	EEL_OP_SUB,
 	EEL_OP_ADD,
 
-	/* Vector arithmetics (corresponds to the operator vector metamethods) */
+	/* Vector arithmetics (corresponds to the vector metamethods) */
 	EEL_OP_VPOWER,
 	EEL_OP_VMOD,
 	EEL_OP_VDIV,
@@ -153,9 +154,9 @@ static inline EEL_xno eel_o__metamethod(EEL_object *object,
 
 /*
  * Get an integer value in order to index something.
+ *
  * NOTE:
- *	This is for low level VM stuff, not generic
- *	object[value] indexing.
+ *	This is for low level VM stuff, not generic object[value] indexing.
  */
 static inline int eel_get_indexval(EEL_vm *vm, EEL_value *v)
 {
@@ -263,7 +264,8 @@ static inline int eel_test_nz(EEL_vm *vm, EEL_value *opr)
 	return 0;	/* Warning eliminator */
 }
 
-static inline EEL_xno eel_op_and(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_and(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -312,7 +314,8 @@ static inline EEL_xno eel_op_and(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_or(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_or(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -373,7 +376,8 @@ static inline EEL_xno eel_op_or(EEL_value *left, EEL_value *right, EEL_value *re
 	}
 }
 
-static inline EEL_xno eel_op_xor(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_xor(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -434,7 +438,8 @@ static inline EEL_xno eel_op_xor(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_eq(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_eq(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -486,7 +491,8 @@ static inline EEL_xno eel_op_eq(EEL_value *left, EEL_value *right, EEL_value *re
 	}
 }
 
-static inline EEL_xno eel_op_ne(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_ne(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	EEL_xno res = eel_op_eq(left, right, result);
 	if(res)
@@ -495,7 +501,8 @@ static inline EEL_xno eel_op_ne(EEL_value *left, EEL_value *right, EEL_value *re
 	return 0;
 }
 
-static inline EEL_xno eel_op_gt(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_gt(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -547,7 +554,8 @@ static inline EEL_xno eel_op_gt(EEL_value *left, EEL_value *right, EEL_value *re
 	}
 }
 
-static inline EEL_xno eel_op_ge(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_ge(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -599,7 +607,8 @@ static inline EEL_xno eel_op_ge(EEL_value *left, EEL_value *right, EEL_value *re
 	}
 }
 
-static inline EEL_xno eel_op_lt(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_lt(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	EEL_xno res = eel_op_ge(left, right, result);
 	if(res)
@@ -608,7 +617,8 @@ static inline EEL_xno eel_op_lt(EEL_value *left, EEL_value *right, EEL_value *re
 	return 0;
 }
 
-static inline EEL_xno eel_op_le(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_le(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	EEL_xno res = eel_op_gt(left, right, result);
 	if(res)
@@ -622,7 +632,8 @@ static inline EEL_xno eel_op_le(EEL_value *left, EEL_value *right, EEL_value *re
 	Arithmetic Operations
 ----------------------------------------------------------*/
 
-static inline EEL_xno eel_op_power(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_power(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -666,14 +677,16 @@ static inline EEL_xno eel_op_power(EEL_value *left, EEL_value *right, EEL_value 
 	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TBOOLEAN):
 	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TTYPEID):
 		result->type = EEL_TINTEGER;
-		result->integer.v = floor(pow(left->integer.v, right->integer.v));
+		result->integer.v = floor(pow(left->integer.v,
+				right->integer.v));
 		return 0;
 	  default:
 		return eel__op_fallback(left, EEL_OP_POWER, right, result);
 	}
 }
 
-static inline EEL_xno eel_op_mod(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_mod(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -742,7 +755,8 @@ static inline EEL_xno eel_op_mod(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_div(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_div(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -820,7 +834,8 @@ static inline EEL_xno eel_op_div(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_mul(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_mul(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -868,7 +883,8 @@ static inline EEL_xno eel_op_mul(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_sub(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_sub(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -928,7 +944,8 @@ static inline EEL_xno eel_op_sub(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_add(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_add(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -993,7 +1010,8 @@ static inline EEL_xno eel_op_add(EEL_value *left, EEL_value *right, EEL_value *r
 	Bit Operations
 ----------------------------------------------------------*/
 
-static inline EEL_xno eel_op_band(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_band(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1018,7 +1036,8 @@ static inline EEL_xno eel_op_band(EEL_value *left, EEL_value *right, EEL_value *
 	}
 }
 
-static inline EEL_xno eel_op_bor(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_bor(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1043,7 +1062,8 @@ static inline EEL_xno eel_op_bor(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_bxor(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_bxor(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1068,7 +1088,8 @@ static inline EEL_xno eel_op_bxor(EEL_value *left, EEL_value *right, EEL_value *
 	}
 }
 
-static inline EEL_xno eel_op_shl(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_shl(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1096,7 +1117,8 @@ static inline EEL_xno eel_op_shl(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_shr(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_shr(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1124,7 +1146,8 @@ static inline EEL_xno eel_op_shr(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_rol(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_rol(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1143,7 +1166,8 @@ static inline EEL_xno eel_op_rol(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_ror(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_ror(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1162,7 +1186,8 @@ static inline EEL_xno eel_op_ror(EEL_value *left, EEL_value *right, EEL_value *r
 	}
 }
 
-static inline EEL_xno eel_op_brev(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_brev(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	switch(EEL_MK2TYPES(left->type, right->type))
 	{
@@ -1196,7 +1221,8 @@ static inline EEL_xno eel_op_brev(EEL_value *left, EEL_value *right, EEL_value *
 	Selector Operations
 ----------------------------------------------------------*/
 
-static inline EEL_xno eel_op_max(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_max(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	EEL_value r;
 	EEL_xno res = eel_op_ge(left, right, &r);
@@ -1207,92 +1233,10 @@ static inline EEL_xno eel_op_max(EEL_value *left, EEL_value *right, EEL_value *r
 	else
 		eel_v_copy(result, right);
 	return 0;
-#if 0
-	switch(EEL_MK2TYPES(left->type, right->type))
-	{
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TNIL, EEL_TNIL):
-		result->type = EEL_TNIL;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TNIL, EEL_TREAL):
-		result->type = EEL_TREAL;
-		result->real.v = right->real.v;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TNIL, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TNIL, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TNIL, EEL_TTYPEID):
-		result->type = right->type;
-		result->integer.v = right->integer.v;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TREAL, EEL_TNIL):
-		result->type = EEL_TREAL;
-		result->real.v = left->real.v;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TINTEGER, EEL_TNIL):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TBOOLEAN, EEL_TNIL):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TTYPEID, EEL_TNIL):
-		result->type = left->type;
-		result->integer.v = left->integer.v;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TREAL, EEL_TREAL):
-		result->type = EEL_TREAL;
-		result->real.v = left->real.v > right->real.v ?
-				left->real.v : right->real.v;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TREAL, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TREAL, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TREAL, EEL_TTYPEID):
-		if(left->real.v >= (EEL_real)right->integer.v)
-		{
-			result->type = EEL_TREAL;
-			result->real.v = left->real.v;
-		}
-		else
-		{
-			result->type = right->type;
-			result->integer.v = right->integer.v;
-		}
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TINTEGER, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TBOOLEAN, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TTYPEID, EEL_TREAL):
-		if((EEL_real)left->integer.v >= right->real.v)
-		{
-			result->type = left->type;
-			result->integer.v = floor(left->integer.v);
-		}
-		else
-		{
-			result->type = EEL_TREAL;
-			result->real.v = right->real.v;
-		}
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TINTEGER, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TINTEGER, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TINTEGER, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TBOOLEAN, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TBOOLEAN, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TBOOLEAN, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TTYPEID, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TTYPEID, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MAX, EEL_TTYPEID, EEL_TTYPEID):
-		if(left->integer.v >= right->integer.v)
-		{
-			result->type = left->type;
-			result->integer.v = left->integer.v;
-		}
-		else
-		{
-			result->type = right->type;
-			result->integer.v = right->integer.v;
-		}
-		return 0;
-	  default:
-		return eel__op_fallback(left, EEL_OP_MAX, right, result);
-	}
-#endif
 }
 
-static inline EEL_xno eel_op_min(EEL_value *left, EEL_value *right, EEL_value *result)
+static inline EEL_xno eel_op_min(EEL_value *left, EEL_value *right,
+		EEL_value *result)
 {
 	EEL_value r;
 	EEL_xno res = eel_op_ge(left, right, &r);
@@ -1303,87 +1247,257 @@ static inline EEL_xno eel_op_min(EEL_value *left, EEL_value *right, EEL_value *r
 	else
 		eel_v_copy(result, left);
 	return 0;
-#if 0
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TNIL, EEL_TNIL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TNIL, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TNIL, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TNIL, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TNIL, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TREAL, EEL_TNIL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TINTEGER, EEL_TNIL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TBOOLEAN, EEL_TNIL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TTYPEID, EEL_TNIL):
-		result->type = EEL_TNIL;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TREAL, EEL_TREAL):
-		result->type = EEL_TREAL;
-		result->real.v = left->real.v < right->real.v ?
-				left->real.v : right->real.v;
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TREAL, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TREAL, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TREAL, EEL_TTYPEID):
-		if(left->real.v <= (EEL_real)right->integer.v)
-		{
-			result->type = EEL_TREAL;
-			result->real.v = left->real.v;
-		}
-		else
-		{
-			result->type = right->type;
-			result->integer.v = right->integer.v;
-		}
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TINTEGER, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TBOOLEAN, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TTYPEID, EEL_TREAL):
-		if((EEL_real)left->integer.v <= right->real.v)
-		{
-			result->type = left->type;
-			result->integer.v = floor(left->integer.v);
-		}
-		else
-		{
-			result->type = EEL_TREAL;
-			result->real.v = right->real.v;
-		}
-		return 0;
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TINTEGER, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TINTEGER, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TINTEGER, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TBOOLEAN, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TBOOLEAN, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TBOOLEAN, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TTYPEID, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TTYPEID, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_OP_MIN, EEL_TTYPEID, EEL_TTYPEID):
-		if(left->integer.v <= right->integer.v)
-		{
-			result->type = left->type;
-			result->integer.v = left->integer.v;
-		}
-		else
-		{
-			result->type = right->type;
-			result->integer.v = right->integer.v;
-		}
-		return 0;
-	}
-#endif
 }
 
 
 /*----------------------------------------------------------
-	Generic catch-(almost)-all operator implementation
+	Unary Operations
 ----------------------------------------------------------*/
-/*
+
+static inline EEL_xno eel_op_neg(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TREAL:
+		result->type = EEL_TREAL;
+		result->real.v = -right->real.v;
+		return 0;
+	  case EEL_TINTEGER:
+	  case EEL_TBOOLEAN:
+		result->type = EEL_TINTEGER;
+		result->integer.v = -right->integer.v;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		return EEL_XNOTIMPLEMENTED;
+	  case EEL_TNIL:
+	  case EEL_TTYPEID:
+		return EEL_XWRONGTYPE;
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_castr(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+		result->type = EEL_TREAL;
+		result->real.v = 0.0;
+		return 0;
+	  case EEL_TREAL:
+		result->type = EEL_TREAL;
+		result->real.v = right->real.v;
+		return 0;
+	  case EEL_TINTEGER:
+	  case EEL_TTYPEID:
+		result->type = EEL_TREAL;
+		result->real.v = right->integer.v;
+		return 0;
+	  case EEL_TBOOLEAN:
+		result->type = EEL_TREAL;
+		result->real.v = right->integer.v ? 1.0 : 0.0;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		return eel_cast(right->objref.v->vm, right, result, EEL_TREAL);
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_casti(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+		result->type = EEL_TINTEGER;
+		result->integer.v = 0;
+		return 0;
+	  case EEL_TREAL:
+		result->type = EEL_TINTEGER;
+		result->integer.v = floor(right->real.v);
+		return 0;
+	  case EEL_TINTEGER:
+	  case EEL_TBOOLEAN:
+	  case EEL_TTYPEID:
+		result->type = EEL_TINTEGER;
+		result->integer.v = right->integer.v;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		return eel_cast(right->objref.v->vm,
+				right, result, EEL_TINTEGER);
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_castb(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = 0;
+		return 0;
+	  case EEL_TREAL:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = 0.0 != right->real.v;
+		return 0;
+	  case EEL_TINTEGER:
+	  case EEL_TTYPEID:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = 0 != right->integer.v;
+		return 0;
+	  case EEL_TBOOLEAN:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = right->integer.v;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		return eel_cast(right->objref.v->vm,
+				right, result, EEL_TBOOLEAN);
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_typeof(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+		result->type = EEL_TNIL;
+		return 0;
+	  case EEL_TREAL:
+	  case EEL_TINTEGER:
+	  case EEL_TBOOLEAN:
+	  case EEL_TTYPEID:
+		result->integer.v = right->type;
+		result->type = EEL_TTYPEID;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		result->integer.v = right->objref.v->type;
+		result->type = EEL_TTYPEID;
+		return 0;
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_sizeof(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+	  case EEL_TREAL:
+	  case EEL_TINTEGER:
+	  case EEL_TBOOLEAN:
+	  case EEL_TTYPEID:
+		result->type = EEL_TINTEGER;
+		result->integer.v = 1;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		return eel_o__metamethod(right->objref.v,
+				EEL_MM_LENGTH, NULL, result);
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_clone(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+	  case EEL_TREAL:
+	  case EEL_TINTEGER:
+	  case EEL_TBOOLEAN:
+	  case EEL_TTYPEID:
+		eel_v_qcopy(result, right);
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+		return eel_cast(right->objref.v->vm,
+				right, result, EEL_TYPE(right));
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_not(EEL_value *right, EEL_value *result)
+{
+	switch(right->type)
+	{
+	  case EEL_TNIL:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = 1;
+		return 0;
+	  case EEL_TREAL:
+		result->type = EEL_TREAL;
+		result->real.v = 0 == right->real.v;
+		return 0;
+	  case EEL_TINTEGER:
+		result->type = EEL_TINTEGER;
+		result->integer.v = !right->integer.v;
+		return 0;
+	  case EEL_TBOOLEAN:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = !right->integer.v;
+		return 0;
+	  case EEL_TOBJREF:
+	  case EEL_TWEAKREF:
+	  case EEL_TTYPEID:
+		result->type = EEL_TBOOLEAN;
+		result->integer.v = 0;
+		return 0;
+	}
+	return EEL_XWRONGTYPE;
+}
+
+static inline EEL_xno eel_op_bnot(EEL_value *right, EEL_value *result)
+{
+	if(right->type != EEL_TINTEGER)
+		return EEL_XWRONGTYPE;
+	result->type = EEL_TINTEGER;
+	result->integer.v = ~right->integer.v;
+	return 0;
+}
+
+
+/*----------------------------------------------------------
+	Catch-all for unary operators
+------------------------------------------------------------
+ * NOTE:
+ *	For constant the folding in ec_manip.c. The VM uses the specific
+ *	operator calls directly.
+ */
+
+static inline EEL_xno eel_unop(int unop, EEL_value *right, EEL_value *result)
+{
+	switch(unop)
+	{
+	  case EEL_OP_NEG:	return eel_op_neg(right, result);
+	  case EEL_OP_CASTR:	return eel_op_castr(right, result);
+	  case EEL_OP_CASTI:	return eel_op_casti(right, result);
+	  case EEL_OP_CASTB:	return eel_op_castb(right, result);
+	  case EEL_OP_TYPEOF:	return eel_op_typeof(right, result);
+	  case EEL_OP_SIZEOF:	return eel_op_sizeof(right, result);
+	  case EEL_OP_CLONE:	return eel_op_clone(right, result);
+	  case EEL_OP_NOT:	return eel_op_not(right, result);
+	  case EEL_OP_BNOT:	return eel_op_bnot(right, result);
+	  default:		return EEL_XNOTIMPLEMENTED;
+	}
+}
+
+
+/*----------------------------------------------------------
+	Catch-(almost)-all binary operator implementation
+------------------------------------------------------------
  * NOTE:
  *	This is really for the VM implementation, and it generally does not
  *	implement operations that have dedicated VM instructions!
  */
 
-static inline EEL_xno eel__operate(EEL_value *left, int binop, EEL_value *right,
-		EEL_value *result)
+static inline EEL_xno eel__operate(EEL_value *left, int binop,
+		EEL_value *right, EEL_value *result)
 {
 	switch(binop)
 	{
@@ -1421,8 +1535,8 @@ static inline EEL_xno eel__operate(EEL_value *left, int binop, EEL_value *right,
 	}
 }
 
-static inline EEL_xno eel__ipoperate(EEL_value *left, int binop, EEL_value *right,
-		EEL_value *result)
+static inline EEL_xno eel__ipoperate(EEL_value *left, int binop,
+		EEL_value *right, EEL_value *result)
 {
 	if(EEL_IS_OBJREF(left->type))
 		return eel_object_op(left, binop, right, result, 1);
@@ -1451,8 +1565,8 @@ static inline EEL_xno eel_operate(EEL_value *left, int binop, EEL_value *right,
 		eel_v_move(result, &rv);
 		return 0;
 }
-static inline EEL_xno eel_ipoperate(EEL_value *left, int binop, EEL_value *right,
-		EEL_value *result)
+static inline EEL_xno eel_ipoperate(EEL_value *left, int binop,
+		EEL_value *right, EEL_value *result)
 {
 		EEL_xno x;
 		EEL_value rv;

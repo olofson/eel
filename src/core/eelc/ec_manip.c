@@ -159,7 +159,33 @@ void eel_m_object(EEL_mlist *ml, EEL_object *o)
 void eel_m_op(EEL_mlist *ml, EEL_manipulator *left, EEL_operators op,
 		EEL_manipulator *right)
 {
-	EEL_manipulator *m = m_open(ml, EEL_MOP);
+	EEL_manipulator *m;
+#ifdef EEL_CONSTANT_FOLDING
+	/* Check if this is a constant subexpression that we can evaluate! */
+	if(eel_m_is_constant(right) && (!left || eel_m_is_constant(left)))
+	{
+		EEL_xno res;
+		EEL_value leftv, rightv, resv;
+		eel_m_get_constant(right, &rightv);
+		if(left)
+		{
+			eel_m_get_constant(left, &leftv);
+			res = eel_operate(&leftv, op, &rightv, &resv);
+			eel_v_disown_nz(&leftv);
+		}
+		else
+			res = eel_unop(op, &rightv, &resv);
+		eel_v_disown_nz(&rightv);
+		if(res == EEL_XOK)
+		{
+			eel_m_constant(ml, &resv);
+			eel_v_disown_nz(&resv);
+			return;
+		}
+	}
+#endif
+	/* Nope, we'll have to issue code if someone needs this. */
+	m = m_open(ml, EEL_MOP);
 	m->v.op.left = left;
 	m->v.op.right = right;
 	if(left)
@@ -171,7 +197,35 @@ void eel_m_op(EEL_mlist *ml, EEL_manipulator *left, EEL_operators op,
 
 void eel_m_cast(EEL_mlist *ml, EEL_manipulator *object, EEL_types type)
 {
-	EEL_manipulator *m = m_open(ml, EEL_MCAST);
+	EEL_manipulator *m;
+#ifdef EEL_CONSTANT_FOLDING
+	if(eel_m_is_constant(object))
+	{
+		int op;
+		switch(type)
+		{
+		  case EEL_TREAL:	op = EEL_OP_CASTR;	break;
+		  case EEL_TINTEGER:	op = EEL_OP_CASTI;	break;
+		  case EEL_TBOOLEAN:	op = EEL_OP_CASTB;	break;
+		  default:		op = 0;			break;
+		}
+		if(op)
+		{
+			EEL_xno res;
+			EEL_value objv, resv;
+			eel_m_get_constant(object, &objv);
+			res = eel_unop(op, &objv, &resv);
+			eel_v_disown_nz(&objv);
+			if(res == EEL_XOK)
+			{
+				eel_m_constant(ml, &resv);
+				eel_v_disown_nz(&resv);
+				return;
+			}
+		}
+	}
+#endif
+	m = m_open(ml, EEL_MCAST);
 	m->v.cast.object = object;
 	m->v.cast.type = type;
 	++object->refcount;
@@ -933,7 +987,6 @@ int eel_m_prepare_constant(EEL_manipulator *m)
 	  case EEL_TREAL:
 	  case EEL_TOBJREF:
 	  case EEL_TWEAKREF:
-		/* Add/find constant and try again! */
 		return (*ci = eel_coder_add_constant(cdr, cv));
 	}
 	eel_ierror(cdr->state, "CONSTANT manipulator with illegal type!");

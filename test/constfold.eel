@@ -1,0 +1,68 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+eelversion 0.3.7;
+
+procedure verify(name, val, correct)
+{
+	print("  ", name, " = ", val," ; should be ", correct);
+	if(val == correct)
+		print(" PASS\n");
+	else
+	{
+		print(" FAIL\n");
+		throw "Incorrect result!";
+	}
+}
+
+export function main<args>
+{
+	print("Constant folding tests.\n");
+
+	print("\nSome expressions:\n");
+	{
+		constant a = 100 + (100 / 10) - (1 * 0.1);
+		constant b = 1000 + 100 / 10 - (1 * 0.1);
+		constant c = 100 + (100 / (10 - 2) * 0.1);
+		constant d = (integer)(440 * (2 ** -(1 / 12)) * 100);
+		constant e = (integer)(440 * (2 ** (1 / 12)) * 100);
+		verify("a", a, 109.9);
+		verify("b", b, 109.9);
+		verify("c", c, 101.25);
+		verify("d", d, 41530);
+		verify("e", e, 46616);
+	}
+
+	print("\nVerifying left-to-right evaluation:\n");
+	{
+		// The expression:
+		constant a = 1 * 2 + 3 ** 4 / 5 + 6 * 7;
+		// What you think it does (and would do prior to EEL 0.3.7):
+		constant b = (1 * 2) + ((3 ** 4) / 5) + (6 * 7);
+		// What it actually does:
+		constant c = ((((((1 * 2) + 3) ** 4) / 5) + 6) * 7);
+		// And let's check that unary operators don't mess it up:
+		constant d = not not true * 2 + 3 ** --4 / -5 + -6 * ---7;
+		verify("a", a, 917);
+		verify("b", b, 60.2);
+		verify("c", c, 917);
+		verify("d", d, 917);
+	}
+
+	print("\nBitwise operations:\n");
+	{
+		constant a = 0x12345678 & 0x00ff00ff << 8;
+		constant b = a & false;
+		constant c = false & a | (0x5555aaaa ^ 0xf0f0f0f0) ror 4;
+		constant d = 0b110101000110101101101111 >< 24;
+		verify("a", a, 0x34007800);
+		verify("b", b, 0);
+		verify("c", c, (integer)0xaa5a55a5);
+		verify("d", d, 0b111101101101011000101011);
+	}
+
+	print("\nConstant folding tests done.\n");
+	return 0;
+}

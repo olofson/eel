@@ -28,21 +28,21 @@
 #include "config.h"
 
 /*
- * Assumed tab size for error column calculation.
- * (Of course, tabs ARE 8 chars, but anyway... ;-D)
+ * Assumed tab size for error column calculation. (Of course, tabs ARE 8
+ * chars, but anyway... ;-D)
  */
 #define	EEL_TAB_SIZE	8
 
 /*
- * Undef to compile without the built-in library.
- * Leave this defined unless you know what you're doing!
+ * Undef to compile without the built-in library. Leave this defined unless you
+ * know what you're doing!
  */
 #define	EEL_USE_EELBIL
 
 /*
  * Default printf() format string for converting TREAL to string.
-FIXME: We need a proper "format engine" of some sort for this! Simply piggy-back
-FIXME: on C's *printf()? We could just have EEL print() "eat" arguments as
+FIXME: We need a proper "format engine" of some sort for this! Simply piggy-
+FIXME: back on C's *printf()? We could just have EEL print() "eat" arguments as
 FIXME: required when C printf() format strings are encountered.
 FIXME: BTW, as opposed to C, EEL can actually verify that arguments are there
 FIXME: and of suitable types!
@@ -54,41 +54,42 @@ FIXME: and of suitable types!
 	VM Configuration
 ---------------------------------------------------------*/
 
-/*
- * Initial VM heap size. (Number of EEL values)
- */
+/* Initial VM heap size. (Number of EEL values) */
 #define	EEL_INITHEAP	256
 
 /*
- * Minimum number of values to allocate for the argument
- * stack when setting up a new function register frame.
- * (Just to avoid another reallocation right after entering
- * a function that uses the argument stack. This memory is
- * not initialized or anything, unless it's actually used.)
+ * Minimum number of values to allocate for the argument stack when setting up
+ * a new function register frame. (Just to avoid another reallocation right
+ * after entering a function that uses the argument stack. This memory is not
+ * initialized or anything, unless it's actually used.)
  */
 #define	EEL_MINSTACK	32
 
-/*
- * Memory allocation parameters for dynamic sized types.
- */
+/* Memory allocation parameters for dynamic sized types. */
 #define	EEL_DSTRING_SIZEBASE	32
 #define	EEL_TABLE_SIZEBASE	4
 #define	EEL_ARRAY_SIZEBASE	8
 #define	EEL_VECTOR_SIZEBASE	8
 
 /*
- * Define to have the '/' operator always generate real
- * type results, Pascal style.
+ * Define to have the '/' operator always generate real type results, Pascal
+ * style.
  */
 #define	EEL_PASCAL_IDIV
 
 /*
- * Destroy garbage objects instantly and in-line.
- * (Very close to pure refcounting behavior.)
+ * Define to allow compile time constant folding. (Required to use expressions
+ * for defining constants!)
+ */
+#define	EEL_CONSTANT_FOLDING
+
+/*
+ * Destroy garbage objects instantly and in-line. (Very close to pure
+ * refcounting behavior.)
  *
  * NOTE:
- *	The string pool cache is not affected
- *	by this option. See EEL_STRING_CACHE
+ *	The string pool cache is not affected by this option. See
+ *	EEL_STRING_CACHE
  */
 #define EEL_HYPER_AGGRESSIVE_MM
 
@@ -99,10 +100,9 @@ FIXME: and of suitable types!
 #define	EEL_DEFAULT_STRING_CACHE 100
 
 /*
- * Define this to have eel_calcresize() (used for reallocating
- * tables, arrays, vectors etc) back off a little on the shrinking.
- * Use this if realloc() is too aggressive about moving memory
- * blocks when shrinking them!
+ * Define this to have eel_calcresize() (used for reallocating tables, arrays,
+ * vectors etc) back off a little on the shrinking. Use this if realloc() is
+ * too aggressive about moving memory blocks when shrinking them!
  */
 #define	EEL_DEFENSIVE_REALLOC
 
@@ -114,9 +114,8 @@ FIXME: and of suitable types!
 #undef	EEL_CLEAN_COPY
 
 /*
- * Check bytecode for errors caused by compiler bugs.
- * This slows down the VM and adds some error messages
- * to the footprint!
+ * Check bytecode for errors caused by compiler bugs. This slows down the VM
+ * and adds some error messages to the footprint!
  */
 #ifdef DEBUG
 #  define	EEL_VM_CHECKING
@@ -125,34 +124,32 @@ FIXME: and of suitable types!
 #endif
 
 /*
- * Use threaded VM instruction dispatcher; "computed goto"
- * (Significantly faster than the switch() dispatcher!)
+ * Use threaded VM instruction dispatcher; "computed goto" (Significantly
+ * faster than the switch() dispatcher!)
  *
  * WARNING:
- *	Combined with EEL_VMCHECK and/or DBG4, this can
- *	generate a large (and slow) dispatcher!
+ *	Combined with EEL_VMCHECK and/or DBG4, this can generate a large (and
+ *	slow) dispatcher!
  */
 #ifdef __GNUC__
 #define EEL_VM_THREADED
 #endif
 
 /*
- * Enable call profiling. This causes the VM to build
- * statistics on all C and EEL function calls, including
- * average and maximum time spent in each function.
+ * Enable call profiling. This causes the VM to build statistics on all C and
+ * EEL function calls, including average and maximum time spent in each
+ * function.
  */
 #undef	EEL_PROFILING
 
 /*
- * Enable VM instruction profiling. This has the VM sum
- * executions and execution times per VM opcode, printing
- * statistics to stdout when the VM is closed.
+ * Enable VM instruction profiling. This has the VM sum executions and
+ * execution times per VM opcode, printing statistics to stdout when the VM is
+ * closed.
  */
 #undef	EEL_VM_PROFILING
 
-/*
- * Keep global count of objects and refcounts.
- */
+/* Keep global count of objects and refcounts. */
 #ifdef DEBUG
 #  define	EEL_OBJECT_ACCOUNTING
 #else
@@ -164,10 +161,7 @@ FIXME: and of suitable types!
 	Compiler Features and Optimizations
 ---------------------------------------------------------*/
 
-/*
- * Eliminate dead code in the code generator,
- * based on compiler event state.
- */
+/* Eliminate dead code in the code generator, based on compiler event state. */
 #define	EEL_DEAD_CODE_ELIMINATION
 /* Fill dead code areas with ILLEGAL, NOP, NOP, ... */
 #ifdef DEBUG

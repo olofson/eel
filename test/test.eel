@@ -79,6 +79,7 @@ export function main<args>
 	run("envtest");
 	run("arginit");
 	run("jsontest");
+	run("constfold");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{
