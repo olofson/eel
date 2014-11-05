@@ -1,4 +1,16 @@
 
+Audiality 2:
+	* Should we bother porting renderwave.c? It uses the "buffer" audio
+	  driver, which basically just leaves it to the application to dig the
+	  buffers out of the driver struct. The stream API should probably have
+	  a backend for this, so we can just read a stream, and have that run
+	  the off-line A2 state.
+
+	* Should we just treat Audiality handles like plain integers, as in
+	  the C API, or should we wrap them and wire them to EEL memory
+	  management?
+
+
 * Register dependency checking for the optimizer:
 	eel_r_dependency(EEL_coder *cdr, int r, int pc)
 	{
@@ -9,9 +21,6 @@
 				return HANDS_OFF;
 		return NO_DEPS;
 	}
-
-* Should we just treat Audiality handles like plain integers, as in the C
-  API, or should we wrap them and wire them to EEL memory management?
 
 * Overwriting an existing environment variable in envtest.eel;
   "setenv(TESTVAR, "new_test_value", false);" succeeds under Wine 1.4.1.
@@ -758,8 +767,6 @@ Long term:
 		* function sfind(obj)[start, end, stride];
 
 	* Priority queue type.
-
-	* Built-in universal event/message system.
 
 	* file.sysroots() to get / or C:, D:,
 	  ... or whatever the system at hand deals in.
