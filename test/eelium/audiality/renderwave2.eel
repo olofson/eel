@@ -1,0 +1,91 @@
+////////////////////////////////////////////////////////////////////
+// renderwave2.eel - Audiality 2 render-to-wave via a2_RenderWave()
+//
+//	Port of renderwave2.c from the Audiality 2 tests.
+//
+// Copyright 2014 David Olofson
+////////////////////////////////////////////////////////////////////
+//
+// TODO:
+//	* Wait for Ctrl+C or equivalent
+//
+////////////////////////////////////////////////////////////////////
+
+import Audiality2 as A2;
+import system;
+import cmdline as cmd;
+
+export function main<args>
+{
+	local argspec = [
+		["d",	"audiodriver",	string,		"default",
+				"Audio driver + options"],
+		["r",	"samplerate",	integer,	44100,
+				"Audio sample rate (Hz)"],
+		["wr",	"waverate",	integer,	0,
+				"Rendered wave sample rate (Hz)"],
+		["c",	"channels",	integer,	2,
+				"Number of audio channels"],
+		["a",	"audiobuf",	integer,	1024,
+				"Audio buffer size (frames)"],
+		["h",	"showhelp",	boolean,	false,
+				"Show this help"]
+	];
+	local params = cmd.parse(argspec, #arguments);
+	if params.showhelp
+	{
+		print("\n\nUsage: renderwave2 [switches] <file>\n\n");
+		print("Switches:\n");
+		cmd.usage(argspec);
+		print("\n");
+		return 0;
+	}
+	if not params.waverate
+		params.waverate = params.samplerate;
+
+	// Configure and open master state
+	local state = A2.a2state [
+		params.(samplerate, audiobuf, channels),
+		A2.TIMESTAMP | A2.REALTIME,
+		params.audiodriver
+	];
+
+	print("Loading...\n");
+	local path = __exports().__modpath;
+	if path
+		path += "/";
+	else
+		path = "";
+
+	// Load jingle
+	local h = state:Load(path + "a2jingle.a2s");
+	local songh = state:Get(h, "Song");
+
+	// Load wave player program
+	h = state:Load(path + "testprograms.a2s");
+	local ph = state:Get(h, "PlayTestWave");
+
+	// Render!
+	print("Rendering...\n");
+	h = state:RenderWave(
+			A2.WWAVE, 0, 0,	/* no MIP, auto period, no flags */
+			params.waverate,/* sample rate */
+			0,		/* stop when silent */
+			songh);		/* (no properties), prg, no args */
+
+	// Play!
+	print("Playing...\n");
+	state:Now();
+	local vh = state:Start(state:RootVoice(), ph, 0, 1, h);
+
+	// TODO: Wait for Ctrl+C instead
+	sleep(7000);
+
+	// Stop!
+	state:Now();
+	state:Send(vh, 1);
+	state:Release(vh);
+	sleep(1000);
+
+	return 0;
+}

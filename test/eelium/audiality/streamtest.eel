@@ -1,0 +1,173 @@
+/////////////////////////////////////////////////////////////////////////
+// streamtest.eel - Test of asynchronous streaming via xsink and xsource
+//
+//	Port of streamtest.c from the Audiality 2 tests.
+//
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////////////////////////////////
+//
+// TODO:
+//	* Command line switches
+//	* Wait for Ctrl+C or equivalent
+//
+/////////////////////////////////////////////////////////////////////////
+
+import Audiality2 as A2;
+import cmdline as cmd;
+import SDL as SDL;
+
+// Fragment size for wave rendering/uploading
+constant FRAGSIZE = 256;
+
+// Stream poll/write period (ms)
+constant POLLPERIOD = 100;
+
+// Stream buffer size (ms)
+constant STREAMBUFFER = 500;
+
+// Capture buffer size (ms)
+constant CAPTUREBUFFER = 5000;
+
+
+function check_abort
+{
+	while true
+	{
+		local ev = SDL.PollEvent();
+		if not ev
+			break;
+		switch ev.type
+		  case SDL.QUIT
+			return true;
+	}
+	return false;
+}
+
+
+export function main<args>
+{
+	local argspec = [
+		["d",	"audiodriver",	string,		"default",
+				"Audio driver + options"],
+		["r",	"samplerate",	integer,	44100,
+				"Audio sample rate (Hz)"],
+		["wr",	"waverate",	integer,	0,
+				"Rendered wave sample rate (Hz)"],
+		["c",	"channels",	integer,	2,
+				"Number of audio channels"],
+		["a",	"audiobuf",	integer,	1024,
+				"Audio buffer size (frames)"],
+		["h",	"showhelp",	boolean,	false,
+				"Show this help"]
+	];
+	local params = cmd.parse(argspec, #arguments);
+	if params.showhelp
+	{
+		print("\n\nUsage: renderwave2 [switches] <file>\n\n");
+		print("Switches:\n");
+		cmd.usage(argspec);
+		print("\n");
+		return 0;
+	}
+
+	// Configure and open master state
+	local state = A2.a2state [
+		params.(samplerate, audiobuf, channels),
+		A2.TIMESTAMP | A2.REALTIME,
+		params.audiodriver
+	];
+
+	print("Loading...\n");
+	local path = __exports().__modpath;
+	if path
+		path += "/";
+	else
+		path = "";
+
+	// Load jingle
+	local h = state:Load(path + "a2jingle.a2s");
+	local songh = state:Get(h, "Song");
+
+	// Load wave player program
+	h = state:Load(path + "testprograms.a2s");
+	local captureprogram = state:Get(h, "CaptureVoice");
+	local streamprogram = state:Get(h, "StreamVoice");
+
+	// Allocate capture buffer
+	local length = params.samplerate * CAPTUREBUFFER / 1000;
+	local position = 0;
+	local buffer = vector_s32 [];
+
+	// Record some audio from a CaptureVoice
+	print("Capturing ", length, " sample frames...\n");
+	h = state:Start(state:RootVoice(), captureprogram);
+	local streamh = state:OpenSink(h, 0,
+			params.samplerate * STREAMBUFFER / 1000);
+	state:Play(h, songh);
+	while position < length
+	{
+		if check_abort()
+		{
+			print("Aborted!\n");
+			return 0;
+		}
+		state:Now();
+		while true
+		{
+			local n = state:Available(streamh);
+			n |<= length - position;
+			if not n
+				break;
+			state:Read(streamh, n, buffer, position);
+			position += n;
+		}
+		print("[", position, "]\n");
+		sleep(POLLPERIOD);
+	}
+	state:Kill(h);
+
+	// Play back through a StreamVoice
+	print("Playing...\n");
+	position = 0;
+	h = state:Start(state:RootVoice(), streamprogram);
+	streamh = state:OpenSource(h, 0,
+			params.samplerate * STREAMBUFFER / 1000);
+	while position < length
+	{
+		if check_abort()
+		{
+			print("Aborted!\n");
+			return 0;
+		}
+		state:Now();
+		while true
+		{
+			local n = state:Space(streamh);
+			n |<= length - position;
+			if not n
+				break;
+			state:Write(streamh, n, buffer, position);
+			position += n;
+		}
+		print("[", position, "]\n");
+		sleep(POLLPERIOD);
+	}
+
+	print("Waiting for stream buffer to drain...\n");
+	while true
+	{
+		if check_abort()
+		{
+			print("Aborted!\n");
+			return 0;
+		}
+		local n = state:Available(streamh);
+		print("[", n, "]\n");
+		if not n
+			break;
+		sleep(POLLPERIOD);
+	}
+
+	print("Done!\n");
+	return 0;
+}
