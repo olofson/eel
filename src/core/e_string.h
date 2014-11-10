@@ -75,4 +75,49 @@ static inline int eel_s_cmp(unsigned const char *a,
 	return 0;
 }
 
+
+/* Find 'c' in 'str' */
+static inline EEL_xno eel_s_char_in(char *str, unsigned len, int c,
+		EEL_value *op2)
+{
+	char *f = memchr(str, c, len);
+	if(f)
+	{
+		op2->type = EEL_TINTEGER;
+		op2->integer.v = f - str;
+	}
+	else
+	{
+		op2->type = EEL_TBOOLEAN;
+		op2->integer.v = 0;
+	}
+	return 0;
+}
+
+
+/* Find 'str2' in 'str' */
+static inline EEL_xno eel_s_str_in(char *str, unsigned len,
+		char *str2, unsigned len2, EEL_value *op2)
+{
+	int i, j;
+	if(len >= len2)
+	{
+		for(i = 0; i < len - len2; ++i)
+		{
+			for(j = 0; j < len2; ++j)
+				if(str[i + j] != str2[j])
+					break;
+			if(j == len2)
+			{
+				op2->type = EEL_TINTEGER;
+				op2->integer.v = i;
+				return 0;
+			}
+		}
+	}
+	op2->type = EEL_TBOOLEAN;
+	op2->integer.v = 0;
+	return 0;
+}
+
 #endif	/* EEL_E_STRING_H */

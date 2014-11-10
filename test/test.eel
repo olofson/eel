@@ -80,6 +80,7 @@ export function main<args>
 	run("arginit");
 	run("jsontest");
 	run("constfold");
+	run("intest");
 	print("==============================================\n");
 	for local i = 0, sizeof results - 1
 	{

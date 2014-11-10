@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_operate.c - Operations on values and objects
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2011 David Olofson
+ * Copyright 2005-2006, 2009-2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -25,14 +25,18 @@
 #include "e_object.h"
 
 
-/* Tries to index 'key' out of 'io' and returns 0, or an exception code. */
-static inline EEL_xno test_index(EEL_object *io, EEL_value *key)
+/* Test if 'v' is a value or key in 'o' and set 'r' accordingly */
+static inline EEL_xno eel_op_in(EEL_object *o, EEL_value *v, EEL_value *r)
 {
-	EEL_value v;
-	EEL_xno x = eel_o__metamethod(io, EEL_MM_GETINDEX, key, &v);
-	if(!x)
-		eel_v_disown(&v);
-	return x;
+	EEL_xno x = eel_o__metamethod(o, EEL_MM_IN, v, r);
+	if(x)
+		return x;
+	if(r->type == EEL_TINTEGER)
+	{
+		r->type = EEL_TBOOLEAN;
+		r->integer.v = 1;
+	}
+	return 0;
 }
 
 
@@ -166,10 +170,7 @@ EEL_xno eel_object_op(EEL_value *left, int binop, EEL_value *right,
 			result->integer.v = 0;
 			return 0;
 		}
-		x = test_index(right->objref.v, left);
-		result->type = EEL_TBOOLEAN;
-		result->integer.v = (x == 0);
-		return 0;
+		return eel_op_in(right->objref.v, left, result);
 	  case EEL_OP_MIN:
 		if(inplace)
 			return EEL_XCANTINPLACE;
@@ -346,10 +347,7 @@ EEL_xno eel_object_rop(EEL_value *left, int binop, EEL_value *right,
 	  case EEL_OP_IN:
 		if(inplace)
 			return EEL_XCANTINPLACE;
-		x = test_index(o, right);
-		result->type = EEL_TBOOLEAN;
-		result->integer.v = (x == 0);
-		return 0;
+		return eel_op_in(o, right, result);
 
 	  default:
 		return EEL_XNOTIMPLEMENTED;

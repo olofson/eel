@@ -118,6 +118,36 @@ typedef enum
 				 *	true if the objects are identical,
 				 *	otherwise false.
 				 */
+#if 0
+	EEL_MM_FIND,		/* Attempt to find a value identical to 'op1'
+				 * in the (indexable) object.
+				 *
+				 * NOTE: Associative arrays and the like (such
+				 *       as 'table') are expected to search
+				 *       their value fields! (We already have
+				 *       GETINDEX for searching keys.)
+				 *
+				 * In:	op1 -> value (any EEL type)
+				 * Out:	*op2 = result (boolean or integer);
+				 *	Index of the first occurrence, or
+				 *	false.
+				 */
+#endif
+	EEL_MM_IN,		/* Attempt to find a value identical to 'op1'
+				 * in the (indexable) object. For associative
+				 * arrays (such as 'table'), this metamethod is
+				 * expected to search for keys - not values!
+				 *
+				 * NOTE: The 'in' operator does use IN, but it
+				 *       translates any non-false return to
+				 *       true! (Zero is too similar to false
+				 *       for the typical 'in' use cases.)
+				 *
+				 * In:	op1 -> value (any EEL type)
+				 * Out:	*op2 = result (boolean or integer);
+				 *	Index of the first occurrence, or
+				 *	false.
+				 */
 	EEL_MM_CAST,		/* 'object' cast to type 'op1'
 				 * In:	op1 -> value (EEL_TTYPEID)
 				 * Out:	*op2 = new value or object

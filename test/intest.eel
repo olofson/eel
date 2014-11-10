@@ -1,0 +1,59 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////
+
+procedure test_string(s)
+{
+	if not ('T' in s)
+		throw "'in' says 'T' is not in s!";
+	if not ('f' in s)
+		throw "'in' says 'f' is not in s!";
+	if not ('.' in s)
+		throw "'in' says '.' is not in s!";
+	if not ("for" in s)
+		throw "'in' says \"for\" is not in s!";
+	if "random" in s
+		throw "'in' says \"random\" is in s!";
+	if 'x' in s
+		throw "'in' says 'x' is in s!";
+	if true in s
+		throw "'in' says 'true' is in s!";
+	if "Very long lookup string that might crash the VM!" in s
+		throw "'in' says \"Very long[...]\" is in s!";
+	print("  PASS!\n");
+}
+
+export function main<args>
+{
+	print("Operator 'in' tests:\n");
+
+	print("\n <key> in <table>:\n");
+	local t = {
+		.one	"uno",
+		.two	"dos",
+		.three	"tres",
+		.four	"cuatro"
+	};
+	if not ("one" in t)
+		throw "'in' says \"one\" is not in t!";
+	if not ("two" in t)
+		throw "'in' says \"two\" is not in t!";
+	if "five" in t
+		throw "'in' says \"five\" is in t, but there is no such key!";
+	if "tres" in t
+		throw "'in' says \"tres\" is in t, which is incorrect, "
+				"because it's a value - not a key!";
+	print("  PASS!\n");
+
+	print("\n <key> in <string>:\n");
+	local s = "Test string for the 'in' operator.";
+	test_string(s);
+
+	print("\n <key> in <dstring>:\n");
+	s = (dstring)s;
+	test_string(s);
+
+	print("\nOperator 'in' tests done.\n");
+	return 0;
+}

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_dstring.c - EEL Dynamic String Class
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2008-2012 David Olofson
+ * Copyright 2005-2006, 2008-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -209,6 +209,45 @@ static EEL_xno ds_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	op2->type = EEL_TINTEGER;
 	op2->integer.v = ds->buffer[i] & 0xff;	/* Treat as unsigned! */
 	return 0;
+}
+
+
+static EEL_xno ds_in(EEL_object *eo, EEL_value *op1, EEL_value *op2)
+{
+	EEL_dstring *ds = o2EEL_dstring(eo);
+	switch((EEL_classes)EEL_TYPE(op1))
+	{
+	  case EEL_TBOOLEAN:
+	  case EEL_TINTEGER:
+	  case EEL_TTYPEID:
+		return eel_s_char_in(ds->buffer, ds->length, op1->integer.v,
+				op2);
+	  case EEL_TREAL:
+		return eel_s_char_in(ds->buffer, ds->length,
+				floor(op1->real.v), op2);
+	  case EEL_CSTRING:
+	  {
+		EEL_string *s2 = o2EEL_string(op1->objref.v);
+		return eel_s_str_in(ds->buffer, ds->length,
+				s2->buffer, s2->length, op2);
+	  }
+	  case EEL_CDSTRING:
+	  {
+		EEL_dstring *s2;
+		if(op1->objref.v == eo)
+		{
+			/* Same instance! */
+			op2->type = EEL_TINTEGER;
+			op2->integer.v = 0;
+			return 0;
+		}
+		s2 = o2EEL_dstring(op1->objref.v);
+		return eel_s_str_in(ds->buffer, ds->length,
+				s2->buffer, s2->length, op2);
+	  }
+	  default:
+		return EEL_XWRONGTYPE;
+	}
 }
 
 
@@ -713,6 +752,7 @@ void eel_cdstring_register(EEL_vm *vm)
 			EEL_CDSTRING, "dstring", EEL_COBJECT,
 			ds_construct, ds_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, ds_getindex);
+	eel_set_metamethod(c, EEL_MM_IN, ds_in);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, ds_setindex);
 	eel_set_metamethod(c, EEL_MM_INSERT, ds_insert);
 	eel_set_metamethod(c, EEL_MM_DELETE, ds_delete);

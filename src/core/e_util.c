@@ -137,6 +137,7 @@ const char *eel_mm_name(EEL_mmindex mm)
 	  MMN(LENGTH)
 	  MMN(COMPARE)
 	  MMN(EQ)
+	  MMN(IN)
 	  MMN(CAST)
 	  MMN(SERIALIZE)
 

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_table.c - EEL Table Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2012 David Olofson
+ * Copyright 2005-2006, 2009-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -267,21 +267,6 @@ static inline EEL_xno t__setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2
 	int pos;
 	EEL_table *t = o2EEL_table(eo);
 	EEL_hash h = eel_v2hash(op1);
-#ifdef EEL_VM_CHECKING
-	switch(op1->type)
-	{
-	  case EEL_TNIL:
-	  case EEL_TREAL:
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		break;
-	  default:
-		return EEL_XBADTYPE;
-	}
-#endif
 	pos = t__find(eo, op1, h);
 	if(pos >= 0)
 	{
@@ -413,21 +398,6 @@ static EEL_xno t_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int pos;
 	EEL_table *t = o2EEL_table(eo);
 	EEL_hash h = eel_v2hash(op1);
-#ifdef EEL_VM_CHECKING
-	switch(op1->type)
-	{
-	  case EEL_TNIL:
-	  case EEL_TREAL:
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		break;
-	  default:
-		return EEL_XBADTYPE;
-	}
-#endif
 	pos = t__find(eo, op1, h);
 	if(pos >= 0)
 	{
@@ -445,28 +415,28 @@ static EEL_xno t_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 }
 
 
+static EEL_xno t_in(EEL_object *eo, EEL_value *op1, EEL_value *op2)
+{
+	int pos = t__find(eo, op1, eel_v2hash(op1));
+	if(pos >= 0)
+	{
+		op2->type = EEL_TINTEGER;
+		op2->integer.v = pos;
+	}
+	else
+	{
+		op2->type = EEL_TBOOLEAN;
+		op2->integer.v = 0;
+	}
+	return 0;
+}
+
+
 static EEL_xno t_insert(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	int pos;
 	EEL_hash h = eel_v2hash(op1);
-#ifdef EEL_VM_CHECKING
-	switch(op1->type)
-	{
-	  case EEL_TNIL:
-	  case EEL_TREAL:
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		break;
-	  default:
-		return EEL_XBADTYPE;
-	}
-#endif
 	pos = t__find(eo, op1, h);
-//printf("t_insert: %d\n", pos);
-/*FIXME: Do we really want this overwrite protection? */
 	if(pos >= 0)
 		return EEL_XWRONGINDEX;
 
@@ -495,21 +465,6 @@ static EEL_xno t_delete(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		t_setsize(eo, 0);
 		return 0;
 	}
-#ifdef EEL_VM_CHECKING
-	switch(op1->type)
-	{
-	  case EEL_TNIL:
-	  case EEL_TREAL:
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		break;
-	  default:
-		return EEL_XBADTYPE;
-	}
-#endif
 	h = eel_v2hash(op1);
 	pos = t__find(eo, op1, h);
 	if(pos < 0)
@@ -580,6 +535,7 @@ void eel_ctable_register(EEL_vm *vm)
 			t_construct, t_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, t_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, t_setindex);
+	eel_set_metamethod(c, EEL_MM_IN, t_in);
 	eel_set_metamethod(c, EEL_MM_DELETE, t_delete);
 	eel_set_metamethod(c, EEL_MM_INSERT, t_insert);
 	eel_set_metamethod(c, EEL_MM_LENGTH, t_length);

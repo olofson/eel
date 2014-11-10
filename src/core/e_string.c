@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_string.c - EEL String Class + string pool
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2008, 2010-2012 David Olofson
+ * Copyright 2005-2006, 2008, 2010-2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -431,6 +431,45 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 }
 
 
+static EEL_xno s_in(EEL_object *eo, EEL_value *op1, EEL_value *op2)
+{
+	EEL_string *s = o2EEL_string(eo);
+	switch((EEL_classes)EEL_TYPE(op1))
+	{
+	  case EEL_TBOOLEAN:
+	  case EEL_TINTEGER:
+	  case EEL_TTYPEID:
+		return eel_s_char_in(s->buffer, s->length, op1->integer.v,
+				op2);
+	  case EEL_TREAL:
+		return eel_s_char_in(s->buffer, s->length, floor(op1->real.v),
+				op2);
+	  case EEL_CSTRING:
+	  {
+		EEL_string *s2;
+		if(op1->objref.v == eo)
+		{
+			/* Same instance! */
+			op2->type = EEL_TINTEGER;
+			op2->integer.v = 0;
+			return 0;
+		}
+		s2 = o2EEL_string(op1->objref.v);
+		return eel_s_str_in(s->buffer, s->length,
+				s2->buffer, s2->length, op2);
+	  }
+	  case EEL_CDSTRING:
+	  {
+		EEL_dstring *s2 = o2EEL_dstring(op1->objref.v);
+		return eel_s_str_in(s->buffer, s->length,
+				s2->buffer, s2->length, op2);
+	  }
+	  default:
+		return EEL_XWRONGTYPE;
+	}
+}
+
+
 static EEL_xno s_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_string *s = o2EEL_string(eo);
@@ -752,6 +791,7 @@ void eel_cstring_register(EEL_vm *vm)
 	c = eel_register_class(vm, EEL_CSTRING, "string", EEL_COBJECT,
 			s_construct, s_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, s_getindex);
+	eel_set_metamethod(c, EEL_MM_IN, s_in);
 	eel_set_metamethod(c, EEL_MM_COPY, s_copy);
 	eel_set_metamethod(c, EEL_MM_LENGTH, s_length);
 	eel_set_metamethod(c, EEL_MM_COMPARE, s_compare);
