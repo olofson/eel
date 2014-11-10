@@ -401,9 +401,9 @@ static EEL_xno ds_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int length = eel_v2l(op2);
 	if(start < 0)
 		return EEL_XLOWINDEX;
-	else if(start >= s->length)
+	else if(start > s->length)
 		return EEL_XHIGHINDEX;
-	if(length <= 0)
+	if(length < 0)
 		return EEL_XWRONGINDEX;
 	else if(start + length > s->length)
 		return EEL_XHIGHINDEX;

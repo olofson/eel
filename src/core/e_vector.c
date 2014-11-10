@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vector.c - EEL Vector Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010, 2012 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2012, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -527,9 +527,9 @@ static EEL_xno v_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int length = eel_v2l(op2);
 	if(start < 0)
 		return EEL_XLOWINDEX;
-	else if(start >= ov->length)
+	else if(start > ov->length)
 		return EEL_XHIGHINDEX;
-	if(length <= 0)
+	if(length < 0)
 		return EEL_XWRONGINDEX;
 	else if(start + length > ov->length)
 		return EEL_XHIGHINDEX;

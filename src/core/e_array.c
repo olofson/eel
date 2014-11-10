@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_array.c - EEL Array Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2011 David Olofson
+ * Copyright 2004-2006, 2009-2011, 2014 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -337,9 +337,9 @@ static EEL_xno a_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int length = eel_v2l(op2);
 	if(start < 0)
 		return EEL_XLOWINDEX;
-	else if(start >= oa->length)
+	else if(start > oa->length)
 		return EEL_XHIGHINDEX;
-	if(length <= 0)
+	if(length < 0)
 		return EEL_XWRONGINDEX;
 	else if(start + length > oa->length)
 		return EEL_XHIGHINDEX;
