@@ -455,6 +455,16 @@ static inline EEL_xno eel_op_eq(EEL_value *left, EEL_value *right,
 	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TNIL):
 	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TNIL):
 	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TNIL):
+	  case EEL_MK2TYPES(EEL_TREAL, EEL_TBOOLEAN):
+	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TREAL):
+	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TBOOLEAN):
+	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TINTEGER):
+	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TTYPEID):
+	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TBOOLEAN):
+	  case EEL_MK2TYPES(EEL_TREAL, EEL_TTYPEID):
+	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TREAL):
+	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TTYPEID):
+	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TINTEGER):
 		result->type = EEL_TBOOLEAN;
 		result->integer.v = 0;
 		return 0;
@@ -463,25 +473,15 @@ static inline EEL_xno eel_op_eq(EEL_value *left, EEL_value *right,
 		result->integer.v = left->real.v == right->real.v;
 		return 0;
 	  case EEL_MK2TYPES(EEL_TREAL, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_TREAL, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_TREAL, EEL_TTYPEID):
 		result->type = EEL_TBOOLEAN;
 		result->integer.v = left->real.v == (EEL_real)right->integer.v;
 		return 0;
 	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TREAL):
-	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TREAL):
 		result->type = EEL_TBOOLEAN;
 		result->integer.v = (EEL_real)left->integer.v == right->real.v;
 		return 0;
 	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_TINTEGER, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TINTEGER):
 	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TBOOLEAN):
-	  case EEL_MK2TYPES(EEL_TBOOLEAN, EEL_TTYPEID):
-	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TINTEGER):
-	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TBOOLEAN):
 	  case EEL_MK2TYPES(EEL_TTYPEID, EEL_TTYPEID):
 		result->type = EEL_TBOOLEAN;
 		result->integer.v = left->integer.v == right->integer.v;
