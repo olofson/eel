@@ -1,0 +1,130 @@
+   ////////////////////////////////////////////////////////////
+  // cmdline.eel - Command line parsing tools
+ // Copyright 2014 David Olofson
+////////////////////////////////////////////////////////////
+//
+// TODO:
+//	* Check the actual syntax of real numbers; not just
+//	  the characters used!
+//	* Support hex, octal, binary etc...?
+//
+////////////////////////////////////////////////////////////
+
+module cmdline;
+
+constant ISWITCH = 0;
+constant IFIELD = 1;
+constant ITYPE = 2;
+constant IDEFAULT = 3;
+constant IDESCRIPTION = 4;
+
+constant INTCHARS = "0123456789-";
+constant REALCHARS = "0123456789-.eE";
+
+function is_integer(s)
+{
+	for local i = 0, sizeof s - 1
+		if not (s[i] in INTCHARS)
+			return false;
+	return true;
+}
+
+function is_real(s)
+{
+	for local i = 0, sizeof s - 1
+		if not (s[i] in REALCHARS)
+			return false;
+	return true;
+}
+
+
+export procedure usage(argspec)
+{
+	for local i = 0, sizeof argspec - 1
+	{
+		local s = argspec[i];
+		print("\t-", s[ISWITCH]);
+		if s[ITYPE] != boolean
+			print("\t<", (string)s[ITYPE], ">");
+		else
+			print("\t\t");
+		if sizeof s > IDESCRIPTION
+			print("\t", (string)s[IDESCRIPTION]);
+		else
+			print("\t", (string)s[IFIELD]);
+		if s[ITYPE] != boolean
+			print(" [", s[IDEFAULT], "]\n");
+		else
+			print("\n");
+	}
+}
+
+
+export function parse(argspec)<args>
+{
+	local res = {
+		.other	[]
+	};
+	for local i = 0, sizeof argspec - 1
+		res[argspec[i][IFIELD]] = argspec[i][IDEFAULT];
+	for local i = 0, tuples - 1
+	{
+		local found = false;
+		if args[i][0] != '-'
+		{
+			res.other.+ args[i];
+			continue;
+		}
+		for local j = 0, sizeof argspec - 1
+		{
+			local sw = argspec[j][ISWITCH];
+			local s = nil;
+			if (sizeof args[i] - 1) < sizeof sw
+				continue;	// Too short!
+			if copy(args[i], 1, sizeof sw) != sw
+				continue;	// Mismatch!
+			if found == false
+				found = j;	// First hit!
+			else if sizeof sw > sizeof argspec[found][ISWITCH]
+				found = j;	// New hit matches more chars!
+		}
+		if found == false
+			throw "Unknown switch \"" + args[i] + "\"!";
+		local f = argspec[found];
+		local data = copy(args[i], sizeof f[ISWITCH] + 1);
+		switch f[ITYPE]
+		  case boolean
+		  {
+			if sizeof data != 0
+				throw "Option '" + (string)f[ISWITCH] +
+						" takes no argument!";
+			res[f[IFIELD]] = true;
+		  }
+		  case integer
+		  {
+			if not is_integer(data)
+				throw "Option '" + (string)f[ISWITCH] +
+					"' needs an integer value!";
+			res[f[IFIELD]] = (integer)data;
+		  }
+		  case real
+		  {
+			if not is_real(data)
+				throw "Option '" + (string)f[ISWITCH] +
+					"' needs an integer value!";
+			res[f[IFIELD]] = (real)data;
+		  }
+		  case string
+		  {
+			if not sizeof data
+				throw "Option '" + (string)f[ISWITCH] +
+						" takes no argument!";
+			res[f[IFIELD]] = data;
+		  }
+		  default
+			throw "Unsupported option type '" + (string)f[ITYPE] +
+					"'! (Option '" + (string)f[ISWITCH] +
+					"')";
+	}
+	return res;
+}
