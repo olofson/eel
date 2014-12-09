@@ -1,6 +1,26 @@
 
 Audiality 2:
 
+	audiality2.h:
+		* a2_SubState():
+			Pass parent state to constructor...?
+		* a2_Size()
+		* a2_Run()
+		* a2_Render()
+		* a2_*Callback():
+			Need dedicated asynchronous VM state!
+		* a2_ConvertSize(), a2_Convert():
+			Not yet implemented in A2!
+
+	drivers.h:
+	dsp.h:
+	properties.h:
+	stream.h:
+	types.h:
+	units.h:
+	vm.h:
+	waves.h:
+
 	* Should we bother porting renderwave.c? It uses the "buffer" audio
 	  driver, which basically just leaves it to the application to dig the
 	  buffers out of the driver struct. The stream API should probably have

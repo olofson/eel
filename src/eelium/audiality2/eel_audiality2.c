@@ -203,7 +203,17 @@ static EEL_xno a2s_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 
 static EEL_xno ea2_LastError(EEL_vm *vm)
 {
-	eel_l2v(vm->heap + vm->resv, a2_LastError());
+	if(vm->argc >= 1)
+	{
+		EEL_value *args = vm->heap + vm->argv;
+		EA2_state *ea2s;
+		if(EEL_TYPE(vm->heap + vm->argv) != a2_md.state_cid)
+			return EEL_XWRONGTYPE;
+		ea2s = o2EA2_state(args->objref.v);
+		eel_l2v(vm->heap + vm->resv, a2_LastRTError(ea2s->state));
+	}
+	else
+		eel_l2v(vm->heap + vm->resv, a2_LastError());
 	return 0;
 }
 
@@ -1329,7 +1339,7 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	t = a2_md.statefields = eel_v2o(&v);
 
 	/* Error handling */
-	eel_export_cfunction(m, 1, "LastError", 0, 0, 0, ea2_LastError);
+	eel_export_cfunction(m, 1, "LastError", 0, 1, 0, ea2_LastError);
 	eel_export_cfunction(m, 1, "ErrorString", 1, 0, 0, ea2_ErrorString);
 	eel_export_cfunction(m, 1, "ErrorName", 1, 0, 0, ea2_ErrorName);
 	eel_export_cfunction(m, 1, "ErrorDescription", 1, 0, 0,
