@@ -1,25 +1,50 @@
 
 Audiality 2:
 
+==>	* Port:
+		* streamupload.c
+		* renderwave3.c (A2 ticket #188!)
+
 	audiality2.h:
-		* a2_SubState():
+==>		* a2_SubState():
 			Pass parent state to constructor...?
-		* a2_Size()
-		* a2_Run()
-		* a2_Render()
 		* a2_*Callback():
 			Need dedicated asynchronous VM state!
 		* a2_ConvertSize(), a2_Convert():
 			Not yet implemented in A2!
 
 	drivers.h:
+		* a2_OpenConfig(), a2_NewDriver(), a2_AddDriver() etc:
+			Covered by Open(). A2_config is not explicitly wrapped.
+		* The driver implementation interface is mostly irrelevant at
+		  this point, as it would require dedicated EEL VM states to be
+		  of much use, just like units.
+
 	dsp.h:
+		* Could wrap this, but it's just inline DSP math utilities, so
+		  it makes little sense.
+
 	properties.h:
-	stream.h:
+		* All currently available props exported.
+		* a2_SetProperties():
+			Leave for now. Only used internally, by a2_Render().
+
 	types.h:
+		* Interleaved format flags not exported - but they're not yet
+		  implemented anyway!
+
 	units.h:
+		* Needs dedicated asynchronous VM state!
+
 	vm.h:
+		* Needs dedicated asynchronous VM state! (Only relevant to
+		  units and possibly other realtime context callbacks.)
+
 	waves.h:
+		* a2_GetWave():
+			Very low level interface, only relevant for oscillator
+			units and introspection code.
+
 
 	* Should we bother porting renderwave.c? It uses the "buffer" audio
 	  driver, which basically just leaves it to the application to dig the

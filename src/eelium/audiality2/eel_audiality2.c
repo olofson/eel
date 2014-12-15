@@ -318,46 +318,68 @@ static EEL_xno ea2_Name(EEL_vm *vm)
 	return 0;
 }
 
+/* Size(state, handle) */
+static EEL_xno ea2_Size(EEL_vm *vm)
+{
+	int res;
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	res = a2_Size(o2EA2_state(args->objref.v)->state, eel_v2l(args + 1));
+	if(res < 0)
+		return ea2_translate_error(-res);
+	eel_l2v(vm->heap + vm->resv, res);
+	return 0;
+}
+
 /* Retain(state, handle) */
 static EEL_xno ea2_Retain(EEL_vm *vm)
 {
+	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
 	EA2_state *ea2s;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_Retain(ea2s->state, eel_v2l(args + 1)));
+	if((res = a2_Retain(ea2s->state, eel_v2l(args + 1))))
+		return ea2_translate_error(res);
 	return 0;
 }
 
 /* Release(state, handle) */
 static EEL_xno ea2_Release(EEL_vm *vm)
 {
+	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
 	EA2_state *ea2s;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_Release(ea2s->state, eel_v2l(args + 1)));
+	res = a2_Release(ea2s->state, eel_v2l(args + 1));
+	if(res && (res != A2_REFUSE))
+		return ea2_translate_error(res);
 	return 0;
 }
 
 /* Assign(state, owner, handle) */
 static EEL_xno ea2_Assign(EEL_vm *vm)
 {
+	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
 	EA2_state *ea2s;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_Assign(ea2s->state, eel_v2l(args + 1),
-			eel_v2l(args + 2)));
+	if((res = a2_Assign(ea2s->state, eel_v2l(args + 1),
+			eel_v2l(args + 2))))
+		return ea2_translate_error(res);
 	return 0;
 }
 
 /* Export(state, owner, handle)[name] */
 static EEL_xno ea2_Export(EEL_vm *vm)
 {
+	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
 	EA2_state *ea2s;
 	const char *name;
@@ -368,8 +390,9 @@ static EEL_xno ea2_Export(EEL_vm *vm)
 		name = eel_v2s(args + 3);
 	else
 		name = NULL;
-	eel_l2v(vm->heap + vm->resv, a2_Export(ea2s->state, eel_v2l(args + 1),
-			eel_v2l(args + 2), name));
+	if((res = a2_Export(ea2s->state, eel_v2l(args + 1),
+			eel_v2l(args + 2), name)))
+		return ea2_translate_error(res);
 	return 0;
 }
 
@@ -928,6 +951,24 @@ static EEL_xno ea2_Flush(EEL_vm *vm)
 	Waveform management
 ---------------------------------------------------------*/
 
+/* NewWave(state, wavetype, period)[flags] */
+static EEL_xno ea2_NewWave(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	EA2_state *ea2s;
+	A2_handle h;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	ea2s = o2EA2_state(args->objref.v);
+	h = a2_NewWave(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+			vm->argc >= 4 ? eel_v2l(args + 3) : 0);
+	if(h < 0)
+		return ea2_translate_error(-h);
+	eel_l2v(vm->heap + vm->resv, h);
+	return 0;
+}
+
+
 /* UploadWave(state, wavetype, period, flags, data) */
 static EEL_xno ea2_UploadWave(EEL_vm *vm)
 {
@@ -995,9 +1036,11 @@ static EEL_xno ea2_parse_properties(EEL_vm *vm, EEL_object *a, A2_property **p)
 	return 0;
 }
 
+
 /*
  * RenderWave(state, wavetype, period, flags, samplerate, length)<args>
- * where <args> is an optional array of properties (<property, value> pairs)
+ *
+ * <args> is an optional array of properties (<property, value> pairs),
  * followed by a program handle and zero or more arguments that will be passed
  * to the program.
  */
@@ -1050,6 +1093,103 @@ static EEL_xno ea2_RenderWave(EEL_vm *vm)
 			eel_v2l(args + 3), eel_v2l(args + 4), /* flags, fs */
 			eel_v2l(args + 5), props, /* length, properties */
 			progh, vm->argc - fargs, a); /* program, arguments */
+	free(props);
+	if(h < 0)
+		return ea2_translate_error(-h);
+	eel_l2v(vm->heap + vm->resv, h);
+	return 0;
+}
+
+
+/*---------------------------------------------------------
+	Off-line rendering
+---------------------------------------------------------*/
+
+/*
+ * Run(state, frames)
+ *
+ * Run a state (or substate) that's using a driver without a thread or similar
+ * context of its own, that is, one that implements the Run() method. Typically
+ * the "buffer" driver is used for this, and this is the default driver for
+ * states created with a2_SubState().
+ *
+ * Returns the number of sample frames (not bytes!) actually rendered, or
+ * throws an exception.
+ */
+static EEL_xno ea2_Run(EEL_vm *vm)
+{
+	int res;
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	res = a2_Run(o2EA2_state(args->objref.v)->state, eel_v2l(args + 1));
+	if(res < 0)
+		return ea2_translate_error(-res);
+	eel_l2v(vm->heap + vm->resv, res);
+	return 0;
+}
+
+
+/*
+ * Render(state, stream, samplerate, length)<args>
+ *
+ * Runs a program off-line with the specified arguments, rendering at
+ * 'samplerate', writing the output to 'stream'. <args> is an optional array of
+ * properties (<property, value> pairs), followed by a program handle and zero
+ * or more arguments that will be passed to the program.
+ *
+ * Rendering will stop after 'length' sample frames have been rendered, or if
+ * 'length' is 0, when the output is silent.
+ *
+ * Returns the number of sample frames rendered, or throws an exception.
+ */
+static EEL_xno ea2_Render(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	EA2_state *ea2s;
+	A2_handle h, progh;
+	A2_property *props = NULL;
+	int i, a[A2_MAXARGS], fargs;
+
+	/* State */
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	ea2s = o2EA2_state(args->objref.v);
+
+	/* Properties and/or program handle */
+	switch((EEL_classes)EEL_TYPE(args + 4))
+	{
+	  case EEL_TINTEGER:
+		progh = eel_v2l(args + 4);
+		fargs = 5;
+		break;
+	  case EEL_CARRAY:
+	  {
+		EEL_xno res;
+		if(vm->argc < 6)
+			return EEL_XFEWARGS;
+		if((res = ea2_parse_properties(vm, args[4].objref.v, &props)))
+			return res;
+		fargs = 6;
+		progh = eel_v2l(args + 5);
+		break;
+	  }
+	  default:
+		return EEL_XWRONGTYPE;
+	}
+
+	/* Program arguments */
+	if(vm->argc - fargs > A2_MAXARGS)
+	{
+		free(props);
+		return EEL_XMANYARGS;
+	}
+	for(i = 0; i < vm->argc - fargs; ++i)
+		a[i] = eel_v2d(args + fargs + i) * 65536.0f;
+
+	/* Render! */
+	h = a2_Render(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+			eel_v2l(args + 3), props, progh, vm->argc - fargs, a);
 	free(props);
 	if(h < 0)
 		return ea2_translate_error(-h);
@@ -1212,17 +1352,28 @@ static const EEL_lconstexp eel_a2_constants[] =
 	{"MIPLEVELS",		A2_MIPLEVELS	},
 	{"MAXFRAG",		A2_MAXFRAG	},
 	{"MAXCHANNELS",		A2_MAXCHANNELS	},
+	{"WAVEPERIOD",		A2_WAVEPERIOD	},
 
 	/* Object types */
-	{"BANK",		A2_TBANK	},
-	{"WAVE",		A2_TWAVE	},
-	{"PROGRAM",		A2_TPROGRAM	},
+	{"TBANK",		A2_TBANK	},
+	{"TWAVE",		A2_TWAVE	},
+	{"TPROGRAM",		A2_TPROGRAM	},
+	{"TUNIT",		A2_TUNIT	},
+	{"TSTRING",		A2_TSTRING	},
+	{"TSTREAM",		A2_TSTREAM	},
+	{"TXICLIENT",		A2_TXICLIENT	},
+	{"TDETACHED",		A2_TDETACHED	},
+	{"TNEWVOICE",		A2_TNEWVOICE	},
+	{"TVOICE",		A2_TVOICE	},
 
 	/* Flags for a2_Open() */
 	{"EXPORTALL",		A2_EXPORTALL	},
 	{"TIMESTAMP",		A2_TIMESTAMP	},
 	{"NOAUTOCNX",		A2_NOAUTOCNX	},
 	{"REALTIME",		A2_REALTIME	},
+	{"SILENT",		A2_SILENT	},
+	{"RTSILENT",		A2_RTSILENT	},
+	{"NOSHARED",		A2_NOSHARED	},
 
 	/* Wave types */
 	{"WOFF",		A2_WOFF		},
@@ -1351,10 +1502,11 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	addfunc(m, t, 1, "TypeName", 2, 0, 0, ea2_TypeName);
 	addfunc(m, t, 1, "String", 2, 0, 0, ea2_String);
 	addfunc(m, t, 1, "Name", 2, 0, 0, ea2_Name);
-	addfunc(m, t, 1, "Retain", 2, 0, 0, ea2_Retain);
-	addfunc(m, t, 1, "Release", 2, 0, 0, ea2_Release);
-	addfunc(m, t, 1, "Assign", 3, 0, 0, ea2_Assign);
-	addfunc(m, t, 1, "Export", 3, 1, 0, ea2_Export);
+	addfunc(m, t, 1, "Size", 2, 0, 0, ea2_Size);
+	addfunc(m, t, 0, "Retain", 2, 0, 0, ea2_Retain);
+	addfunc(m, t, 0, "Release", 2, 0, 0, ea2_Release);
+	addfunc(m, t, 0, "Assign", 3, 0, 0, ea2_Assign);
+	addfunc(m, t, 0, "Export", 3, 1, 0, ea2_Export);
 
 	/* Object loading/creation */
 	addfunc(m, t, 1, "NewBank", 2, 1, 0, ea2_NewBank);
@@ -1392,8 +1544,13 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	addfunc(m, t, 0, "Flush", 2, 0, 0, ea2_Flush);
 
 	/* Waveform management (waves.h) */
+	addfunc(m, t, 1, "NewWave", 3, 1, 0, ea2_NewWave);
 	addfunc(m, t, 1, "UploadWave", 5, 0, 0, ea2_UploadWave);
 	addfunc(m, t, 1, "RenderWave", 6, 0, 1, ea2_RenderWave);
+
+	/* Off-line rendering */
+	addfunc(m, t, 1, "Run", 2, 0, 0, ea2_Run);
+	addfunc(m, t, 1, "Render", 4, 0, 1, ea2_Render);
 
 	/* Utilities */
 	eel_export_cfunction(m, 1, "F2P", 1, 0, 0, ea2_F2P);
