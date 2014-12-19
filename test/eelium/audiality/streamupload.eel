@@ -1,0 +1,117 @@
+/////////////////////////////////////////////////////////////////////////
+// streamupload.eel - Wave upload via the stream API
+//
+//	Port of streamupload.c from the Audiality 2 tests.
+//
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////////////////////////////////
+
+import Audiality2 as A2;
+import cmdline as cmd;
+import SDL as SDL;
+import math;
+
+// Fragment size for wave rendering/uploading
+constant FRAGSIZE = 2048;
+
+// Capture buffer size (ms)
+constant CAPTUREBUFFER = 5000;
+
+// Wave length (frames)
+constant LENGTH = 100000;
+
+
+function check_abort
+{
+	while true
+	{
+		local ev = SDL.PollEvent();
+		if not ev
+			break;
+		switch ev.type
+		  case SDL.QUIT
+			return true;
+	}
+	return false;
+}
+
+
+export function main<args>
+{
+	local argspec = [
+		["d",	"audiodriver",	string,		"default",
+				"Audio driver + options"],
+		["r",	"samplerate",	integer,	44100,
+				"Audio sample rate (Hz)"],
+		["c",	"channels",	integer,	2,
+				"Number of audio channels"],
+		["b",	"audiobuf",	integer,	4096,
+				"Audio buffer size (frames)"],
+		["h",	"showhelp",	boolean,	false,
+				"Show this help"]
+	];
+	local params = cmd.parse(argspec, #arguments);
+	if params.showhelp
+	{
+		print("\n\nUsage: streamupload [switches] <file>\n\n");
+		print("Switches:\n");
+		cmd.usage(argspec);
+		print("\n");
+		return 0;
+	}
+
+	// Configure and open master state
+	local state = A2.a2state [
+		params.(samplerate, audiobuf, channels),
+		A2.TIMESTAMP | A2.REALTIME,
+		params.audiodriver
+	];
+
+	print("Loading...\n");
+	local path = __exports().__modpath;
+	if path
+		path += "/";
+	else
+		path = "";
+
+	// Load wave player program
+	local h = state:Load(path + "testprograms.a2s");
+	local testprogram = state:Get(h, "PlayTestWave");
+
+	// Render and upload wave
+	print("Rendering...\n");
+	local wh = state:NewWave(A2.WMIPWAVE, 128);
+	local sh = state:OpenStream(wh);
+	local buffer = vector_s16 [];
+	local s = 0;
+	while s < LENGTH
+	{
+		local frag = LENGTH - s |< FRAGSIZE;
+		for local i = 0, frag -1
+		{
+			buffer[i] = sin(s * 2 * PI / 100 +
+					(sin(s * .0013) * sin(s * .002) * 10)
+					) * 32767;
+			s += 1;
+		}
+		state:Write(sh, frag, buffer);
+	}
+	state:Release(sh);
+
+	// Start playing!
+	print("Playing...\n");
+	h = state:Start(state:RootVoice(), testprogram, 0, 1, wh);
+
+	while not check_abort()
+	{
+		state:Now();
+		sleep(100);
+	}
+
+	state:Now();
+	state:Send(h, 1);
+	sleep(1000);
+
+	print("Done!\n");
+	return 0;
+}

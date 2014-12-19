@@ -1,13 +1,12 @@
 
 Audiality 2:
 
-==>	* Port:
-		* streamupload.c
+	* Port:
 		* renderwave3.c (A2 ticket #188!)
 
 	audiality2.h:
-==>		* a2_SubState():
-			Pass parent state to constructor...?
+==>		* How do we deal with substates being destroyed by A2 along
+		  with their parent state!?
 		* a2_*Callback():
 			Need dedicated asynchronous VM state!
 		* a2_ConvertSize(), a2_Convert():

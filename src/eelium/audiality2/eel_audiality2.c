@@ -99,7 +99,13 @@ static EEL_xno get_raw_data(EEL_value *v, A2_sampleformats *fmt,
 	Audiality 2 state class
 ----------------------------------------------------------*/
 
-/* initv [sample_rate, buffer_size, channels, flags] */
+/*
+ * Master state:
+ *	initv [sample_rate, buffer_size, channels, flags]
+ *
+ * Substate:
+ *	initv [parent_state, sample_rate, buffer_size, channels, flags]
+ */
 static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 		EEL_value *initv, int initc, EEL_value *result)
 {
@@ -108,7 +114,16 @@ static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 	EEL_value v;
 	EEL_xno xno;
 	EEL_object *eo;
-	A2_config *cfg = a2_OpenConfig(
+	A2_config *cfg;
+	EA2_state *parentstate = NULL;
+	if(initc && (EEL_TYPE(initv) == a2_md.state_cid))
+	{
+		/* Grab the parent state and skip that initializer element! */
+		parentstate = o2EA2_state(initv->objref.v);
+		++initv;
+		--initc;
+	}
+	cfg = a2_OpenConfig(
 		initc >= 1 ? eel_v2l(initv) : -1,	/* sample rate */
 		initc >= 2 ? eel_v2l(initv + 1) : -1,	/* buffering */
 		initc >= 3 ? eel_v2l(initv + 2) : -1,	/* channels */
@@ -137,8 +152,16 @@ static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 	}
 	/* Hand it over to the state, so we don't have to keep track of it! */
 	cfg->flags |= A2_STATECLOSE;
-	if(!(st = a2_Open(cfg)))
-		return EEL_XDEVICEOPEN;
+	if(parentstate)
+	{
+		if(!(st = a2_SubState(parentstate->state, cfg)))
+			return EEL_XDEVICEOPEN;
+	}
+	else
+	{
+		if(!(st = a2_Open(cfg)))
+			return EEL_XDEVICEOPEN;
+	}
 	if(!(eo = eel_o_alloc(vm, sizeof(EA2_state), type)))
 	{
 		a2_Close(st);
@@ -157,6 +180,7 @@ static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 	eel_o2v(result, eo);
 	return 0;
 }
+
 
 static EEL_xno a2s_destruct(EEL_object *eo)
 {

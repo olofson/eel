@@ -5,19 +5,10 @@
 //
 // Copyright 2014 David Olofson
 /////////////////////////////////////////////////////////////////////////
-//
-// TODO:
-//	* Command line switches
-//	* Wait for Ctrl+C or equivalent
-//
-/////////////////////////////////////////////////////////////////////////
 
 import Audiality2 as A2;
 import cmdline as cmd;
 import SDL as SDL;
-
-// Fragment size for wave rendering/uploading
-constant FRAGSIZE = 256;
 
 // Stream poll/write period (ms)
 constant POLLPERIOD = 100;
@@ -51,11 +42,9 @@ export function main<args>
 				"Audio driver + options"],
 		["r",	"samplerate",	integer,	44100,
 				"Audio sample rate (Hz)"],
-		["wr",	"waverate",	integer,	0,
-				"Rendered wave sample rate (Hz)"],
 		["c",	"channels",	integer,	2,
 				"Number of audio channels"],
-		["a",	"audiobuf",	integer,	1024,
+		["b",	"audiobuf",	integer,	1024,
 				"Audio buffer size (frames)"],
 		["h",	"showhelp",	boolean,	false,
 				"Show this help"]

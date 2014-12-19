@@ -1,0 +1,117 @@
+/////////////////////////////////////////////////////////////////////////
+// rtsubstate.eel - Audiality 2 realtime substate test
+//
+//	This test runs a master realtime state with a substate that
+//	also runs a realtime driver. That is, two asynchronous realtime
+//	states sharing banks, programs, waves etc.
+//
+//	NOTE:	This test needs a driver/API that supports multiple
+//		opens or multiple soundcards, or the substate will fail
+//		to open!
+//
+//	Port of rtsubstate.c from the Audiality 2 tests.
+//
+// Copyright 2014 David Olofson
+/////////////////////////////////////////////////////////////////////////
+
+import Audiality2 as A2;
+import cmdline as cmd;
+import SDL as SDL;
+import math;
+
+// Fragment size for wave rendering/uploading
+constant FRAGSIZE = 2048;
+
+// Wave length (frames)
+constant LENGTH = 100000;
+
+
+function check_abort
+{
+	while true
+	{
+		local ev = SDL.PollEvent();
+		if not ev
+			break;
+		switch ev.type
+		  case SDL.QUIT
+			return true;
+	}
+	return false;
+}
+
+
+export function main<args>
+{
+	local argspec = [
+		["d1",	"audiodriver",	string,		"default",
+				"Primary audio driver + options"],
+		["r1",	"samplerate",	integer,	44100,
+				"Primary driver sample rate (Hz)"],
+		["c1",	"channels",	integer,	2,
+				"Primary driver channel count"],
+		["b1",	"audiobuf",	integer,	4096,
+				"Primary driver buffer size (frames)"],
+		["d2",	"audiodriver2",	string,		"default",
+				"Secondary audio driver + options"],
+		["r2",	"samplerate2",	integer,	16000,
+				"Secondary driver sample rate (Hz)"],
+		["c2",	"channels2",	integer,	2,
+				"Secondary driver channel count"],
+		["b2",	"audiobuf2",	integer,	1024,
+				"Secondary driver buffer size (frames)"],
+		["h",	"showhelp",	boolean,	false,
+				"Show this help"]
+	];
+	local params = cmd.parse(argspec, #arguments);
+	if params.showhelp
+	{
+		print("\n\nUsage: streamupload [switches] <file>\n\n");
+		print("Switches:\n");
+		cmd.usage(argspec);
+		print("\n");
+		return 0;
+	}
+
+	// Configure and open master state
+	local state = A2.a2state [
+		params.(samplerate, audiobuf, channels),
+		A2.TIMESTAMP | A2.REALTIME,
+		params.audiodriver
+	];
+
+	// Configure and open substate (secondary realtime state)
+	local state2 = A2.a2state [
+		state,	// Parent state; specifying it makes this a substate!
+		params.(samplerate2, audiobuf2, channels2),
+		A2.TIMESTAMP | A2.REALTIME,
+		params.audiodriver2
+	];
+
+	print("Loading...\n");
+	local path = __exports().__modpath;
+	if path
+		path += "/";
+	else
+		path = "";
+
+	// Load wave player program
+	local h = state:Load(path + "k2intro.a2s");
+	local songh = state:Get(h, "Song");
+
+	// Start playing!
+	state:Now();
+	state:Play(state:RootVoice(), songh);
+	state2:Now();
+	state2:Play(state2:RootVoice(), songh);
+
+	while not check_abort()
+	{
+		state:Now();
+		state2:Now();
+		sleep(100);
+	}
+
+	print("Done!\n");
+	return 0;
+}
