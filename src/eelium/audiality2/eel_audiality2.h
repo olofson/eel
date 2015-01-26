@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_audiality2.h - EEL Audiality 2 binding
 ---------------------------------------------------------------------------
- * Copyright 2011-2012 David Olofson
+ * Copyright 2011-2012, 2015 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -25,8 +25,7 @@
 #define EEL_AUDIALITY2_H
 
 #include "EEL.h"
-#include "Audiality2/audiality2.h"
-#include "Audiality2/waves.h"
+#include "audiality2.h"
 
 /* state */
 typedef struct
