@@ -120,6 +120,10 @@ if(UNIX)
 	target_link_libraries(libeel m)
 endif(UNIX)
 
+if(WIN32)
+	target_link_libraries(libeel winmm)
+endif(WIN32)
+
 # Until 1.0, we assume there's no ABI compatibility across releases!
 set_target_properties(libeel PROPERTIES VERSION ${VERSION_STRING}
 	SOVERSION ${VERSION_STRING})

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_state.h - EEL State (Compiler, VM, symbols etc)
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2014-2015 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -37,12 +37,12 @@
 #if (defined(HAVE__SETJMP) || defined(HAVE_SETJMP)) &&	\
 		(defined(HAVE__LONGJMP) || defined(HAVE_LONGJMP))
 #	define	EEL_jmp_buf	jmp_buf
-#	ifdef HAVE__SETJMP
+#	if (defined HAVE__SETJMP) && (!defined _W64)
 #		define	eel_setjmp(x)	_setjmp(x)
 #	else
 #		define	eel_setjmp(x)	setjmp(x)
 #	endif
-#	ifdef HAVE__LONGJMP
+#	if (defined HAVE__LONGJMP) && (!defined _W64)
 #		define	eel_longjmp	_longjmp
 #	else
 #		define	eel_longjmp	longjmp

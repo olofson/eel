@@ -68,7 +68,6 @@ include_directories(${PNG_INCLUDE_DIR})
 
 #find_package(AUDIALITY2 REQUIRED)
 #include_directories(${AUDIALITY2_INCLUDE_DIR})
-find_package(PkgConfig)
 pkg_check_modules(AUDIALITY2 REQUIRED audiality2)
 include_directories(${AUDIALITY2_INCLUDE_DIRS})
 

@@ -40,6 +40,9 @@ set(CMAKE_C_FLAGS_MAINTAINER "${f} -Werror")
 set(f "${f} -DDEBUG")
 set(CMAKE_C_FLAGS_DEBUG ${f})
 
+# MXE again... Maybe find_package() only works on the top level in some cases?
+find_package(PkgConfig)
+
 add_subdirectory(src)
 add_subdirectory(test)
 
