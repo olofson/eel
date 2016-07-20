@@ -635,24 +635,6 @@ EELAPI(EEL_xno)eel_iwrite_d(EEL_object *v, int start, int vstride,
 
 	* Add "read from stdin" feature to 'eel' command!
 
-	* Inheritance mechanisms:
-		* Lua style metamethod, that can be another
-		  indexable object, or a function? The function
-		  would take the object and the index as args.
-		* Access models? Every indexable object would
-		  get a field that specifies how it is to be
-		  accessed; various hardcoded rules or a custom
-		  function. Much like the metamethod approach,
-		  except this is actually defines the index
-		  operation, rather than kicking in when normal
-		  indexing fails. Also, this would allow write
-		  protecting tables and whatnot.
-	  Either sort of inheritance mechanims would eliminate
-	  the need for adding tables or something to custom
-	  classes just to be able to add fields to them. With
-	  inheritance, the "fallback" object could be anything
-	  indexable.
-
 	* The FFT module is apparently not thread safe!
 
 	* EEL_OWNER_TRACE segfaults!

@@ -50,7 +50,7 @@ export function main<args>
 	local pig = [];
 	for local i = 0, 12 - 1
 	{
-	pig[i] = Surface[0, 64, 48, 32];
+		pig[i] = Surface[0, 64, 48, 32];
 		local sr = Rect[(i % 3) * 64, (integer)(i / 3) * 48, 64, 48];
 		BlitSurface(pigframes, sr, pig[i], nil);
 		SetAlpha(pig[i], SRCALPHA | RLEACCEL);
