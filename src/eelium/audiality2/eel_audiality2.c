@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_audiality2.h - EEL Audiality 2 binding
 ---------------------------------------------------------------------------
- * Copyright 2011-2012, 2014 David Olofson
+ * Copyright 2011-2012, 2014, 2016 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "eel_audiality2.h"
+#include "a2_vm.h"
 
 
 typedef struct
@@ -270,7 +271,7 @@ static EEL_xno ea2_ErrorDescription(EEL_vm *vm)
 	Handle management
 ---------------------------------------------------------*/
 
-/* RootVoice(state) */
+/* function RootVoice(state) */
 static EEL_xno ea2_RootVoice(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -282,7 +283,7 @@ static EEL_xno ea2_RootVoice(EEL_vm *vm)
 	return 0;
 }
 
-/* TypeOf(state, handle) */
+/* function TypeOf(state, handle) */
 static EEL_xno ea2_TypeOf(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -294,7 +295,7 @@ static EEL_xno ea2_TypeOf(EEL_vm *vm)
 	return 0;
 }
 
-/* TypeName(state, typecode) */
+/* function TypeName(state, typecode) */
 static EEL_xno ea2_TypeName(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -310,7 +311,7 @@ static EEL_xno ea2_TypeName(EEL_vm *vm)
 	return 0;
 }
 
-/* String(state, handle) */
+/* function String(state, handle) */
 static EEL_xno ea2_String(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -326,7 +327,7 @@ static EEL_xno ea2_String(EEL_vm *vm)
 	return 0;
 }
 
-/* Name(state, handle) */
+/* function Name(state, handle) */
 static EEL_xno ea2_Name(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -342,7 +343,7 @@ static EEL_xno ea2_Name(EEL_vm *vm)
 	return 0;
 }
 
-/* Size(state, handle) */
+/* function Size(state, handle) */
 static EEL_xno ea2_Size(EEL_vm *vm)
 {
 	int res;
@@ -356,7 +357,7 @@ static EEL_xno ea2_Size(EEL_vm *vm)
 	return 0;
 }
 
-/* Retain(state, handle) */
+/* procedure Retain(state, handle) */
 static EEL_xno ea2_Retain(EEL_vm *vm)
 {
 	A2_errors res;
@@ -370,7 +371,7 @@ static EEL_xno ea2_Retain(EEL_vm *vm)
 	return 0;
 }
 
-/* Release(state, handle) */
+/* procedure Release(state, handle) */
 static EEL_xno ea2_Release(EEL_vm *vm)
 {
 	A2_errors res;
@@ -385,7 +386,7 @@ static EEL_xno ea2_Release(EEL_vm *vm)
 	return 0;
 }
 
-/* Assign(state, owner, handle) */
+/* procedure Assign(state, owner, handle) */
 static EEL_xno ea2_Assign(EEL_vm *vm)
 {
 	A2_errors res;
@@ -400,7 +401,7 @@ static EEL_xno ea2_Assign(EEL_vm *vm)
 	return 0;
 }
 
-/* Export(state, owner, handle)[name] */
+/* procedure Export(state, owner, handle)[name] */
 static EEL_xno ea2_Export(EEL_vm *vm)
 {
 	A2_errors res;
@@ -425,7 +426,7 @@ static EEL_xno ea2_Export(EEL_vm *vm)
 	Object loading/creation
 ---------------------------------------------------------*/
 
-/* NewBank(state, name)[flags] */
+/* function NewBank(state, name)[flags] */
 static EEL_xno ea2_NewBank(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -443,7 +444,7 @@ static EEL_xno ea2_NewBank(EEL_vm *vm)
 	return 0;
 }
 
-/* LoadString(state, code, name) */
+/* function LoadString(state, code, name) */
 static EEL_xno ea2_LoadString(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -462,7 +463,7 @@ static EEL_xno ea2_LoadString(EEL_vm *vm)
 	return 0;
 }
 
-/* Load(state, filename) */
+/* function Load(state, filename) */
 static EEL_xno ea2_Load(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -480,7 +481,7 @@ static EEL_xno ea2_Load(EEL_vm *vm)
 	return 0;
 }
 
-/* NewString(state, string) */
+/* function NewString(state, string) */
 static EEL_xno ea2_NewString(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -495,7 +496,7 @@ static EEL_xno ea2_NewString(EEL_vm *vm)
 	return 0;
 }
 
-/* UnloadAll(state) */
+/* function UnloadAll(state) */
 static EEL_xno ea2_UnloadAll(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -512,7 +513,7 @@ static EEL_xno ea2_UnloadAll(EEL_vm *vm)
 	Objects and exports
 ---------------------------------------------------------*/
 
-/* Get(state, node, path) */
+/* function Get(state, node, path) */
 static EEL_xno ea2_Get(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -528,7 +529,7 @@ static EEL_xno ea2_Get(EEL_vm *vm)
 	return 0;
 }
 
-/* GetExport(state, node, index) */
+/* function GetExport(state, node, index) */
 static EEL_xno ea2_GetExport(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -541,7 +542,7 @@ static EEL_xno ea2_GetExport(EEL_vm *vm)
 	return 0;
 }
 
-/* GetExportName(state, node, index) */
+/* function GetExportName(state, node, index) */
 static EEL_xno ea2_GetExportName(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -560,30 +561,136 @@ static EEL_xno ea2_GetExportName(EEL_vm *vm)
 
 
 /*---------------------------------------------------------
+	Timestamping
+---------------------------------------------------------*/
+
+/* function TSDiff(a, b) */
+static EEL_xno ea2_TSDiff(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	eel_l2v(vm->heap + vm->resv,
+			a2_TSDiff(eel_v2l(args), eel_v2l(args + 1)));
+	return 0;
+}
+
+
+/* function TimestampNow(state) */
+static EEL_xno ea2_TimestampNow(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_TimestampNow(
+			o2EA2_state(args->objref.v)->state));
+	return 0;
+}
+
+
+/* function TimestampGet(state) */
+static EEL_xno ea2_TimestampGet(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_TimestampGet(
+			o2EA2_state(args->objref.v)->state));
+	return 0;
+}
+
+
+/* function TimestampSet(state, ts) */
+static EEL_xno ea2_TimestampSet(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_TimestampSet(
+			o2EA2_state(args->objref.v)->state,
+			eel_v2l(args + 1)));
+	return 0;
+}
+
+
+/* function ms2Timestamp(state, t) */
+static EEL_xno ea2_ms2Timestamp(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_ms2Timestamp(
+			o2EA2_state(args->objref.v)->state,
+			eel_v2d(args + 1)));
+	return 0;
+}
+
+
+/* function Timestamp2ms(state, ts) */
+static EEL_xno ea2_Timestamp2ms(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_d2v(vm->heap + vm->resv, a2_Timestamp2ms(
+			o2EA2_state(args->objref.v)->state,
+			eel_v2l(args + 1)));
+	return 0;
+}
+
+
+/* function TimestampReset(state) */
+static EEL_xno ea2_TimestampReset(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_TimestampReset(
+			o2EA2_state(args->objref.v)->state));
+	return 0;
+}
+
+
+/* function TimestampBump(state, dt) */
+static EEL_xno ea2_TimestampBump(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_TimestampBump(
+			o2EA2_state(args->objref.v)->state,
+			eel_v2l(args + 1)));
+	return 0;
+}
+
+
+/* function TimestampNudge(state, offset, amount) */
+static EEL_xno ea2_TimestampNudge(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	if(EEL_TYPE(args) != a2_md.state_cid)
+		return EEL_XWRONGTYPE;
+	eel_l2v(vm->heap + vm->resv, a2_TimestampNudge(
+			o2EA2_state(args->objref.v)->state,
+			eel_v2l(args + 1), eel_v2d(args + 2)));
+	return 0;
+}
+
+
+/*---------------------------------------------------------
 	Playing and controlling
 ---------------------------------------------------------*/
 
-/* Now(state) */
-static EEL_xno ea2_Now(EEL_vm *vm)
+/* procedure PumpMessages(state) */
+static EEL_xno ea2_PumpMessages(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
-	a2_Now(o2EA2_state(args->objref.v)->state);
+	a2_PumpMessages(o2EA2_state(args->objref.v)->state);
 	return 0;
 }
 
-/* Wait(state, dt) */
-static EEL_xno ea2_Wait(EEL_vm *vm)
-{
-	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
-		return EEL_XWRONGTYPE;
-	a2_Wait(o2EA2_state(args->objref.v)->state, eel_v2d(args + 1));
-	return 0;
-}
 
-/* NewGroup(state, parent) */
+/* function NewGroup(state, parent) */
 static EEL_xno ea2_NewGroup(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -591,11 +698,12 @@ static EEL_xno ea2_NewGroup(EEL_vm *vm)
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_NewGroup(ea2s->state, eel_v2l(args + 1)));
+	eel_l2v(vm->heap + vm->resv, a2_NewGroup(ea2s->state,
+			eel_v2l(args + 1)));
 	return 0;
 }
 
-/* Start(state, parent, program)<args> */
+/* function Start(state, parent, program)<args> */
 static EEL_xno ea2_Start(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -613,7 +721,7 @@ static EEL_xno ea2_Start(EEL_vm *vm)
 	return 0;
 }
 
-/* Play(state, parent, program)<args> */
+/* function Play(state, parent, program)<args> */
 static EEL_xno ea2_Play(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -631,7 +739,7 @@ static EEL_xno ea2_Play(EEL_vm *vm)
 	return 0;
 }
 
-/* Send(state, voice, entrypoint)<args> */
+/* function Send(state, voice, entrypoint)<args> */
 static EEL_xno ea2_Send(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -649,7 +757,7 @@ static EEL_xno ea2_Send(EEL_vm *vm)
 	return 0;
 }
 
-/* SendSub(state, voice, entrypoint)<args> */
+/* function SendSub(state, voice, entrypoint)<args> */
 static EEL_xno ea2_SendSub(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -662,12 +770,13 @@ static EEL_xno ea2_SendSub(EEL_vm *vm)
 		return EEL_XMANYARGS;
 	for(i = 0; i < vm->argc - 3; ++i)
 		a[i] = eel_v2d(args + 3 + i) * 65536.0f;
-	eel_l2v(vm->heap + vm->resv, a2_SendSuba(ea2s->state, eel_v2l(args + 1),
-			eel_v2l(args + 2), vm->argc - 3, a));
+	eel_l2v(vm->heap + vm->resv, a2_SendSuba(ea2s->state,
+			eel_v2l(args + 1), eel_v2l(args + 2),
+			vm->argc - 3, a));
 	return 0;
 }
 
-/* Kill(state, voice) */
+/* function Kill(state, voice) */
 static EEL_xno ea2_Kill(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -679,7 +788,7 @@ static EEL_xno ea2_Kill(EEL_vm *vm)
 	return 0;
 }
 
-/* KillSub(state, voice) */
+/* function KillSub(state, voice) */
 static EEL_xno ea2_KillSub(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -687,7 +796,8 @@ static EEL_xno ea2_KillSub(EEL_vm *vm)
 	if(EEL_TYPE(args) != a2_md.state_cid)
 		return EEL_XWRONGTYPE;
 	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_KillSub(ea2s->state, eel_v2l(args + 1)));
+	eel_l2v(vm->heap + vm->resv, a2_KillSub(ea2s->state,
+			eel_v2l(args + 1)));
 	return 0;
 }
 
@@ -975,7 +1085,7 @@ static EEL_xno ea2_Flush(EEL_vm *vm)
 	Waveform management
 ---------------------------------------------------------*/
 
-/* NewWave(state, wavetype, period)[flags] */
+/* function NewWave(state, wavetype, period)[flags] */
 static EEL_xno ea2_NewWave(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -993,7 +1103,7 @@ static EEL_xno ea2_NewWave(EEL_vm *vm)
 }
 
 
-/* UploadWave(state, wavetype, period, flags, data) */
+/* function UploadWave(state, wavetype, period, flags, data) */
 static EEL_xno ea2_UploadWave(EEL_vm *vm)
 {
 	EEL_xno res;
@@ -1062,7 +1172,8 @@ static EEL_xno ea2_parse_properties(EEL_vm *vm, EEL_object *a, A2_property **p)
 
 
 /*
- * RenderWave(state, wavetype, period, flags, samplerate, length)<args>
+ * function RenderWave(state, wavetype, period, flags, samplerate, length)
+ *		<args>
  *
  * <args> is an optional array of properties (<property, value> pairs),
  * followed by a program handle and zero or more arguments that will be passed
@@ -1130,7 +1241,7 @@ static EEL_xno ea2_RenderWave(EEL_vm *vm)
 ---------------------------------------------------------*/
 
 /*
- * Run(state, frames)
+ * function Run(state, frames)
  *
  * Run a state (or substate) that's using a driver without a thread or similar
  * context of its own, that is, one that implements the Run() method. Typically
@@ -1155,7 +1266,7 @@ static EEL_xno ea2_Run(EEL_vm *vm)
 
 
 /*
- * Render(state, stream, samplerate, length)<args>
+ * function Render(state, stream, samplerate, length)<args>
  *
  * Runs a program off-line with the specified arguments, rendering at
  * 'samplerate', writing the output to 'stream'. <args> is an optional array of
@@ -1249,7 +1360,7 @@ static EEL_xno ea2_Rand(EEL_vm *vm)
 	Object property interface
 ---------------------------------------------------------*/
 
-/* GetProperty(state, handle, property) */
+/* function GetProperty(state, handle, property) */
 static EEL_xno ea2_GetProperty(EEL_vm *vm)
 {
 	A2_errors ae;
@@ -1270,7 +1381,7 @@ static EEL_xno ea2_GetProperty(EEL_vm *vm)
 	return 0;
 }
 
-/* SetProperty(state, handle, property, value) */
+/* procedure SetProperty(state, handle, property, value) */
 static EEL_xno ea2_SetProperty(EEL_vm *vm)
 {
 	A2_errors ae;
@@ -1391,7 +1502,6 @@ static const EEL_lconstexp eel_a2_constants[] =
 	{"TVOICE",		A2_TVOICE	},
 
 	/* Flags for a2_Open() */
-	{"EXPORTALL",		A2_EXPORTALL	},
 	{"TIMESTAMP",		A2_TIMESTAMP	},
 	{"NOAUTOCNX",		A2_NOAUTOCNX	},
 	{"REALTIME",		A2_REALTIME	},
@@ -1433,7 +1543,6 @@ static const EEL_lconstexp eel_a2_constants[] =
 	/* Properties: Global settings */
 	{"PSAMPLERATE",		A2_PSAMPLERATE		},
 	{"PBUFFER",		A2_PBUFFER		},
-	{"PEXPORTALL",		A2_PEXPORTALL		},
 	{"PTABSIZE",		A2_PTABSIZE		},
 	{"POFFLINEBUFFER",	A2_POFFLINEBUFFER	},
 	{"PSILENCELEVEL",	A2_PSILENCELEVEL	},
@@ -1451,9 +1560,6 @@ static const EEL_lconstexp eel_a2_constants[] =
 	{"PCPUTIMEAVG",		A2_PCPUTIMEAVG		},
 	{"PCPUTIMEMAX",		A2_PCPUTIMEMAX		},
 	{"PINSTRUCTIONS",	A2_PINSTRUCTIONS	},
-
-	/* Properties: Wave */
-	{"PLOOPED",		A2_PLOOPED		},
 
 	{NULL, 0}
 };
@@ -1544,9 +1650,19 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	addfunc(m, t, 1, "GetExport", 3, 0, 0, ea2_GetExport);
 	addfunc(m, t, 1, "GetExportName", 3, 0, 0, ea2_GetExportName);
 
+	/* Timestamping */
+	addfunc(m, t, 1, "TSDiff", 2, 0, 0, ea2_TSDiff);
+	addfunc(m, t, 1, "TimestampNow", 1, 0, 0, ea2_TimestampNow);
+	addfunc(m, t, 1, "TimestampGet", 1, 0, 0, ea2_TimestampGet);
+	addfunc(m, t, 1, "TimestampSet", 2, 0, 0, ea2_TimestampSet);
+	addfunc(m, t, 1, "ms2Timestamp", 2, 0, 0, ea2_ms2Timestamp);
+	addfunc(m, t, 1, "Timestamp2ms", 2, 0, 0, ea2_Timestamp2ms);
+	addfunc(m, t, 1, "TimestampReset", 1, 0, 0, ea2_TimestampReset);
+	addfunc(m, t, 1, "TimestampBump", 2, 0, 0, ea2_TimestampBump);
+	addfunc(m, t, 1, "TimestampNudge", 3, 0, 0, ea2_TimestampNudge);
+
 	/* Playing and controlling */
-	addfunc(m, t, 0, "Now", 1, 0, 0, ea2_Now);
-	addfunc(m, t, 0, "Wait", 2, 0, 0, ea2_Wait);
+	addfunc(m, t, 0, "PumpMessages", 1, 0, 0, ea2_PumpMessages);
 	addfunc(m, t, 1, "NewGroup", 2, 0, 0, ea2_NewGroup);
 	addfunc(m, t, 1, "Start", 3, 0, 1, ea2_Start);
 	addfunc(m, t, 1, "Play", 3, 0, 1, ea2_Play);

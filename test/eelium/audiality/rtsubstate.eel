@@ -11,7 +11,7 @@
 //
 //	Port of rtsubstate.c from the Audiality 2 tests.
 //
-// Copyright 2014 David Olofson
+// Copyright 2014, 2016 David Olofson
 /////////////////////////////////////////////////////////////////////////
 
 import Audiality2 as A2;
@@ -100,15 +100,15 @@ export function main<args>
 	local songh = state:Get(h, "Song");
 
 	// Start playing!
-	state:Now();
+	state:TimestampReset();
 	state:Play(state:RootVoice(), songh);
-	state2:Now();
+	state2:TimestampReset();
 	state2:Play(state2:RootVoice(), songh);
 
 	while not check_abort()
 	{
-		state:Now();
-		state2:Now();
+		state:PumpMessages();
+		state2:PumpMessages();
 		sleep(100);
 	}
 

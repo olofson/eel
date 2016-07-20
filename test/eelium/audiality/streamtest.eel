@@ -3,7 +3,7 @@
 //
 //	Port of streamtest.c from the Audiality 2 tests.
 //
-// Copyright 2014 David Olofson
+// Copyright 2014, 2016 David Olofson
 /////////////////////////////////////////////////////////////////////////
 
 import Audiality2 as A2;
@@ -100,7 +100,7 @@ export function main<args>
 			print("Aborted!\n");
 			return 0;
 		}
-		state:Now();
+		state:PumpMessages();
 		while true
 		{
 			local n = state:Available(streamh);
@@ -128,7 +128,7 @@ export function main<args>
 			print("Aborted!\n");
 			return 0;
 		}
-		state:Now();
+		state:PumpMessages();
 		while true
 		{
 			local n = state:Space(streamh);

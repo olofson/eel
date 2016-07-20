@@ -3,7 +3,7 @@
 //
 //	Port of renderwave2.c from the Audiality 2 tests.
 //
-// Copyright 2014 David Olofson
+// Copyright 2014, 2016 David Olofson
 ////////////////////////////////////////////////////////////////////
 //
 // TODO:
@@ -75,14 +75,14 @@ export function main<args>
 
 	// Play!
 	print("Playing...\n");
-	state:Now();
+	state:TimestampReset();
 	local vh = state:Start(state:RootVoice(), ph, 0, 1, h);
 
 	// TODO: Wait for Ctrl+C instead
 	sleep(7000);
 
 	// Stop!
-	state:Now();
+	state:TimestampReset();
 	state:Send(vh, 1);
 	state:Release(vh);
 	sleep(1000);
