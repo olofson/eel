@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_sdl.c - EEL SDL Binding
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2011, 2013-2014 David Olofson
+ * Copyright 2005-2007, 2009-2011, 2013-2014, 2016 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -1112,12 +1112,75 @@ static EEL_xno esdl_SetColorKey(EEL_vm *vm)
 }
 
 
+static inline void esdl_raw2color(Uint32 r, SDL_Color *c)
+{
+	c->r = (r >> 16) & 0xff;
+	c->g = (r >> 8) & 0xff;
+	c->b = r & 0xff;
+	c->unused = 0;
+}
+
+
+/* function SetColors(surface, colors)[firstcolor] */
+static EEL_xno esdl_SetColors(EEL_vm *vm)
+{
+	SDL_Surface *s;
+	Uint32 first;
+	EEL_value *args = vm->heap + vm->argv;
+	EEL_value *res = vm->heap + vm->resv;
+	if(EEL_TYPE(args) != esdl_md.surface_cid)
+		return EEL_XWRONGTYPE;
+	s = o2ESDL_surface(args->objref.v)->surface;
+	if(vm->argc >= 3)
+		first = eel_v2l(args + 2);
+	else
+		first = 0;
+	switch((EEL_classes)EEL_TYPE(args + 1))
+	{
+	  case EEL_TINTEGER:
+	  {
+		/* Single color value */
+		SDL_Color c;
+		esdl_raw2color(args[1].integer.v, &c);
+		eel_b2v(res, SDL_SetColors(s, &c, first, 1));
+		return 0;
+	  }
+	  case EEL_CVECTOR_U32:
+	  case EEL_CVECTOR_S32:
+	  {
+		/* Vector of color values */
+		int i;
+		SDL_Color *c;
+		EEL_object *o = eel_v2o(args + 1);
+		Uint32 *rd;
+		int len = eel_length(o);
+		if(len < 1)
+			return EEL_XFEWITEMS;
+		rd = eel_rawdata(o);
+		if(!rd)
+			return EEL_XCANTREAD;
+		c = (SDL_Color *)eel_malloc(vm, sizeof(SDL_Color) * len);
+		if(!c)
+			return EEL_XMEMORY;
+		for(i = 0; i < len; ++i)
+			esdl_raw2color(rd[i], c + i);
+		eel_b2v(res, SDL_SetColors(s, c, first, len));
+		eel_free(vm, c);
+		return 0;
+	  }
+	  default:
+		return EEL_XWRONGTYPE;
+	}
+}
+
+
 static EEL_xno esdl_MapColor(EEL_vm *vm)
 {
 	EEL_value *arg = vm->heap + vm->argv;
 	SDL_Surface *s;
 	Uint32 color;
 	int r, g, b;
+	int a = -1;
 	if(EEL_TYPE(arg) != esdl_md.surface_cid)
 	{
 		if(EEL_TYPE(arg) != EEL_TNIL)
@@ -1128,34 +1191,71 @@ static EEL_xno esdl_MapColor(EEL_vm *vm)
 	}
 	else
 		s = o2ESDL_surface(arg->objref.v)->surface;
-	r = eel_v2l(arg + 1);
-	if(r < 0)
-		r = 0;
-	else if(r > 255)
-		r = 255;
-	g = eel_v2l(arg + 2);
-	if(g < 0)
-		g = 0;
-	else if(g > 255)
-		g = 255;
-	b = eel_v2l(arg + 3);
-	if(b < 0)
-		b = 0;
-	else if(b > 255)
-		b = 255;
-	if(vm->argc >= 5)
+	if(vm->argc == 2)
 	{
-		int a = eel_v2l(arg + 4);
-		if(a < 0)
-			a = 0;
-		else if(a > 255)
-			a = 255;
-		color = SDL_MapRGBA(s->format, r, g, b, a);
+		// Packed "hex" ARGB color
+		int c = eel_v2l(arg + 1);
+		a = (c >> 24) & 0xff;
+		r = (c >> 16) & 0xff;
+		g = (c >> 8) & 0xff;
+		b = c & 0xff;
 	}
+	else if(vm->argc >= 4)
+	{
+		// Individual R, G, B, and (optionally) A arguments
+		r = eel_v2l(arg + 1);
+		if(r < 0)
+			r = 0;
+		else if(r > 255)
+			r = 255;
+		g = eel_v2l(arg + 2);
+		if(g < 0)
+			g = 0;
+		else if(g > 255)
+			g = 255;
+		b = eel_v2l(arg + 3);
+		if(b < 0)
+			b = 0;
+		else if(b > 255)
+			b = 255;
+		if(vm->argc >= 5)
+		{
+			// A, if specified
+			a = eel_v2l(arg + 4);
+			if(a < 0)
+				a = 0;
+			else if(a > 255)
+				a = 255;
+		}
+	}
+	if(a >= 0)
+		color = SDL_MapRGBA(s->format, r, g, b, a);
 	else
 		color = SDL_MapRGB(s->format, r, g, b);
 	vm->heap[vm->resv].type = EEL_TINTEGER;
 	vm->heap[vm->resv].integer.v = color;
+	return 0;
+}
+
+
+static EEL_xno esdl_GetColor(EEL_vm *vm)
+{
+	EEL_value *arg = vm->heap + vm->argv;
+	SDL_Surface *s;
+	Uint8 r, g, b, a;
+	if(EEL_TYPE(arg) != esdl_md.surface_cid)
+	{
+		if(EEL_TYPE(arg) != EEL_TNIL)
+			return EEL_XWRONGTYPE;
+		s = SDL_GetVideoSurface();
+		if(!s)
+			return EEL_XDEVICECONTROL;
+	}
+	else
+		s = o2ESDL_surface(arg->objref.v)->surface;
+	SDL_GetRGBA(eel_v2l(arg + 1), s->format, &r, &g, &b, &a);
+	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].integer.v = a << 24 | r << 16 | g << 8 | b;
 	return 0;
 }
 
@@ -2095,6 +2195,7 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 			esdl_DisplayFormatAlpha);
 	eel_export_cfunction(m, 0, "SetAlpha", 1, 2, 0, esdl_SetAlpha);
 	eel_export_cfunction(m, 0, "SetColorKey", 1, 2, 0, esdl_SetColorKey);
+	eel_export_cfunction(m, 1, "SetColors", 2, 1, 0, esdl_SetColors);
 
 	/* Timing */
 	eel_export_cfunction(m, 1, "GetTicks", 0, 0, 0, esdl_GetTicks);
@@ -2114,7 +2215,8 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "JoystickName", 1, 0, 0, esdl_JoystickName);
 
 	/* EEL SDL extensions */
-	eel_export_cfunction(m, 1, "MapColor", 4, 1, 0, esdl_MapColor);
+	eel_export_cfunction(m, 1, "MapColor", 2, 3, 0, esdl_MapColor);
+	eel_export_cfunction(m, 1, "GetColor", 2, 0, 0, esdl_GetColor);
 	eel_export_cfunction(m, 0, "Plot", 2, 0, 2, esdl_Plot);
 	eel_export_cfunction(m, 1, "GetPixel", 3, 0, 0, esdl_GetPixel);
 

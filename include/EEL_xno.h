@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_xno.h - EEL Exception/Error codes (API)
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009, 2013-2014 David Olofson
+ * Copyright 2005-2006, 2009, 2013-2014, 2016 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -98,6 +98,7 @@ extern "C" {
   EEL_DEFEX(XLOWINDEX,		"Index out of range; too low")\
   EEL_DEFEX(XHIGHINDEX,		"Index out of range; too high")\
   EEL_DEFEX(XWRONGINDEX,	"Nonexistent index (index-by-name)")\
+  EEL_DEFEX(XFEWITEMS,		"Container has too few items")\
 \
   /* Math and other operation errors */\
   EEL_DEFEX(XLOWVALUE,		"Value out of range; too low")\
