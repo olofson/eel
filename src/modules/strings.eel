@@ -33,11 +33,12 @@ constant hexfigures = "0123456789ABCDEF";
 
 export function hexstr(val)[figures = 0]
 {
+	val = (integer)val;
 	if figures
 	{
 		local buf = dstring [];
 		for local i = figures - 1, 0, -1
-			buf.+ hexfigures[(val / (16 ** i)) % 16];
+			buf.+ hexfigures[(val >> (4 * i)) & 0xf];
 		return buf;
 	}
 	else if val
@@ -45,8 +46,8 @@ export function hexstr(val)[figures = 0]
 		local buf = dstring [];
 		while val
 		{
-			insert(buf, 0, hexfigures[val % 16]);
-			val /= 16;
+			insert(buf, 0, hexfigures[val & 0xf]);
+			val >>= 4;
 		}
 		return buf;
 	}
@@ -56,11 +57,12 @@ export function hexstr(val)[figures = 0]
 
 export function octstr(val)[figures = 0]
 {
+	val = (integer)val;
 	if figures
 	{
 		local buf = dstring [];
 		for local i = figures - 1, 0, -1
-			buf.+ hexfigures[(val / (8 ** i)) % 8];
+			buf.+ hexfigures[(val >> (8 * i)) & 0x7];
 		return buf;
 	}
 	else if val
@@ -68,8 +70,8 @@ export function octstr(val)[figures = 0]
 		local buf = dstring [];
 		while val
 		{
-			insert(buf, 0, hexfigures[val % 8]);
-			val /= 8;
+			insert(buf, 0, hexfigures[val & 0x7]);
+			val >>= 3;
 		}
 		return buf;
 	}
