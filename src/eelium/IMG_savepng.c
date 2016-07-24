@@ -26,7 +26,10 @@
 	* Fixed mixed declarations and code in IMG_SavePNG_RW()
 
   David Olofson <david@olofson.net> 2011:
-	* Included png.h for libPNG 1.5.x support,
+	* Included png.h for libPNG 1.5.x support.
+
+  David Olofson <david@olofson.net> 2016:
+	* Simplified colorkey handling code.
 */
 
 /**
@@ -67,7 +70,6 @@ int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 	int used_alpha;
 	unsigned int i, temp_alpha = 0;
 	png_colorp palette;
-	Uint8 *palette_alpha = NULL;
 	int ret = -1;
 	int funky_format = 0;
 	int compression = flags & IMG_COMPRESS_MASK;
@@ -143,22 +145,11 @@ int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 		png_set_PLTE(png_ptr, info_ptr, palette, fmt->palette->ncolors);
 		if(surf->flags & SDL_SRCCOLORKEY)
 		{
-			palette_alpha = (Uint8 *)malloc((fmt->colorkey + 1) *
-					sizeof(Uint8));
-			if(!palette_alpha)
-			{
-				SDL_SetError("Couldn't create memory for "
-						"palette transparency");
-				goto savedone;
-			}
-			/* FIXME: memset? */
-			for(i = 0; i < (fmt->colorkey + 1); i++)
-			{
-				palette_alpha[i] = 255;
-			}
+			Uint8 palette_alpha[256];
+			memset(palette_alpha, 255, sizeof(palette_alpha));
 			palette_alpha[fmt->colorkey] = 0;
 			png_set_tRNS(png_ptr, info_ptr, palette_alpha,
-					fmt->colorkey + 1, NULL);
+					sizeof(palette_alpha), NULL);
 		}
 	}
 	else
@@ -327,8 +318,6 @@ savedone: /* clean up and return */
 	png_destroy_write_struct(&png_ptr, &info_ptr);
 	if(palette)
 		free(palette);
-	if(palette_alpha)
-		free(palette_alpha);
 	if(row_pointers)
 		free(row_pointers);
 	return ret;
