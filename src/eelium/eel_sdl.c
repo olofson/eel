@@ -1083,7 +1083,7 @@ static EEL_xno esdl_SetAlpha(EEL_vm *vm)
 	if(vm->argc >= 3)
 		alpha = eel_v2l(args + 2);
 	else
-		alpha = 0;
+		alpha = SDL_ALPHA_OPAQUE;
 	if(SDL_SetAlpha(s, flag, alpha) < 0)
 		return EEL_XDEVICEERROR;
 	return 0;
@@ -1101,7 +1101,7 @@ static EEL_xno esdl_SetColorKey(EEL_vm *vm)
 	if(vm->argc >= 2)
 		flag = eel_v2l(args + 1);
 	else
-		flag = 0;
+		flag = SDL_SRCCOLORKEY;
 	if(vm->argc >= 3)
 		key = eel_v2l(args + 2);
 	else
@@ -2141,6 +2141,10 @@ static const EEL_lconstexp esdl_constants[] =
 	{"DISABLE",	SDL_DISABLE},
 	{"ENABLE",	SDL_ENABLE},
 	{"QUERY",	SDL_QUERY},
+
+	/* Alpha constants */
+	{"ALPHA_TRANSPARENT",	SDL_ALPHA_TRANSPARENT},
+	{"ALPHA_OPAQUE",	SDL_ALPHA_OPAQUE},
 
 	{NULL, 0}
 };
