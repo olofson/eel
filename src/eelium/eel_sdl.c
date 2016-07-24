@@ -1079,7 +1079,7 @@ static EEL_xno esdl_SetAlpha(EEL_vm *vm)
 	if(vm->argc >= 2)
 		flag = eel_v2l(args + 1);
 	else
-		flag = 0;
+		flag = SDL_SRCALPHA;
 	if(vm->argc >= 3)
 		alpha = eel_v2l(args + 2);
 	else

@@ -1,12 +1,12 @@
-/////////////////////////////////////////////
+//////////////////////////////////////////////////
 // pigs3.eel - Bouncing Pigs 3
 //
 // Optimizations:
 //	* Local cache variable for pigs[i]
 //	* Using vectors instead of a tables
 //
-// Copyright 2005, 2010, 2014 David Olofson
-/////////////////////////////////////////////
+// Copyright 2005, 2010, 2014, 2016 David Olofson
+//////////////////////////////////////////////////
 
 import math;
 import SDL;
@@ -54,7 +54,7 @@ export function main<args>
 
 	// Load pig sprite image
 	local pigframes = IMG.Load("pigframes2.png");
-	SetAlpha(pigframes);
+	SetAlpha(pigframes, 0);
 	local pig = [];
 	for local i = 0, 12 - 1
 	{
