@@ -1076,11 +1076,11 @@ static EEL_xno esdl_SetAlpha(EEL_vm *vm)
 	if(EEL_TYPE(args) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2ESDL_surface(args->objref.v)->surface;
-	if(vm->argc == 2)
+	if(vm->argc >= 2)
 		flag = eel_v2l(args + 1);
 	else
 		flag = 0;
-	if(vm->argc == 3)
+	if(vm->argc >= 3)
 		alpha = eel_v2l(args + 2);
 	else
 		alpha = 0;
@@ -1098,11 +1098,11 @@ static EEL_xno esdl_SetColorKey(EEL_vm *vm)
 	if(EEL_TYPE(args) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2ESDL_surface(args->objref.v)->surface;
-	if(vm->argc == 2)
+	if(vm->argc >= 2)
 		flag = eel_v2l(args + 1);
 	else
 		flag = 0;
-	if(vm->argc == 3)
+	if(vm->argc >= 3)
 		key = eel_v2l(args + 2);
 	else
 		key = 0;
@@ -1228,6 +1228,8 @@ static EEL_xno esdl_MapColor(EEL_vm *vm)
 				a = 255;
 		}
 	}
+	else
+		return EEL_XARGUMENTS;
 	if(a >= 0)
 		color = SDL_MapRGBA(s->format, r, g, b, a);
 	else
@@ -1594,8 +1596,8 @@ static EEL_xno esdl_EventState(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	Uint8 etype = eel_v2l(args);
 	Uint8 res;
-	if(vm->argc == 2)
-		res = SDL_EventState(etype, eel_v2l(args));
+	if(vm->argc >= 2)
+		res = SDL_EventState(etype, eel_v2l(args + 1));
 	else
 		res = SDL_EventState(etype, SDL_QUERY);
 	eel_l2v(vm->heap + vm->resv, res);
@@ -1711,7 +1713,7 @@ static EEL_xno esdl_PlayAudio(EEL_vm *vm)
 		long len = eel_length(o0);
 		EEL_object *o1 = NULL;
 		eel_l2v(&iv, 0);
-		if(vm->argc == 2)
+		if(vm->argc >= 2)
 		{
 			if(!EEL_IS_OBJREF(args[1].type))
 				return EEL_XNEEDOBJECT;
@@ -1745,7 +1747,7 @@ static EEL_xno esdl_PlayAudio(EEL_vm *vm)
 	else
 	{
 		s[0] = get_sample(args);
-		if(vm->argc == 2)
+		if(vm->argc >= 2)
 			s[1] = get_sample(args + 1);
 		else
 			s[1] = s[0];
