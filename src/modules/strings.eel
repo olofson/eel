@@ -62,7 +62,7 @@ export function octstr(val)[figures = 0]
 	{
 		local buf = dstring [];
 		for local i = figures - 1, 0, -1
-			buf.+ hexfigures[(val >> (8 * i)) & 0x7];
+			buf.+ hexfigures[(val >> (3 * i)) & 0x7];
 		return buf;
 	}
 	else if val
