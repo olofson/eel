@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_io.c - EEL File and Memory File Classes
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009, 2012, 2014 David Olofson
+ * Copyright 2005-2006, 2009, 2012, 2014, 2016 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -32,14 +32,20 @@
 typedef struct
 {
 	/* Class Type IDs */
-	int	file_cid;
-	int	memfile_cid;
+	int		file_cid;
+	int		memfile_cid;
+
+	/* "Static" objects */
+	EEL_object	*stdin_file;
+	EEL_object	*stdout_file;
+	EEL_object	*stderr_file;
 } IO_moduledata;
 
 
 /*----------------------------------------------------------
 	file class
 ----------------------------------------------------------*/
+
 static EEL_xno f_construct(EEL_vm *vm, EEL_types type,
 		EEL_value *initv, int initc, EEL_value *result)
 {
@@ -81,7 +87,7 @@ static EEL_xno f_construct(EEL_vm *vm, EEL_types type,
 static EEL_xno f_destruct(EEL_object *eo)
 {
 	EEL_file *f = o2EEL_file(eo);
-	if(f->handle)
+	if(f->handle && !(f->flags & EEL_FF_DONTCLOSE))
 		fclose(f->handle);
 	return 0;
 }
@@ -173,6 +179,7 @@ static EEL_xno f_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 /*----------------------------------------------------------
 	memfile class
 ----------------------------------------------------------*/
+
 static EEL_xno mf_construct(EEL_vm *vm, EEL_types type,
 		EEL_value *initv, int initc, EEL_value *result)
 {
@@ -312,6 +319,43 @@ static EEL_xno mf_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	buf = o2EEL_dstring(mf->buffer);
 	op2->type = EEL_TINTEGER;
 	op2->integer.v = buf->length;
+	return 0;
+}
+
+
+/*----------------------------------------------------------
+	stdio file handle functions
+----------------------------------------------------------*/
+
+static EEL_xno io_get_stdin(EEL_vm *vm)
+{
+	IO_moduledata *md = (IO_moduledata *)eel_get_current_moduledata(vm);
+	if(!md->stdin_file)
+		return EEL_XFILECLOSED;
+	eel_own(md->stdin_file);
+	eel_o2v(vm->heap + vm->resv, md->stdin_file);
+	return 0;
+}
+
+
+static EEL_xno io_get_stdout(EEL_vm *vm)
+{
+	IO_moduledata *md = (IO_moduledata *)eel_get_current_moduledata(vm);
+	if(!md->stdout_file)
+		return EEL_XFILECLOSED;
+	eel_own(md->stdout_file);
+	eel_o2v(vm->heap + vm->resv, md->stdout_file);
+	return 0;
+}
+
+
+static EEL_xno io_get_stderr(EEL_vm *vm)
+{
+	IO_moduledata *md = (IO_moduledata *)eel_get_current_moduledata(vm);
+	if(!md->stderr_file)
+		return EEL_XFILECLOSED;
+	eel_own(md->stderr_file);
+	eel_o2v(vm->heap + vm->resv, md->stderr_file);
 	return 0;
 }
 
@@ -668,6 +712,33 @@ static EEL_xno io_write(EEL_vm *vm)
 }
 
 
+static EEL_xno io_flush(EEL_vm *vm)
+{
+	IO_moduledata *md = (IO_moduledata *)eel_get_current_moduledata(vm);
+	EEL_value *arg = vm->heap + vm->argv;
+	if(!vm->argc)
+	{
+		if(fflush(NULL))
+			return EEL_XFILEERROR;
+		return 0;
+	}
+	if(EEL_TYPE(arg) == md->file_cid)
+	{
+		EEL_file *f = o2EEL_file(arg->objref.v);
+		if(!f->handle)
+			return EEL_XFILECLOSED;
+		if(fflush(f->handle))
+			return EEL_XFILEERROR;
+		return 0;
+	}
+	else if(EEL_TYPE(arg) == md->memfile_cid)
+		return 0;
+	else
+		return EEL_XWRONGTYPE;
+	return 0;
+}
+
+
 static EEL_xno io_close(EEL_vm *vm)
 {
 	IO_moduledata *md = (IO_moduledata *)eel_get_current_moduledata(vm);
@@ -698,11 +769,16 @@ static EEL_xno io_close(EEL_vm *vm)
 /*----------------------------------------------------------
 	Unloading
 ----------------------------------------------------------*/
+
 static EEL_xno io_unload(EEL_object *m, int closing)
 {
 	if(closing)
 	{
-		eel_free(m->vm, eel_get_moduledata(m));
+		IO_moduledata *md = (IO_moduledata *)eel_get_moduledata(m);
+		eel_disown(md->stdin_file);
+		eel_disown(md->stdout_file);
+		eel_disown(md->stderr_file);
+		eel_free(m->vm, md);
 		return 0;
 	}
 	else
@@ -713,6 +789,17 @@ static EEL_xno io_unload(EEL_object *m, int closing)
 /*----------------------------------------------------------
 	Initialization
 ----------------------------------------------------------*/
+
+static EEL_object *io_create_fh_wrapper(EEL_vm *vm, int cid, FILE *f)
+{
+	EEL_value v;
+	if(eel_o_construct(vm, cid, NULL, 0, &v))
+		return NULL;
+	o2EEL_file(eel_v2o(&v))->handle = f;
+	o2EEL_file(eel_v2o(&v))->flags |= EEL_FF_DONTCLOSE;
+	return eel_v2o(&v);
+}
+
 
 EEL_xno eel_io_init(EEL_vm *vm)
 {
@@ -737,23 +824,27 @@ EEL_xno eel_io_init(EEL_vm *vm)
 	eel_set_metamethod(c, EEL_MM_LENGTH, f_length);
 	md->file_cid = eel_class_typeid(c);
 
-	c = eel_export_class(m, "memfile", -1, mf_construct, mf_destruct, NULL);
+	c = eel_export_class(m, "memfile", -1, mf_construct, mf_destruct,
+			NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, mf_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, mf_setindex);
 	eel_set_metamethod(c, EEL_MM_LENGTH, mf_length);
 	md->memfile_cid = eel_class_typeid(c);
 
 	/* Functions */
-/*
-TODO: Create static stdin/stdout/stderr wrapper objects during init?
-*/
-//	eel_export_cfunction(m, 1, "stdin", 0, 0, 0, io_get_stdin);
-//	eel_export_cfunction(m, 1, "stdout", 0, 0, 0, io_get_stdout);
-//	eel_export_cfunction(m, 1, "stderr", 0, 0, 0, io_get_stderr);
-//	eel_export_cfunction(m, 1, "open", 1, 1, 0, io_open);
+	eel_export_cfunction(m, 1, "stdin", 0, 0, 0, io_get_stdin);
+	eel_export_cfunction(m, 1, "stdout", 0, 0, 0, io_get_stdout);
+	eel_export_cfunction(m, 1, "stderr", 0, 0, 0, io_get_stderr);
+
 	eel_export_cfunction(m, 1, "read", 1, 1, 0, io_read);
 	eel_export_cfunction(m, 1, "write", 1, 0, 1, io_write);
+	eel_export_cfunction(m, 0, "flush", 0, 1, 0, io_flush);
 	eel_export_cfunction(m, 0, "close", 1, 0, 0, io_close);
+
+	/* "Static" objects */
+	md->stdin_file = io_create_fh_wrapper(vm, md->file_cid, stdin);
+	md->stdout_file = io_create_fh_wrapper(vm, md->file_cid, stdout);
+	md->stderr_file = io_create_fh_wrapper(vm, md->file_cid, stderr);
 
 	SETNAME(m, "EEL Built-in IO Module");
 	eel_disown(m);

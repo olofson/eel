@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_io.h - EEL File and Memory File Classes
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009 David Olofson
+ * Copyright 2005-2006, 2009, 2016 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -29,11 +29,20 @@
 #include "EEL_types.h"
 
 /*
+ * Flags for EEL_file
+ */
+typedef enum
+{
+	EEL_FF_DONTCLOSE =	0x00000001
+} EEL_fileflags;
+
+/*
  * file
  */
 typedef struct
 {
 	FILE		*handle;	/* (C file handle) */
+	int		flags;		/* EEL_fileflags */
 } EEL_file;
 EEL_MAKE_CAST(EEL_file)
 
