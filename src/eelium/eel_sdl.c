@@ -1366,6 +1366,7 @@ static EEL_xno esdl_Plot(EEL_vm *vm)
 }
 
 
+/* function GetPixel(surface, x, y)[clipreturn] */
 static EEL_xno esdl_GetPixel(EEL_vm *vm)
 {
 	int x, y;
@@ -1396,7 +1397,18 @@ static EEL_xno esdl_GetPixel(EEL_vm *vm)
 	x = eel_v2l(arg + 1);
 	y = eel_v2l(arg + 2);
 	if((x < 0) || (y < 0) || (x >= s->w) || (y >= s->h))
-		return EEL_XWRONGINDEX;
+	{
+		/* Clip! Fail, or return 'clipreturn'. */
+		if(locked)
+			SDL_UnlockSurface(s);
+		if(vm->argc >= 4)
+		{
+			vm->heap[vm->resv] = arg[3];
+			return 0;
+		}
+		else
+			return EEL_XWRONGINDEX;
+	}
 
 	switch(s->format->BytesPerPixel)
 	{
@@ -2224,7 +2236,7 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "MapColor", 2, 3, 0, esdl_MapColor);
 	eel_export_cfunction(m, 1, "GetColor", 2, 0, 0, esdl_GetColor);
 	eel_export_cfunction(m, 0, "Plot", 2, 0, 2, esdl_Plot);
-	eel_export_cfunction(m, 1, "GetPixel", 3, 0, 0, esdl_GetPixel);
+	eel_export_cfunction(m, 1, "GetPixel", 3, 1, 0, esdl_GetPixel);
 
 	/* Event handling */
 	eel_export_cfunction(m, 0, "PumpEvents", 0, 0, 0, esdl_PumpEvents);
