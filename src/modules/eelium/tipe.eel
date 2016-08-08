@@ -74,11 +74,13 @@ Process parameters:
 		filter.
 
 	palette			nil
-		Path to a GIMP palette file to use for the output sprite sheet.
-		If this is specified, the output will be converted to indexed
-		color mode using this palette, mapping rendered pixel colors to
-		the closest matches in the palette. If this is not specified,
-		the output will be in 32 bit RGBA format.
+		Array/vector of color values, path (string) to a GIMP palette
+		file to use for the output sprite sheet, or nil.
+
+		If this is specified (non nil), the output will be converted to
+		indexed color mode using this palette, mapping rendered pixel
+		colors to the closest matches in the palette. If this is not
+		specified, the output will be in 32 bit RGBA format.
 
 		The parameters alpha_threshold, background_color,
 		background_blend, and contrast_weight are only used when
@@ -775,7 +777,11 @@ procedure Convert(self)
 	local src = self.target;
 	local tmp = Surface[0, self.target.(w, h), 8];
 	local pal = gfx.Palette();
-	pal:Load(p.palette);
+	if typeof(p.palette) == string
+		pal:Load(p.palette);
+	else
+		for local i = 0, sizeof p.palette - 1
+			pal:Add(p.palette[i]);
 	local ck = pal:Add(0xff00ff);
 	SetColors(tmp, pal.colors);
 	for local i = sizeof pal.colors, 255
