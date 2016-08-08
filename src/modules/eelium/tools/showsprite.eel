@@ -1,0 +1,162 @@
+////////////////////////////////////////////////////////////////
+// showsprite.eel - Show sprite sprites
+// Copyright 2016 David Olofson
+////////////////////////////////////////////////////////////////
+
+eelversion 0.3.7;
+
+import cmdline as cmd;
+import SDL;
+import eelium.gfxutils as gfx;
+import SDL_image as IMG;
+
+constant ANIMVIEWS = 5;
+
+
+function scale(src, sc)
+{
+	if sc == 1
+		return src;
+
+	local dst = Surface[0, src.(w, h) * sc, 32];
+
+	SetAlpha(src, 0);	// Copy only - no blending!
+	local sr = Rect[0, 0, 1, src.h];
+	local dr = Rect[0, 0, 0, 0];
+	for local x = 0, src.w - 1
+	{
+		sr.x = x;
+		for local dx = x * sc, x + 1 * sc - 1
+		{
+			dr.x = dx;
+			BlitSurface(src, sr, dst, dr);
+		}
+	}
+
+	SetAlpha(dst, 0);
+	sr = Rect[0, 0, dst.w, 1];
+	dr = Rect[0, 0, 0, 0];
+	for local y = dst.h - 1, 0, -1
+	{
+		sr.y = y;
+		for local dy = y * sc, y + 1 * sc - 1
+		{
+			dr.y = dy;
+			BlitSurface(dst, sr, dst, dr);
+		}
+	}
+	SetAlpha(dst);
+
+	return dst;
+}
+
+
+export function main<args>
+{
+	local argspec = [
+		["w",	"tilew",	integer,	16,
+				"Tile width"],
+		["h",	"tileh",	integer,	16,
+				"Tile height"],
+		["s",	"scale",	integer,	3,
+				"Display scale"],
+		["m",	"margin",	integer,	32,
+				"Margin around sprites"],
+		["f",	"fps",		integer,	20,
+				"Animation frame rate"],
+		["?",	"showhelp",	boolean,	false,
+				"Show this help"]
+	];
+	local params = cmd.parse(argspec, #arguments);
+	if params.showhelp or (sizeof params.other <= 1)
+	{
+		print("\n\nUsage: ", args[0], " [switches] <file>\n\n");
+		print("Switches:\n");
+		cmd.usage(argspec);
+		print("\n");
+		return 0;
+	}
+
+	// Load and scale sprite sheet
+	local sheet = IMG.Load(params.other[1]);
+	sheet = scale(sheet, params.scale);
+	params.(tilew, tileh) *= params.scale;
+
+	// Cut sprite sheet into frames
+	local sb = gfx.SpriteBank();
+	sb:Load(sheet, params.(tilew, tileh));
+
+	// Open window of suitable size
+	local animw = params.margin * 2 + params.tilew * ANIMVIEWS;
+	local ww = params.margin * 2 + sheet.w >| animw;
+	local wh = sheet.h + params.tileh + (params.margin * 2);
+	wh += params.margin * 2;
+
+	local sheetrect = Rect[ww - sheet.w / 2,
+			wh - (params.margin + sheet.h),
+			sheet.(w, h)];
+
+	local animx = ww - animw / 2;
+
+	// Open window
+	local win = SetVideoMode(ww, wh, 0, HWSURFACE | DOUBLEBUF);
+	SetCaption("Show Sprite Sheet", "ShowSprite");
+
+	// Render "transparency" background
+	gfx.Checkerboard(win, 8, 8, MapColor(win, 32, 32, 32),
+			MapColor(win, 48, 48, 48));
+
+	// Render sprite sheet
+	BlitSurface(sheet, nil, nil, sheetrect);
+
+	local frame = 0;
+
+	local fps_t0 = GetTicks();
+	local fps_count = 0;
+	local dt = 1000.0 / params.fps;
+	local next = fps_t0 + dt;
+	while true
+	mainloop:
+	{
+		// Animated sprite views
+		local ar = Rect[0, 0, params.margin * 2 + params.tilew,
+				params.margin * 2 + params.tileh];
+		for local v = 0, ANIMVIEWS - 1
+		{
+			ar.x = params.margin * 2 + params.tilew * v + animx;
+			local c = 255 * v / (ANIMVIEWS - 1);
+			FillRect(win, ar, MapColor(win, c, c, c));
+			sb:Render(frame, ar.x + params.margin, params.margin);
+		}
+
+		Flip();
+		fps_count += 1;
+
+		while true
+		{
+			local ev = PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case KEYUP
+				if ev.sym == KESCAPE
+					break mainloop;
+			  case MOUSEBUTTONUP, QUIT
+				break mainloop;
+		}
+
+		while GetTicks() < next
+			Delay(0);
+		next += dt;
+
+		frame += 1;
+		if frame >= sizeof sb.sprites
+			frame = 0;
+	}
+
+	if(fps_count > 10)
+		print("Average fps: ", fps_count * 1000 /
+				(GetTicks() - fps_t0), "\n");
+
+	return 0;
+}

@@ -1,0 +1,946 @@
+////////////////////////////////////////////////////////////////
+// tipe.eel - Tiny Image Processing Engine
+// Copyright 2016 David Olofson
+////////////////////////////////////////////////////////////////
+//
+// NOTE:
+//	These transform filters are intended for downscaling by
+//	large factors, and will not work well with scaling
+//	factors near 1.
+//
+/*//////////////////////////////////////////////////////////////
+
+Documentation:
+
+	TIPE is a simple image processing engine, intended for rendering
+	animated textures, sprites, and tiles, with particular focus on pixel
+	art. Rendering can be done in multiple layers with individual
+	rendering and animation parameters.
+
+	TIPE can read and write RGB, RGBA, and indexed color images. Input and
+	output are either single frames, or sprite sheets.
+
+	TIPE is generally used by creating an instance with Engine(), building
+	parameter table, and passing that to the Process() method of the
+	engine.
+
+Process parameters:
+
+	sources			(Must be specified!)
+		An array of source image descriptor tables. (See below.)
+
+	output			nil
+		File name of output sprite sheet in PNG format. If this is not
+		specified (on nil), no output file is written. Regardless, the
+		rendered sprite sheet can be found as an SDL surface in the
+		'target' field of the engine instance, which is also returned
+		by the Process() method.
+
+	frames			16
+		Number of output frames to render.
+
+	columns			0
+		Number of columns in the rendered sprite sheet. If this is 0,
+		the sprite sheet will have all frames in a horizontal row.
+
+	tilew, tileh		16
+		Output sprite sheet tile size.
+
+	scale			1.0
+		Output rendering scale factor. 1.0 is 1:1 scale; 0.5 results in
+		output sprite frames being half the size specified by tilew and
+		tileh, etc.
+
+	filtermode		"average"
+		Scaling filter mode. Both integer and string values are
+		supported, but integers are deprecated for normal API use.
+		(The integer codes are for the included command line tool.)
+
+		"nearest"/0	Nearest pixel
+
+		"dominant"/1	Most frequent color value within the square
+				area corresponding to the output pixel.
+
+		"average"/2	Average color value within the square area
+				corresponding to the output pixel.
+
+	filtersize		1.0
+		Scaling factor to adjust the size of the source pixel squares
+		used by the "dominant" and "average" filters. 1.0 means the
+		filters read the exact area corresponding to the output pixels,
+		whereas smaller and greater values shrink and enlarge these
+		squares respectively. Really small values approach the behavior
+		of "nearest" filtering, whereas large values function as a blur
+		filter.
+
+	palette			nil
+		Path to a GIMP palette file to use for the output sprite sheet.
+		If this is specified, the output will be converted to indexed
+		color mode using this palette, mapping rendered pixel colors to
+		the closest matches in the palette. If this is not specified,
+		the output will be in 32 bit RGBA format.
+
+		The parameters alpha_threshold, background_color,
+		background_blend, and contrast_weight are only used when
+		converting to indexed color!
+
+	dither_tint		0
+		RGB color value that is added to pixels in a 50% checkerboard
+		pattern before converting to indexed color mode.
+
+	alpha_threshold		128		(indexed color output only)
+		Alpha threshold for binary transparency. Rendered pixels with
+		alpha below this threshold will be completely transparent in
+		the indexed color output, whereas other pixels become
+		completely opaque.
+
+	background_color	0x000000	(indexed color output only)
+		Reference background color for 'contrast_weight' calculations.
+		32 bpp ARGB format.
+
+	background_blend	0.0		(indexed color output only)
+		Specifies to which degree 'background_color' is to be blended
+		into translucent pixels, in order to reduce aliasing.
+
+		Setting this to 1.0, 'alpha_threshold' extremely low, results
+		in minimal aliasing when rendering over 'background_color', but
+		obviously, aliasing gets much worse over colors that differ a
+		lot from 'background_color'.
+
+	contrast_weight		0.0		(indexed color output only)
+		The red, green, and blue channels of the rendered graphics is
+		compared to those of 'background_color', and the average
+		difference (that is, the difference in luminance) is scaled by
+		'contrast_weight', and then the absolute value of that is added
+		to the alpha channel before performing the 'alpha_threshold'
+		test.
+
+		In short, this allows pixels that differ a lot from
+		'background_color' to offset the transparency test, so they're
+		removed earlier.
+
+	verbose			false
+		Set to 'true' for log output to stdout about the rendering
+		process.
+
+	layers
+		An array of layer parameter tables. (See below.) The default
+		is a single layer rendering the first frame of the source
+		sprite sheet with no rotation or other transforms.
+
+'sources' entry parameters:
+	source			(Must be specified!)
+		Source image, or sprite sheet. Can be specified as one of the
+		following:
+
+			* An SDL surface.
+
+			* A path to an image file. (Loaded by SDL_image, so a
+			  lot of different formats are supported.)
+
+			* An array [source, frame], where 'source' is the index
+			  of a previously listed source, and 'frame' is the
+			  frame index within that source. This allows tiles to
+			  be subdivided into smaller tiles, avoiding the need
+			  to provide multiple source image files.
+
+			* An integer source image index. This uses the entire
+			  source image of the specified source.
+
+	tilew, tileh		"auto"
+		Source sprite sheet tile size.
+
+		The defaults ("auto") assume the source frames are supposed to
+		scale to the tile size of the output, so these only need to be
+		specified for sources that are supposed to render larger or
+		smaller than the output tile size.
+
+		If either of these is set to 0, the automatic tiling feature is
+		disabled altogether, and the full image is inserted as frame 0.
+
+	tiles			array of [index, x, y, w, h]
+		Allows image frames of arbitrary size to be  extracted from a
+		source image, in addition to, or instead of, fixed size tiling
+		via tilew/tileh. These frames are stored at the specified
+		indexes, rather than being enumerated automatically.
+
+'layers' entry parameters:
+	rotation		0
+		Layer rotation angle, or array of rotation angles that will be
+		mapped over the rendered frames using linear interpolation.
+
+	xoffset, yoffset	0
+		Layer offset.
+
+	sxoffset, syoffset	0
+		Source offset.
+
+	frame			0
+		Frame of the source sprite sheet, or array of frames that will
+		be mapped uniformly over the rendered frames.
+
+	framerotation		0
+		Frame rotation offset from the calculated rotation for each
+		rendered frame. Either a fixed value for all frames, or an
+		array thaẗ́'s mapped uniformly over the rendered frames. If this
+		is an array, it needs to be the same size as 'frame'.
+
+	rotationoffset		0
+		Final rotation added *after* frame selection and crossfade
+		calculations.
+
+	crossfade		false
+		Set to true to enable crossfading between source frames.
+
+		IMPORTANT:
+			When using crossfade, the two frames in between which a
+			crossfade is performed, must always cover the exact
+			same pixels, or there will be strange artifacts!
+
+	customwrap		false
+		Set to true to disable wrapping of the 'frame' and
+		'framerotation' arrays, and instead, have the engine expect an
+		extra item at the end that defines what the last frame is
+		supposed to fade into.
+
+		This is useful for non 360 rotations and other situations where
+		ordinary wrapping breaks crossfading.
+
+	blendmode		"normal"
+		Layer blend mode.
+
+		"normal"	Alpha blending.
+
+		"multiply"	Output is product of target and layer. All
+				channels are multiplied, including alpha!
+
+	clampcolor		0x00000000
+		Color value to be used when attempting to read pixels outside
+		the source tile/image. 32 bpp ARGB format.
+
+	clones			1
+		Renders the specified number of clones of the layer. The
+		animation is split between the clones, to create the illusion
+		of a perfectly looping animation running at (1 / clones) times
+		the normal speed. That is, 2 results in two instances animated
+		at half the speed.
+
+//////////////////////////////////////////////////////////////*/
+
+module eelium.tipe;
+
+eelversion 0.3.7;
+
+import cmdline as cmd;
+import math;
+import SDL;
+import SDL_image as IMG;
+import eelium.gfxutils as gfx;
+import io;
+
+
+////////////////////////////////////////////////////////////////
+// Low level tools
+////////////////////////////////////////////////////////////////
+
+function getpixel_nearest(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+{
+	local sx = (x * m0) - (y * m1);
+	local sy = (x * m1) + (y * m0);
+	return GetPixel(src, scx + sx, scy + sy, clampc);
+}
+
+
+function getpixel_dominant(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+{
+	size *= .5;
+	y -= size;	// FIXME: Why only y...? o.O
+	local dsx = m0 - m1 * scale;
+	local dsy = m1 + m0 * scale;
+	local colors = {};
+	for local yy = y - size, y + size, scale
+	{
+		local sx = (x - size * m0) - (yy * m1) + scx;
+		local sy = (x - size * m1) + (yy * m0) + scy;
+		for local xx = x - size, x + size, scale
+		{
+			local c = GetPixel(src, sx, sy, clampc);
+			sx, sy += dsx, dsy;
+			if tryindex(colors, c)
+				colors[c] += 1;
+			else
+				colors[c] = 1;
+		}
+	}
+	local top = 0;
+	local topv = index(colors, top);
+	for local i = 1, sizeof colors - 1
+	{
+		if index(colors, i) > topv
+		{
+			top = i;
+			topv = index(colors, i);
+		}
+	}
+	return key(colors, top);
+}
+
+
+function getpixel_average(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+{
+	size *= .5;
+	y -= size;	// FIXME: Why only y...? o.O
+	local dsx = m0 - m1 * scale;
+	local dsy = m1 + m0 * scale;
+	local r, local g, local b, local a, local count, local skipped = 0;
+	for local yy = y - size, y + size, scale
+	{
+		local sx = (x - size * m0) - (yy * m1) + scx;
+		local sy = (x - size * m1) + (yy * m0) + scy;
+		for local xx = x - size, x + size, scale
+		{
+			local c = GetPixel(src, sx, sy, clampc);
+			sx, sy += dsx, dsy;
+			local ca = (c >> 24) & 0xff;
+			if ca
+			{
+				r += c & 0xff;
+				g += (c >> 8) & 0xff;
+				b += (c >> 16) & 0xff;
+				a += ca;
+				count += 1;
+			}
+			else
+				skipped +=1;
+		}
+	}
+	if not count
+		return 0;
+	// Only average RGB of the visible pixels, because we don't want the
+	// color of invisible pixels (or black) leaking into the edges!
+	r, g, b = (integer)((r, g, b) / count);
+	a = (integer)(a / (count + skipped));
+	return r | (g << 8) | (b << 16) | (a << 24);
+}
+
+
+////////////////////////////////////////////////////////////////
+// Engine
+////////////////////////////////////////////////////////////////
+
+
+procedure SetParams(self, params)
+{
+	self.params.+ params;
+}
+
+
+procedure CheckParams(self)
+{
+	local p = self.params;
+
+	// Defaults
+	if not ("sources" in p)
+		throw "'sources' not specified!";
+	if not ("output" in p)
+		p.output = nil;
+	if not ("frames" in p)
+		p.frames = 16;
+	if not ("columns" in p)
+		p.columns = 0;
+	if not ("tilew" in p)
+		p.tilew = 16;
+	if not ("tileh" in p)
+		p.tileh = 16;
+	if not ("scale" in p)
+		p.scale = 1.0;
+	if not ("filtermode" in p)
+		p.filtermode = "average";
+	if not ("filtersize" in p)
+		p.filtersize = 1.0;
+	if not ("palette" in p)
+		p.palette = nil;
+	if not ("dither_tint" in p)
+		p.dither_tint = 0;
+	if not ("alpha_threshold" in p)
+		p.alpha_threshold = 128;
+	if not ("background_color" in p)
+		p.background_color = 0x000000;
+	if not ("background_blend" in p)
+		p.background_blend = 0.0;
+	if not ("contrast_weight" in p)
+		p.contrast_weight = 0.0;
+	if not ("verbose" in p)
+		p.verbose = false;
+	if not ("layers" in p)
+		p.layers = [
+			{
+				.source		0,
+				.rotation	0,
+				.xoffset	0,
+				.yoffset	0,
+				.sxoffset	0,
+				.syoffset	0,
+				.frame		0,
+				.framerotation	0,
+				.rotationoffset	0,
+				.crossfade	false,
+				.customwrap	false,
+				.clampcolor	0
+			}
+		];
+
+	for local i = 0, sizeof p.sources - 1
+	{
+		local s = p.sources[i];
+
+		if not ("source" in s)
+			throw "'source' not specified for source!";
+
+		// Source defaults
+		if not ("tilew" in s)
+			s.tilew = "auto";
+		if not ("tileh" in s)
+			s.tileh = "auto";
+
+		if s.tilew == "auto"
+			s.tilew = p.tilew / p.scale;
+		if s.tileh == "auto"
+			s.tileh = p.tileh / p.scale;
+	}
+
+
+	for local i = 0, sizeof p.layers - 1
+	{
+		local l = p.layers[i];
+
+		// Layer defaults
+		if not ("source" in l)
+			l.source = 0;
+		if not ("rotation" in l)
+			l.rotation = 0;
+		if not ("xoffset" in l)
+			l.xoffset = 0;
+		if not ("yoffset" in l)
+			l.yoffset = 0;
+		if not ("sxoffset" in l)
+			l.sxoffset = 0;
+		if not ("syoffset" in l)
+			l.syoffset = 0;
+		if not ("frame" in l)
+			l.frame = 0;
+		if not ("framerotation" in l)
+			l.framerotation = 0;
+		if not ("rotationoffset" in l)
+			l.rotationoffset = 0;
+		if not ("crossfade" in l)
+			l.crossfade = false;
+		if not ("customwrap" in l)
+			l.customwrap = false;
+		if not ("blendmode" in l)
+			l.blendmode = "normal";
+		if not ("clampcolor" in l)
+			l.clampcolor = 0;
+
+		// Conversions
+		if typeof l.rotation != array
+		{
+			l.rotation = [l.rotation];
+			if l.customwrap
+				l.rotation[1] = l.rotation[0];
+		}
+		if typeof l.frame != array
+		{
+			l.frame = [l.frame];
+			if l.customwrap
+				l.frame[1] = l.frame[0];
+		}
+		if typeof l.framerotation != array
+		{
+			local v = l.framerotation;
+			l.framerotation = [];
+			while sizeof l.framerotation < sizeof l.frame
+				l.framerotation.+ v;
+		}
+		else if sizeof l.framerotation != sizeof l.frame
+			throw "'frame' and 'framerotation' array sizes do not "
+					"match!";
+	}
+
+	// Calculate sprite sheet layout
+	if p.columns
+		self.columns = p.columns;
+	else
+		self.columns = p.frames;
+	self.rows = ceil(p.frames / self.columns);
+	self:Log("Output sprite sheet layout: ", self.columns, "x",
+				self.rows, " (", self.columns * p.tilew,
+				"x", self.rows * p.tileh, ")\n");
+
+	switch p.filtermode
+	  case 0, "nearest"
+		self.gpx = getpixel_nearest;
+	  case 1, "dominant"
+		self.gpx = getpixel_dominant;
+	  case 2, "average"
+		self.gpx = getpixel_average;
+	  default
+		throw "Unknown transform filter mode " + p.filtermode + "!";
+}
+
+
+procedure InitCanvas(self)
+{
+	local p = self.params;
+
+	// Create output surface
+	self.target = Surface[0, p.tilew * self.columns,
+			p.tileh * self.rows, 32];
+
+	// Create scratch surface needed for certain rendering operations
+	self.scratch = Surface[0, p.(tilew, tileh), 32];
+}
+
+
+// Load and convert sources
+procedure Load(self)
+{
+	local p = self.params;
+	self.sources = [];
+	self.frames = [];
+	for local i = 0, sizeof p.sources - 1
+	{
+		local s = p.sources[i];
+		local img = s.source;
+		self:Log("Source image ", i, ": ");
+		switch typeof(img)
+		  case Surface
+			self:Log("SDL surface; ");	// Use as is!
+		  case string, dstring
+		  {
+			self:Log("loading \"", img, "\"... ");
+			img = IMG.Load(img);
+		  }
+		  case integer
+		  {
+			self:Log("source ", img, " (full image); ");
+			img = self.sources[img];
+		  }
+		  case array
+		  {
+			if sizeof img != 2
+				throw "Previous source reference must be "
+						"[source, frame]!";
+			self:Log("source ", img[0], ", frame ", img[1],"; ");
+			img = self.frames[img[0]][img[1]];
+		  }
+		  default
+			throw "Unsupported source type '" +
+					(string)typeof(img) + "'";
+		self.sources[i] = img;
+		self:Log("", img.w, "x", img.h, "; converting... ");
+
+		local b = gfx.SpriteBank();
+
+		// Automatic tiling
+		if s.tilew and s.tileh
+			self.frames[i] = b:Load(img, s.(tilew, tileh));
+		else
+			self.frames[i] = [];
+
+		// Explicit tile coordinates
+		if "tiles" in s
+			for local j = 0, sizeof s.tiles - 1
+			{
+				local t = s.tiles[j];
+				self.frames[i][t[0]] = b:GrabFrame(img,
+						Rect[t[1, 2, 3, 4]]);
+			}
+
+		self:Log("OK\n");
+	}
+}
+
+
+// NOTE: The adding mode has no saturation, as it's intended for crossfading!
+procedure Transform(self, src, dr, rot, colormod, adding, xo, yo, scale,
+		sxo, syo, clampc)
+{
+	local dst = self.render_target;
+	local size = self.params.filtersize;
+	local gpx = self.gpx;
+	xo, yo *= scale;
+	local m0 = cos(rot) / scale;
+	local m1 = sin(rot) / scale;
+	local sx = src.w / 2 + sxo;
+	local sy = src.h / 2 + syo;
+	local dcx = dr.x + (dr.w / 2);
+	local dcy = dr.y + (dr.h / 2);
+	local c = 0;
+	for local y = -dr.h / 2 + .5, dr.h / 2 - .5
+		for local x = -dr.w / 2 + .5, dr.w / 2 - .5
+		{
+			local s = gpx(src, x - xo, y - yo, sx, sy, m0, m1,
+					scale, size, clampc);
+			local d = GetPixel(dst, dcx + x, dcy + y);
+			local s_r = s & 0xff;
+			local s_g = (s >> 8) & 0xff;
+			local s_b = (s >> 16) & 0xff;
+			local s_a = (s >> 24) & 0xff;
+			local d_r = d & 0xff;
+			local d_g = (d >> 8) & 0xff;
+			local d_b = (d >> 16) & 0xff;
+			local d_a = (d >> 24) & 0xff;
+			local a1 = s_a / 255.0;
+			local a1m = a1 * colormod;
+			if adding
+			{
+				local r = (integer)(s_r * a1m + d_r);
+				local g = (integer)(s_g * a1m + d_g);
+				local b = (integer)(s_b * a1m + d_b);
+				c = r | (g << 8) | (b << 16) | (d_a << 24);
+			}
+			else
+			{
+				local am1 = 1 - a1;
+				local r = (integer)(s_r * a1m + (d_r * am1));
+				local g = (integer)(s_g * a1m + (d_g * am1));
+				local b = (integer)(s_b * a1m + (d_b * am1));
+				local a = (integer)(255 - d_a * a1 + d_a);
+				c = r | (g << 8) | (b << 16) | (a << 24);
+			}
+			Plot(dst, c, dcx + x, dcy + y);
+		}
+}
+
+
+procedure ApplyMultiply(src, dst, dr)
+{
+	for local y = 0, dr.h - 1
+		for local x = 0, dr.w - 1
+		{
+			local s = GetPixel(src, x, y);
+			local d = GetPixel(dst, dr.(x, y) + (x, y));
+			local s_a = (s >> 24) & 0xff;
+			if not s_a
+				continue;	// Skip transparent pixels!
+			local s_r = s & 0xff;
+			local s_g = (s >> 8) & 0xff;
+			local s_b = (s >> 16) & 0xff;
+			local d_r = d & 0xff;
+			local d_g = (d >> 8) & 0xff;
+			local d_b = (d >> 16) & 0xff;
+			local d_a = (d >> 24) & 0xff;
+			local r = s_r * d_r >> 8;
+			local g = s_g * d_g >> 8;
+			local b = s_b * d_b >> 8;
+			local a = s_a * d_a >> 8;
+			local c = r | (g << 8) | (b << 16) | (a << 24);
+			Plot(dst, c, dr.(x, y) + (x, y));
+		}
+}
+
+
+procedure RenderLayer(self, layer, frame, dr)
+{
+	local p = self.params;
+	local l = p.layers[layer];
+	local ind = frame / p.frames;
+
+	// Select layer rendering mode)
+	local apply = nil;
+	local rdr = dr;
+	switch l.blendmode
+	  case "multiply"
+	  {	
+		self.render_target = self.scratch;
+		apply = ApplyMultiply;
+		rdr = Rect [0, 0, p.(tilew, tileh)];
+	  }
+	  default
+		self.render_target = self.target;
+
+	// Calculate rotation
+	local ri = sizeof l.rotation - 1 * ind;
+	local rb = ri - floor(ri);
+	if sizeof l.rotation <= 1
+		local r = l.rotation[0];
+	else
+		r = l.rotation[floor(ri)] * (1.0 - rb) +
+				(l.rotation[floor(ri) + 1] * rb);
+
+	// Frame index and crossfade fractional frame
+	local imax = sizeof l.frame;
+	if l.customwrap
+		imax -= 1;
+	local i = floor(ind * imax);
+	local ifrac = ind * imax % 1.0;
+	local imod = sizeof l.frame;
+
+	// Per-frame and final rotation offsets
+	local r2 = r;
+	r, r2 += l.framerotation[i, i + 1 % imod] + l.rotationoffset;
+	r, r2 *= -PI / 180.0;
+
+	// Source frames
+	local s, local s2 = self.frames[l.source][l.frame[i, i + 1 % imod]];
+
+	// Clear scratch, if we're going to use it
+	if apply
+		FillRect(self.scratch, nil, 0);
+
+	// Render!
+	if l.crossfade
+	{
+		self:Transform(s, rdr, r, (1 - ifrac), false,
+				l.(xoffset, yoffset), p.scale,
+				l.(sxoffset, syoffset, clampcolor));
+		self:Transform(s2, rdr, r2, ifrac, true,
+				l.(xoffset, yoffset), p.scale,
+				l.(sxoffset, syoffset, clampcolor));
+	}
+	else
+		self:Transform(s, rdr, r, 1, false,
+				l.(xoffset, yoffset), p.scale,
+				l.(sxoffset, syoffset, clampcolor));
+
+	// Apply layer to target, unless rendered directly
+	if apply
+		apply(self.scratch, self.target, dr);
+}
+
+
+procedure RenderLayerCloned(self, layer, frame, dr)
+{
+	local p = self.params;
+	local cl = p.layers[layer].clones;
+	for local c = 0, cl - 1
+		self:RenderLayer(layer, c * p.frames + frame / cl % p.frames,
+				dr);
+}
+
+
+procedure RenderFrame(self, frame)
+{
+	local p = self.params;
+
+	// Target sprite sheet tile
+	local dr = Rect [frame % self.columns * p.tilew,
+			floor(frame / self.columns) * p.tileh,
+			p.(tilew, tileh)];
+
+	// Clear tile
+	FillRect(self.target, dr, 0);
+
+	// Render all layers!
+	for local l = 0, sizeof p.layers - 1
+		if "clones" in p.layers[l]
+			self:RenderLayerCloned(l, frame, dr);
+		else
+			self:RenderLayer(l, frame, dr);
+}
+
+
+procedure RenderAll(self)
+{
+	local p = self.params;
+	self:Log("Rendering ", p.frames, " frames; ", sizeof p.layers,
+			" layers...\n");
+	self:Progress(0);
+	for local f = 0, p.frames - 1
+	{
+		self:RenderFrame(f);
+		self:Progress(f / (p.frames - 1));
+	}
+	self:Done();
+}
+
+
+// Convert result to indexed color, if desired.
+//
+// NOTE: This adds an extra color to the palette, for colorkeying!
+//
+// TODO: Add an optional step that looks for an unused color to use as key,
+//       instead of adding an entry.
+procedure Convert(self)
+{
+	local p = self.params;
+	if not p.palette
+		return;
+
+	self:Log("Converting to indexed color, using palette \"", p.palette,
+			"\"...\n");
+	self:Progress(0);
+
+	local src = self.target;
+	local tmp = Surface[0, self.target.(w, h), 8];
+	local pal = gfx.Palette();
+	pal:Load(p.palette);
+	local ck = pal:Add(0xff00ff);
+	SetColors(tmp, pal.colors);
+	for local i = sizeof pal.colors, 255
+		SetColors(tmp, pal.colors[0], i);
+	SetColorKey(tmp, SRCCOLORKEY, ck);
+	local thr = p.alpha_threshold;
+	local cw = p.contrast_weight;
+	local bgb = p.background_blend;
+	local bg_r = p.background_color >> 16 & 0xff;
+	local bg_g = p.background_color >> 8 & 0xff;
+	local bg_b = p.background_color & 0xff;
+	local dtint = p.dither_tint;
+	for local y = 0, tmp.h - 1
+	{
+		for local x = 0, tmp.w - 1
+		{
+			local c = GetColor(src, GetPixel(src, x, y));
+			local a = c >> 24 & 0xff;
+			if bgb
+			{
+				// Blend translucent pixels with the reference
+				// background color.
+				local na = (1.0 - bgb) + (a * bgb / 255);
+				local nai = 1.0 - na;
+				local r = (integer)(c >> 16 & 0xff * na +
+						(bg_r * nai));
+				local g = (integer)(c >> 8 & 0xff * na +
+						(bg_g * nai));
+				local b = (integer)(c & 0xff * na +
+						(bg_b * nai));
+				c = r << 16 | (g << 8) | b;
+			}
+			if a < 255 and cw
+			{
+				// Offset the alpha test based on contrast
+				// against the reference background color.
+				local d = (c >> 16 & 0xff - bg_r) +
+						(c >> 8 & 0xff - bg_g) +
+						(c & 0xff - bg_b);
+				a += d * cw / 3;
+			}
+			if dtint
+				if (integer)(x + y) & 1
+				{
+					local r = c >> 16 & 0xff +
+							(dtint >> 16 & 0xff);
+					local g = c >> 8 & 0xff +
+							(dtint >> 8 & 0xff);
+					local b = c & 0xff + (dtint & 0xff);
+					c = r |< 255 << 16 | (g |< 255 << 8) |
+							(b |< 255);
+				}
+			if a > thr
+				Plot(tmp, MapColor(tmp, c), x, y);
+			else
+				Plot(tmp, ck, x, y);
+		}
+		self:Progress(y / (tmp.h - 1));
+	}
+	self.target = tmp;
+	self:Done();
+}
+
+
+procedure Write(self)
+{
+	// Save result, if requested
+	local p = self.params;
+	if p.output
+	{
+		self:Log("Writing to \"", p.output, "\"... ");
+		IMG.SavePNG(p.output, self.target, IMG.COMPRESS_MAX);
+		self:Log("OK\n");
+	}
+}
+
+
+////////////////////////////////////////////////////////////////
+// API
+////////////////////////////////////////////////////////////////
+
+export function Engine
+{
+	local e = {
+		.SetParams		SetParams,
+		.CheckParams		CheckParams,
+		.Load			Load,
+		.InitCanvas		InitCanvas,
+		.Transform		Transform,
+		.RenderLayer		RenderLayer,
+		.RenderLayerCloned	RenderLayerCloned,
+		.RenderFrame		RenderFrame,
+		.RenderAll		RenderAll,
+		.Convert		Convert,
+		.Write			Write,
+
+		.progress_bar		false,
+
+		// Print log output to stdout
+		procedure Log(self)<args>
+		{
+			if not self.params.verbose
+				return;
+			if self.progress_bar
+				self:Done();
+			print(#tuples);
+			flush(stdout());
+		}
+
+		// Print or update progress bar
+		procedure Progress(self, prg)
+		{
+			if not self.params.verbose
+				return;
+			print("\r[");
+			for local i = 0, 39
+				if i / 39 < prg
+					print("=");
+				else
+					print(" ");
+			print("]\r");
+			flush(stdout());
+			self.progress_bar = true;
+		}
+
+		// Complete and scroll progress bar
+		procedure Done(self)
+		{
+			print("\r[----------------- DONE -----------------]"
+					"\n");
+			self.progress_bar = false;
+		}
+
+		// Remove all parameters, source and target graphics, and
+		// internal buffers.
+		procedure Reset(self)
+		{
+			self.sources = [];
+			self.(target, scratch) = nil;
+			self.params = {};
+		}
+
+		// Process!
+		//
+		// When given a 'params' table, all parameters are reset, and
+		// the processing is done using all defaults, apart from any
+		// changes provided by 'params'.
+		//
+		// Returns the output image as a surface.
+		function Process(self)[params]
+		{
+			if specified params
+			{
+				self:Reset();
+				self:SetParams(params);
+			}
+			self:CheckParams();
+			self:Load();
+			self:InitCanvas();
+			self:RenderAll();
+			self:Convert();
+			self:Write();
+			return self.target;
+		}
+	};
+	e:Reset();
+	return e;
+}

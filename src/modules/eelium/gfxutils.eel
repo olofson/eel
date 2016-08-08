@@ -1,0 +1,196 @@
+////////////////////////////////////////////////////////////////
+// gfxutils.eel - Graphics Utilities
+// Copyright 2016 David Olofson
+////////////////////////////////////////////////////////////////
+
+module eelium.gfxutils;
+
+eelversion 0.3.7;
+
+import SDL;
+import SDL_image as IMG;
+import io;
+
+
+////////////////////////////////////////////////////////////////
+// Utilities
+////////////////////////////////////////////////////////////////
+
+// Fill 'dst' with a checkerboard patters
+export procedure Checkerboard(dst, w, h, c1, c2)
+{
+	for local y = 0, dst.h - 1, h
+	{
+		local dr = Rect [0, y, w, h];
+		for local x = 0, dst.w - 1, w * 2
+		{
+			dr.x = x;
+			FillRect(dst, dr, c1);
+			dr.x += w;
+			FillRect(dst, dr, c2);
+		}
+		local tmp = c1;
+		c1 = c2;
+		c2 = tmp;
+	}
+}
+
+
+////////////////////////////////////////////////////////////////
+// Sprite bank
+////////////////////////////////////////////////////////////////
+
+export function SpriteBank
+{
+	return {
+		.sprites	[],
+
+		function GrabFrame(self, source, rect)
+		{
+			local s_f = source.flags;
+			local s_a = source.alpha;
+			SetAlpha(source, 0);
+			local s = Surface[0, rect.(w, h), 32];
+			BlitSurface(source, rect, s, nil);
+			SetAlpha(source, s_f & (SRCALPHA | RLEACCEL), s_a);
+			return s;
+		}
+
+		function Load(self, source, tw, th)
+		{
+			local sprites = [];
+			if typeof(source) != Surface
+				source = IMG.Load(source);
+			local sr = Rect [0, 0, tw, th];
+			local s_f = source.flags;
+			local s_a = source.alpha;
+			SetAlpha(source, 0);
+			while sr.y < source.h
+			{
+				local s = Surface[0, tw, th, 32];
+				BlitSurface(source, sr, s, nil);
+				sprites.+ s;
+				sr.x += tw;
+				if sr.x >= source.w
+				{
+					sr.x = 0;
+					sr.y += th;
+					sr.w = tw;
+				}
+			}
+			SetAlpha(source, s_f & (SRCALPHA | RLEACCEL), s_a);
+			self.sprites = sprites;
+			return sprites;
+		}
+
+		procedure Render(self, frame, x, y)[target]
+		{
+			if specified target
+				local dst = target;
+			else
+				dst = nil;
+			BlitSurface(self.sprites[frame], nil,
+					dst, Rect[x, y, 0, 0]);
+		}
+	};
+}
+
+
+////////////////////////////////////////////////////////////////
+// Palette
+////////////////////////////////////////////////////////////////
+import strings;
+export function Palette
+{
+	return {
+		.colors		vector_u32 [],
+
+		// If 'invert' is false or unspecified, read characters until
+		// one of the characters in the 'token' string is found. The
+		// token itself is skipped!
+		//    If 'invert' is true, read characters as long as the match
+		// one of the characters in 'tokens'.
+		function read_until(self, tokens)[invert]
+		{
+			if specified invert
+				local inv = invert;
+			else
+				inv = false;
+			local s = dstring [];
+			for local i = self.position, sizeof self.data - 1
+				if (self.data[i] in tokens) xor inv
+				{
+					if inv
+						self.position = i;
+					else
+						self.position = i + 1;
+					return s;
+				}
+				else
+					s.+ self.data[i];
+			self.position = sizeof self.data;
+			return (string)s;
+		}
+
+		procedure parse_entry(self)
+		{
+			local c = 0;
+			for local i = 1, 3
+			{
+				c <<= 8;
+				self:read_until(" \t", true);
+				c |= (integer)self:read_until(" \t");
+			}
+			self.colors.+ c;
+			self:read_until("\n");
+		}
+
+		// Parse palette from string, appending colors to .colors.
+		// Returns the index of the first color entry added.
+		function Parse(self, data)
+		{
+			local first = sizeof self.colors;
+			self.(data, position) = data, 0;
+
+			// Check file format
+			if self:read_until("\n") != "GIMP Palette"
+				throw "Unrecognized palette file format!";
+
+			// Parse (or rather, skip) header
+			try
+			{
+				while self.data[self.position] != '#'
+					self:read_until("\n");
+				self:read_until("\n");
+			}
+			except
+				throw "Could not parse GIMP palette header!";
+
+			// Read entries
+			while self.position < sizeof self.data
+				try
+					self:parse_entry();
+				except
+					throw "Corrupt palette entry!";
+
+			return first;
+		}
+
+		// Load and parse palette from file, appending colors to
+		// .colors.
+		// Returns the index of the first color entry added.
+		function Load(self, filename)
+		{
+			local f = file[filename, "rb"];
+			return self:Parse(read(f, sizeof f));
+		}
+
+		// Add a single entry to the palette, and return the index
+		// allocated for this entry.
+		function Add(self, color)
+		{
+			self.colors.+ color;
+			return sizeof self.colors - 1;
+		}
+	};
+}

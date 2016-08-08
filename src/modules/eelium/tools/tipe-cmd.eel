@@ -1,0 +1,133 @@
+////////////////////////////////////////////////////////////////
+// Command line interface for the Tiny Image Processing Engine
+// Copyright 2016 David Olofson
+////////////////////////////////////////////////////////////////
+
+eelversion 0.3.7;
+
+import eelium.tipe;
+import cmdline as cmd;
+import SDL;
+import eelium.gfxutils as gfx;
+
+procedure display(sheet)
+{
+	if (sheet.w + 64) < 256
+		local ww = 256;
+	else
+		ww = sheet.w + 64;
+	if (sheet.h + 64) < 256
+		local wh = 256;
+	else
+		wh = sheet.h + 64;
+	local win = SetVideoMode(ww, wh, 0, HWSURFACE | DOUBLEBUF);
+	SetCaption("Tiny Image Processing Engine", "TIPE");
+	gfx.Checkerboard(win, 8, 8, MapColor(win, 32, 32, 32),
+			MapColor(win, 48, 48, 48));
+	local dr = Rect [(ww - sheet.w, wh - sheet.h) / 2,
+			sheet.(w, h)];
+	BlitSurface(sheet, nil, nil, dr);
+	Flip();
+	while true
+	mainloop:
+	{
+		Delay(10);
+		while true
+		{
+			local ev = PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case KEYUP
+				if ev.sym == KESCAPE
+					break mainloop;
+			  case MOUSEBUTTONUP, QUIT
+				break mainloop;
+		}
+	}
+}
+
+
+export function main<args>
+{
+	local argspec = [
+		["w",	"tilew",	integer,	128,
+				"Source tile width"],
+		["h",	"tileh",	integer,	128,
+				"Source tile height"],
+		["s",	"scale",	real,		1.0,
+				"Output scale"],
+		["f",	"frames",	integer,	16,
+				"Number of rotation frames"],
+		["a",	"angle",	real,		360.0,
+				"Rotation range (degrees)"],
+		["c",	"columns",	integer,	0,
+				"Number of columns in sprite sheet"],
+		["m",	"filtermode",	integer,	1,
+				"Filter mode; 0: nearest, 1: dominant"],
+		["z",	"filtersize",	real,		1.0,
+				"Filter kernel size"],
+		["p",	"palette",	string,		nil,
+				"GIMP palette file (indexed color output)"],
+		["l",	"lightframes",	integer,	4,
+				"Number of lighting frames in source"],
+		["d",	"display",	boolean,	false,
+				"Display rendered output"],
+		["v",	"verbose",	boolean,	false,
+				"Verbose logging"],
+		["?",	"showhelp",	boolean,	false,
+				"Show this help"]
+	];
+	local params = cmd.parse(argspec, #arguments);
+	if params.showhelp or (sizeof params.other <= 1)
+	{
+		print("\n\nUsage: ", args[0], " [switches] <file>\n\n");
+		print("Switches:\n");
+		cmd.usage(argspec);
+		print("\n");
+		return 0;
+	}
+
+	// Instantiate engine
+	local e = Engine();
+
+	// Build parameter table
+	local s = {
+		.sources	[{
+			.path		params.other[1],
+			.tilew		params.tilew,
+			.tileh		params.tileh
+		}],
+		.source		params.other[1],
+		.frames		params.frames,
+		.columns	params.columns,
+		.scale		params.scale,
+		.tilew		params.tilew * params.scale,
+		.tileh		params.tileh * params.scale,
+		.filtersize	params.filtersize,
+		.filtermode	params.filtermode,
+		.palette	params.palette,
+		.layers		[
+			{
+				.angle		params.angle,
+				.frames		params.lightframes
+			}
+		],
+		.verbose	params.verbose
+	};
+	if sizeof params.other >= 3
+		s.output = params.other[2];
+
+	// Process!
+	local output = e:Process(s);
+
+	// Show result, if requested!
+	if output and params.display
+	{
+		if params.verbose
+			print("Displaying output.\n");
+		display(output);
+	}
+
+	return 0;
+}
