@@ -818,10 +818,10 @@ procedure Convert(self)
 			{
 				// Offset the alpha test based on contrast
 				// against the reference background color.
-				local d = (c >> 16 & 0xff - bg_r) +
-						(c >> 8 & 0xff - bg_g) +
-						(c & 0xff - bg_b);
-				a += d * cw / 3;
+				local d = abs(c >> 16 & 0xff - bg_r) +
+						abs(c >> 8 & 0xff - bg_g) +
+						abs(c & 0xff - bg_b);
+				a -= d * cw / 3;
 			}
 			if dtint
 				if (integer)(x + y) & 1
