@@ -213,8 +213,13 @@ Process parameters:
 
 		"normal"	Alpha blending.
 
-		"multiply"	Output is product of target and layer. All
-				channels are multiplied, including alpha!
+		"multiply"	Output is the product of the target and the
+				layer. All channels are multiplied, including
+				alpha!
+
+		"add"		Output is the saturated sum of target and
+				layer. All channels are summed, including
+				alpha!
 
 	clampcolor		0x00000000
 		Color value to be used when attempting to read pixels outside
@@ -643,6 +648,33 @@ procedure ApplyMultiply(src, dst, dr)
 }
 
 
+procedure ApplyAdd(src, dst, dr)
+{
+	for local y = 0, dr.h - 1
+		for local x = 0, dr.w - 1
+		{
+			local s = GetPixel(src, x, y);
+			local d = GetPixel(dst, dr.(x, y) + (x, y));
+			local s_a = (s >> 24) & 0xff;
+			if not s_a
+				continue;	// Skip transparent pixels!
+			local s_r = s & 0xff;
+			local s_g = (s >> 8) & 0xff;
+			local s_b = (s >> 16) & 0xff;
+			local d_r = d & 0xff;
+			local d_g = (d >> 8) & 0xff;
+			local d_b = (d >> 16) & 0xff;
+			local d_a = (d >> 24) & 0xff;
+			local r = s_r + d_r |< 255;
+			local g = s_g + d_g |< 255;
+			local b = s_b + d_b |< 255;
+			local a = s_a + d_a |< 255;
+			local c = r | (g << 8) | (b << 16) | (a << 24);
+			Plot(dst, c, dr.(x, y) + (x, y));
+		}
+}
+
+
 procedure RenderLayer(self, layer, frame, dr)
 {
 	local p = self.params;
@@ -654,9 +686,15 @@ procedure RenderLayer(self, layer, frame, dr)
 	local rdr = dr;
 	switch l.blendmode
 	  case "multiply"
-	  {	
+	  {
 		self.render_target = self.scratch;
 		apply = ApplyMultiply;
+		rdr = Rect [0, 0, p.(tilew, tileh)];
+	  }
+	  case "add"
+	  {
+		self.render_target = self.scratch;
+		apply = ApplyAdd;
 		rdr = Rect [0, 0, p.(tilew, tileh)];
 	  }
 	  default
