@@ -133,6 +133,7 @@ extern "C" {
   EEL_DEFEX(XSHARINGVIOLATION, "Sharing violation")\
   EEL_DEFEX(XTHREADCREATE,	"Could not create thread")\
   EEL_DEFEX(XBUFOVERFLOW,	"Buffer overflow")\
+  EEL_DEFEX(XWRONGFORMAT,	"Data has bad or unsupported format")\
 \
   /* Lexer and parser exceptions */\
   EEL_DEFEX(XNONUMBER,		"Not a valid number")\

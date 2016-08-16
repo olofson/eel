@@ -44,6 +44,10 @@ static int loaded = 0;
 ESDL_moduledata esdl_md;
 
 
+/*----------------------------------------------------------
+	EEL utilities
+----------------------------------------------------------*/
+
 /* Set integer field 'n' of table 'io' to 'val' */
 static inline void esdl_seti(EEL_object *io, const char *n, long val)
 {
@@ -61,6 +65,10 @@ static inline void esdl_setb(EEL_object *io, const char *n, int val)
 	eel_setsindex(io, n, &v);
 }
 
+
+/*----------------------------------------------------------
+	Low level graphics utilities
+----------------------------------------------------------*/
 
 static inline void clip_rect(SDL_Rect *r, SDL_Rect *to)
 {
@@ -88,6 +96,113 @@ static inline void clip_rect(SDL_Rect *r, SDL_Rect *to)
 		r->w = dx2 - dx1;
 		r->h = dy2 - dy1;
 	}
+}
+
+
+/*
+ * Get and lock (if necessary) an SDL surface from an argument, which can be a
+ * Surface or a SurfaceLock. Returns 0 upon success, or an EEL exception code.
+ */
+static inline EEL_xno get_surface(EEL_value *arg, int *locked, SDL_Surface **s)
+{
+	*locked = 0;
+	if(EEL_TYPE(arg) == esdl_md.surfacelock_cid)
+	{
+		EEL_object *so = o2ESDL_surfacelock(arg->objref.v)->surface;
+		if(!so)
+			return EEL_XARGUMENTS;	/* No surface! */
+		*s = o2ESDL_surface(so)->surface;
+		/* This one's locked by definition, so we're done! */
+		return 0;
+	}
+	else if(EEL_TYPE(arg) == esdl_md.surface_cid)
+	{
+		*s = o2ESDL_surface(arg->objref.v)->surface;
+		if(SDL_MUSTLOCK((*s)))
+		{
+			SDL_LockSurface(*s);
+			*locked = 1;
+		}
+		return 0;
+	}
+	else
+		return EEL_XWRONGTYPE;
+}
+
+
+/* Get pixel from 24 bpp surface, no clipping. */
+static inline Uint32 getpixel24(SDL_Surface *s, int x, int y)
+{
+	Uint8 *p = (Uint8 *)s->pixels;
+	Uint8 *p24 = p + y * s->pitch + x * 3;
+#if (SDL_BYTEORDER == SDL_LIL_ENDIAN)
+	return p24[0] | ((Uint32)p24[1] << 8) | ((Uint32)p24[2] << 16);
+#else
+	return p24[2] | ((Uint32)p24[1] << 8) | ((Uint32)p24[0] << 16);
+#endif
+}
+
+
+/* Get pixel from 32 bpp surface, no clipping. */
+static inline Uint32 getpixel32(SDL_Surface *s, int x, int y)
+{
+	Uint32 *p = (Uint32 *)s->pixels;
+	int ppitch = s->pitch / 4;
+	return p[y * ppitch + x];
+}
+
+
+/* Get pixel from 24 bpp surface, with clipping. */
+static inline Uint32 getpixel24c(SDL_Surface *s, int x, int y, Uint32 cc)
+{
+	if((x < 0) || (y < 0) || (x >= s->w) || (y >= s->h))
+		return cc;
+	else
+		return getpixel24(s, x, y);
+}
+
+
+/* Get pixel from 32 bpp surface; with clipping. */
+static inline Uint32 getpixel32c(SDL_Surface *s, int x, int y, Uint32 cc)
+{
+	if((x < 0) || (y < 0) || (x >= s->w) || (y >= s->h))
+		return cc;
+	else
+		return getpixel32(s, x, y);
+}
+
+
+/*
+ * Multiply the R/G/B channels from color value 'c' with weight 'w', and add
+ * them to the respective accumulators. 'w' and the accumulators are 16:16
+ * fixed point.
+ */
+static inline void maccrgb(Uint32 c, int w, int *r, int *g, int *b)
+{
+	*b += (c & 0xff) * w >> 8;
+	*g += ((c >> 8) & 0xff) * w >> 8;
+	*r += ((c >> 16) & 0xff) * w >> 8;
+}
+
+
+/*
+ * Multiply the R/G/B/A channels from color value 'c' with weight 'w', and add
+ * them to the respective accumulators. 'w' and the accumulators are 16:16
+ * fixed point.
+ */
+static inline void maccrgba(Uint32 c, int w, int *r, int *g, int *b, int *a)
+{
+	*b += (c & 0xff) * w >> 8;
+	*g += ((c >> 8) & 0xff) * w >> 8;
+	*r += ((c >> 16) & 0xff) * w >> 8;
+	*a += ((c >> 24) & 0xff) * w >> 8;
+}
+
+
+/* Assemble channels to ARGB color value. (No clamping or masking!) */
+static inline Uint32 rgba2c(int r, int g, int b, int a)
+{
+	return a << 24 | r << 16 | g << 8 | b;
 }
 
 
@@ -1257,37 +1372,20 @@ static EEL_xno esdl_GetColor(EEL_vm *vm)
 		s = o2ESDL_surface(arg->objref.v)->surface;
 	SDL_GetRGBA(eel_v2l(arg + 1), s->format, &r, &g, &b, &a);
 	vm->heap[vm->resv].type = EEL_TINTEGER;
-	vm->heap[vm->resv].integer.v = a << 24 | r << 16 | g << 8 | b;
+	vm->heap[vm->resv].integer.v = rgba2c(r, g, b, a);
 	return 0;
 }
 
 
 static EEL_xno esdl_Plot(EEL_vm *vm)
 {
-	int i, xmin, ymin, xmax, ymax;
-	int locked = 0;
+	EEL_xno res;
+	int i, xmin, ymin, xmax, ymax, locked;
 	SDL_Surface *s;
 	EEL_value *arg = vm->heap + vm->argv;
 	Uint32 color = eel_v2l(arg + 1);
-	if(EEL_TYPE(arg) == esdl_md.surfacelock_cid)
-	{
-		EEL_object *so = o2ESDL_surfacelock(arg->objref.v)->surface;
-		if(!so)
-			return EEL_XARGUMENTS;	/* No surface! */
-		s = o2ESDL_surface(so)->surface;
-		/* This one's locked by definition, so we're done! */
-	}
-	else if(EEL_TYPE(arg) == esdl_md.surface_cid)
-	{
-		s = o2ESDL_surface(arg->objref.v)->surface;
-		if(SDL_MUSTLOCK(s))
-		{
-			SDL_LockSurface(s);
-			locked = 1;
-		}
-	}
-	else
-		return EEL_XWRONGTYPE;
+	if((res = get_surface(arg, &locked, &s)))
+		return res;
 	xmin = s->clip_rect.x;
 	ymin = s->clip_rect.y;
 	xmax = xmin + s->clip_rect.w;
@@ -1369,31 +1467,13 @@ static EEL_xno esdl_Plot(EEL_vm *vm)
 /* function GetPixel(surface, x, y)[clipreturn] */
 static EEL_xno esdl_GetPixel(EEL_vm *vm)
 {
-	int x, y;
+	EEL_xno res;
+	int x, y, locked;
 	Uint32 color = 0;
-	int locked = 0;
 	SDL_Surface *s;
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) == esdl_md.surfacelock_cid)
-	{
-		EEL_object *so = o2ESDL_surfacelock(arg->objref.v)->surface;
-		if(!so)
-			return EEL_XARGUMENTS;	/* No surface! */
-		s = o2ESDL_surface(so)->surface;
-		/* This one's locked by definition, so we're done! */
-	}
-	else if(EEL_TYPE(arg) == esdl_md.surface_cid)
-	{
-		s = o2ESDL_surface(arg->objref.v)->surface;
-		if(SDL_MUSTLOCK(s))
-		{
-			SDL_LockSurface(s);
-			locked = 1;
-		}
-	}
-	else
-		return EEL_XWRONGTYPE;
-
+	if((res = get_surface(arg, &locked, &s)))
+		return res;
 	x = eel_v2l(arg + 1);
 	y = eel_v2l(arg + 2);
 	if((x < 0) || (y < 0) || (x >= s->w) || (y >= s->h))
@@ -1427,27 +1507,118 @@ static EEL_xno esdl_GetPixel(EEL_vm *vm)
 		break;
 	  }
 	  case 3:
-	  {
-		Uint8 *p = (Uint8 *)s->pixels;
-		Uint8 *p24 = p + y * s->pitch + x * 3;
-#if (SDL_BYTEORDER == SDL_LIL_ENDIAN)
-		color = p24[0] | ((Uint32)p24[1] << 8) | ((Uint32)p24[2] << 16);
-#else
-		color = p24[2] | ((Uint32)p24[1] << 8) | ((Uint32)p24[0] << 16);
-#endif
+		color = getpixel24(s, x, y);
 		break;
-	  }
 	  case 4:
-	  {
-		Uint32 *p = (Uint32 *)s->pixels;
-		int ppitch = s->pitch / 4;
-		color = p[y * ppitch + x];
+		color = getpixel32(s, x, y);
 		break;
-	  }
 	}
 	if(locked)
 		SDL_UnlockSurface(s);
 	eel_l2v(vm->heap + vm->resv, color);
+	return 0;
+}
+
+
+/* function InterPixel(surface, x, y)[clipcolor] */
+static EEL_xno esdl_InterPixel(EEL_vm *vm)
+{
+	EEL_xno res = 0;
+	float x, y;
+	int ix, iy, locked, w[4], r, g, b, a;
+	Uint32 fx, fy, clipcolor;
+	SDL_Surface *s;
+	EEL_value *arg = vm->heap + vm->argv;
+	if((res = get_surface(arg, &locked, &s)))
+		return res;
+	x = eel_v2d(arg + 1);
+	y = eel_v2d(arg + 2);
+	if(vm->argc >= 4)
+		clipcolor = eel_v2l(arg + 3);
+	else
+		clipcolor = 0;
+	ix = floor(x);
+	iy = floor(y);
+	if((ix < -1) || (iy < -1) || (ix >= s->w - 1) || (iy >= s->h - 1))
+	{
+		/* Full clip! */
+		if(locked)
+			SDL_UnlockSurface(s);
+		eel_l2v(vm->heap + vm->resv, clipcolor);
+		return 0;
+	}
+	fx = (x - ix) * 32767.9f;
+	fy = (y - iy) * 32767.9f;
+	r = g = b = a = 0;
+	w[0] = (32768 - fx) * (32768 - fy) >> 14;
+	w[1] = fx * (32768 - fy) >> 14;
+	w[2] = (32768 - fx) * fy >> 14;
+	w[3] = fx * fy >> 14;
+	if((ix >= 0) && (iy >= 0) && (ix < s->w - 1) && (iy < s->h - 1))
+	{
+		/* No clip! */
+		switch(s->format->BytesPerPixel)
+		{
+		  case 3:
+			maccrgb(getpixel24(s, x, y),
+					w[0], &r, &g, &b);
+			maccrgb(getpixel24(s, x + 1, y),
+					w[1], &r, &g, &b);
+			maccrgb(getpixel24(s, x, y + 1),
+					w[2], &r, &g, &b);
+			maccrgb(getpixel24(s, x + 1, y + 1),
+					w[3], &r, &g, &b);
+			break;
+		  case 4:
+			maccrgba(getpixel32(s, x, y),
+					w[0], &r, &g, &b, &a);
+			maccrgba(getpixel32(s, x + 1, y),
+					w[1], &r, &g, &b, &a);
+			maccrgba(getpixel32(s, x, y + 1),
+					w[2], &r, &g, &b, &a);
+			maccrgba(getpixel32(s, x + 1, y + 1),
+					w[3], &r, &g, &b, &a);
+			break;
+		  default:
+			if(locked)
+				SDL_UnlockSurface(s);
+			return EEL_XWRONGFORMAT;
+		}
+	}
+	else
+	{
+		/* Partial clip! */
+		switch(s->format->BytesPerPixel)
+		{
+		  case 3:
+			maccrgb(getpixel24c(s, ix, iy, clipcolor),
+					w[0], &r, &g, &b);
+			maccrgb(getpixel24c(s, ix + 1, iy, clipcolor),
+					w[1], &r, &g, &b);
+			maccrgb(getpixel24c(s, ix, iy + 1, clipcolor),
+					w[2], &r, &g, &b);
+			maccrgb(getpixel24c(s, ix + 1, iy + 1, clipcolor),
+					w[3], &r, &g, &b);
+			break;
+		  case 4:
+			maccrgba(getpixel32c(s, ix, iy, clipcolor),
+					w[0], &r, &g, &b, &a);
+			maccrgba(getpixel32c(s, ix + 1, iy, clipcolor),
+					w[1], &r, &g, &b, &a);
+			maccrgba(getpixel32c(s, ix, iy + 1, clipcolor),
+					w[2], &r, &g, &b, &a);
+			maccrgba(getpixel32c(s, ix + 1, iy + 1, clipcolor),
+					w[3], &r, &g, &b, &a);
+			break;
+		  default:
+			if(locked)
+				SDL_UnlockSurface(s);
+			return EEL_XWRONGFORMAT;
+		}
+	}
+	if(locked)
+		SDL_UnlockSurface(s);
+	eel_l2v(vm->heap + vm->resv, rgba2c(r >> 8, g >> 8, b >> 8, a >> 8));
 	return 0;
 }
 
@@ -2237,6 +2408,7 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "GetColor", 2, 0, 0, esdl_GetColor);
 	eel_export_cfunction(m, 0, "Plot", 2, 0, 2, esdl_Plot);
 	eel_export_cfunction(m, 1, "GetPixel", 3, 1, 0, esdl_GetPixel);
+	eel_export_cfunction(m, 1, "InterPixel", 3, 1, 0, esdl_InterPixel);
 
 	/* Event handling */
 	eel_export_cfunction(m, 0, "PumpEvents", 0, 0, 0, esdl_PumpEvents);

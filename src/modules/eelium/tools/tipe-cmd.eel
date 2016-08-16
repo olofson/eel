@@ -64,7 +64,7 @@ export function main<args>
 		["c",	"columns",	integer,	0,
 				"Number of columns in sprite sheet"],
 		["m",	"filtermode",	integer,	1,
-				"Filter mode; 0: nearest, 1: dominant"],
+				"Filter mode; (see tipe.eel)"],
 		["z",	"filtersize",	real,		1.0,
 				"Filter kernel size"],
 		["p",	"palette",	string,		nil,

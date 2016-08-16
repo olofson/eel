@@ -58,10 +58,12 @@ Process parameters:
 
 		"nearest"/0	Nearest pixel
 
-		"dominant"/1	Most frequent color value within the square
+		"linear"/1	Bilinear interpolation
+
+		"dominant"/2	Most frequent color value within the square
 				area corresponding to the output pixel.
 
-		"average"/2	Average color value within the square area
+		"average"/3	Average color value within the square area
 				corresponding to the output pixel.
 
 	filtersize		1.0
@@ -255,6 +257,14 @@ function getpixel_nearest(src, x, y, scx, scy, m0, m1, scale, size, clampc)
 	local sx = (x * m0) - (y * m1);
 	local sy = (x * m1) + (y * m0);
 	return GetPixel(src, scx + sx, scy + sy, clampc);
+}
+
+
+function getpixel_linear(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+{
+	local sx = (x * m0) - (y * m1);
+	local sy = (x * m1) + (y * m0);
+	return InterPixel(src, scx + sx, scy + sy, clampc);
 }
 
 
@@ -487,9 +497,11 @@ procedure CheckParams(self)
 	switch p.filtermode
 	  case 0, "nearest"
 		self.gpx = getpixel_nearest;
-	  case 1, "dominant"
+	  case 1, "linear"
+		self.gpx = getpixel_linear;
+	  case 2, "dominant"
 		self.gpx = getpixel_dominant;
-	  case 2, "average"
+	  case 3, "average"
 		self.gpx = getpixel_average;
 	  default
 		throw "Unknown transform filter mode " + p.filtermode + "!";
