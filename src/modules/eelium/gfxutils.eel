@@ -10,10 +10,11 @@ eelversion 0.3.7;
 import SDL;
 import SDL_image as IMG;
 import io;
+import math;
 
 
 ////////////////////////////////////////////////////////////////
-// Utilities
+// General Utilities
 ////////////////////////////////////////////////////////////////
 
 // Fill 'dst' with a checkerboard patters
@@ -33,6 +34,58 @@ export procedure Checkerboard(dst, w, h, c1, c2)
 		c1 = c2;
 		c2 = tmp;
 	}
+}
+
+
+////////////////////////////////////////////////////////////////
+// SDL.FilterPixel() Utilities
+////////////////////////////////////////////////////////////////
+
+// Normalize a filter core in place, so that the sum of all weights becomes
+// 'total', which defaults to 1.0 (65536). Returns the modified core.
+export function NormalizeFilterCore(fc)[total]
+{
+	local t = 65536.0;
+	if specified total
+		t *= total;
+	local size = fc[0] * fc[1];
+	local sum = 0;
+	for local i = 2, size + 1
+		sum += fc[i];
+	if sum
+	{
+		local scale = t / sum;
+		for local i = 2, size + 1
+			fc[i] = fc[i] * scale + .5;
+	}
+	return fc;
+}
+
+
+// Create a circular "cone" filter core, compatible with SDL.FilterPixel().
+//
+//	radius	Radius in pixels	(integer)
+//	cmag	Center magnitude	(real)
+//	emag	Edge magnitude		(real)
+//
+//	Returns a vector_s32, where [0, 1] hold the width and height of the
+//	filter core, followed by the filter core itself, expressed as 16:16
+//	fixed point weights.
+//
+export function CircularFilterCore(radius, cmag, emag)
+{
+	local f = vector_s32 [radius * 2 + (1, 1)];
+	cmag, emag *= 65536.0;
+	for local y = -radius, radius
+		for local x = -radius, radius
+		{
+			local d = sqrt(x * x + (y * y));
+			if d < radius
+				f.+ emag * d + (cmag * (radius - d)) / radius;
+			else
+				f.+ 0;
+		}
+	return f;
 }
 
 

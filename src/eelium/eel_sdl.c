@@ -1520,7 +1520,16 @@ static EEL_xno esdl_GetPixel(EEL_vm *vm)
 }
 
 
-/* function InterPixel(surface, x, y)[clipcolor] */
+/*
+ * function InterPixel(surface, x, y)[clipcolor]
+ *
+ *	'surface' needs to be a 24 (8:8:8) or 32 (8:8:8:8) bpp Surface[Lock].
+ *
+ *	'x' and 'y' can be integer or real coordinates.
+ *
+ *	'clipcolor' is the color used for off-surface pixels; 0 (black,
+ *	transparent) if not specified.
+ */
 static EEL_xno esdl_InterPixel(EEL_vm *vm)
 {
 	EEL_xno res = 0;
@@ -1539,6 +1548,7 @@ static EEL_xno esdl_InterPixel(EEL_vm *vm)
 		clipcolor = 0;
 	ix = floor(x);
 	iy = floor(y);
+
 	if((ix < -1) || (iy < -1) || (ix >= s->w - 1) || (iy >= s->h - 1))
 	{
 		/* Full clip! */
@@ -1547,6 +1557,7 @@ static EEL_xno esdl_InterPixel(EEL_vm *vm)
 		eel_l2v(vm->heap + vm->resv, clipcolor);
 		return 0;
 	}
+
 	fx = (x - ix) * 32767.9f;
 	fy = (y - iy) * 32767.9f;
 	r = g = b = a = 0;
@@ -1554,6 +1565,7 @@ static EEL_xno esdl_InterPixel(EEL_vm *vm)
 	w[1] = fx * (32768 - fy) >> 14;
 	w[2] = (32768 - fx) * fy >> 14;
 	w[3] = fx * fy >> 14;
+
 	if((ix >= 0) && (iy >= 0) && (ix < s->w - 1) && (iy < s->h - 1))
 	{
 		/* No clip! */
@@ -1616,8 +1628,96 @@ static EEL_xno esdl_InterPixel(EEL_vm *vm)
 			return EEL_XWRONGFORMAT;
 		}
 	}
+
 	if(locked)
 		SDL_UnlockSurface(s);
+
+	eel_l2v(vm->heap + vm->resv, rgba2c(r >> 8, g >> 8, b >> 8, a >> 8));
+	return 0;
+}
+
+
+/*
+ * function FilterPixel(surface, x, y, filter)[clipcolor]
+ *
+ *	'surface' needs to be a 24 (8:8:8) or 32 (8:8:8:8) bpp Surface[Lock].
+ *
+ *	'x' and 'y' can be integer or real coordinates.
+TODO: Actually implement real coordinates with interpolation?
+ *
+ *	'filter' is a vector_s32, where [0, 1] hold the width and height of the
+ *	filter core, followed by the filter core itself, expressed as 16:16
+ *	fixed point weights.
+ *
+ *	'clipcolor' is the color used for off-surface pixels; 0 (black,
+ *	transparent) if not specified.
+ */
+static EEL_xno esdl_FilterPixel(EEL_vm *vm)
+{
+	EEL_xno res = 0;
+	int x0, y0, x, y, locked, r, g, b, a;
+	Uint32 clipcolor;
+	Uint32 *filter;
+	SDL_Surface *s;
+	EEL_value *arg = vm->heap + vm->argv;
+	x0 = eel_v2l(arg + 1);
+	y0 = eel_v2l(arg + 2);
+	if(EEL_TYPE(arg + 3) == (EEL_types)EEL_CVECTOR_S32)
+	{
+		EEL_object *o = eel_v2o(arg + 3);
+		int len = eel_length(o);
+		if(len < 2)
+			return EEL_XWRONGFORMAT;	/* Expected w, h! */
+		filter = eel_rawdata(o);
+		if(!filter)
+			return EEL_XCANTREAD;	/* (Can this even happen?) */
+		if(filter[0] * filter[1] > len + 2)
+			return EEL_XFEWITEMS;	/* Incomplete filter core! */
+	}
+	else
+		return EEL_XWRONGTYPE;
+	if(vm->argc >= 5)
+		clipcolor = eel_v2l(arg + 4);
+	else
+		clipcolor = 0;
+	if((res = get_surface(arg, &locked, &s)))
+		return res;
+
+	/* No optimized cases here. Just brute-force per-pixel clipping. */
+	x0 -= filter[0] >> 1;
+	y0 -= filter[1] >> 1;
+	r = g = b = a = 0;
+	switch(s->format->BytesPerPixel)
+	{
+	  case 3:
+		for(y = 0; y < filter[1]; ++y)
+		{
+			Uint32 *frow = filter + 2 + y * filter[0];
+			for(x = 0; x < filter[0]; ++x)
+				maccrgb(getpixel24c(s, x0 + x, y0 + y,
+						clipcolor),
+						frow[x], &r, &g, &b);
+		}
+		break;
+	  case 4:
+		for(y = 0; y < filter[1]; ++y)
+		{
+			Uint32 *frow = filter + 2 + y * filter[0];
+			for(x = 0; x < filter[0]; ++x)
+				maccrgba(getpixel32c(s, x0 + x, y0 + y,
+						clipcolor),
+						frow[x], &r, &g, &b, &a);
+		}
+		break;
+	  default:
+		if(locked)
+			SDL_UnlockSurface(s);
+		return EEL_XWRONGFORMAT;
+	}
+
+	if(locked)
+		SDL_UnlockSurface(s);
+
 	eel_l2v(vm->heap + vm->resv, rgba2c(r >> 8, g >> 8, b >> 8, a >> 8));
 	return 0;
 }
@@ -2409,6 +2509,7 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	eel_export_cfunction(m, 0, "Plot", 2, 0, 2, esdl_Plot);
 	eel_export_cfunction(m, 1, "GetPixel", 3, 1, 0, esdl_GetPixel);
 	eel_export_cfunction(m, 1, "InterPixel", 3, 1, 0, esdl_InterPixel);
+	eel_export_cfunction(m, 1, "FilterPixel", 4, 1, 0, esdl_FilterPixel);
 
 	/* Event handling */
 	eel_export_cfunction(m, 0, "PumpEvents", 0, 0, 0, esdl_PumpEvents);
