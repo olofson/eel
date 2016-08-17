@@ -56,6 +56,8 @@ Process parameters:
 		supported, but integers are deprecated for normal API use.
 		(The integer codes are for the included command line tool.)
 
+FIXME: The "average" and "dominant" modes are unoptimized and extremely slow!
+
 		"nearest"/0	Nearest pixel
 
 		"linear"/1	Bilinear interpolation
@@ -65,6 +67,13 @@ Process parameters:
 
 		"average"/3	Average color value within the square area
 				corresponding to the output pixel.
+
+		"circular"/4	Average color value within a circle of an area
+				corresponding to the size of an output pixel.
+
+		"conical"/5	Weighted average color value within a cone
+				covering an area corresponding to the size of
+				an output pixel.
 
 	filtersize		1.0
 		Scaling factor to adjust the size of the source pixel squares
@@ -252,7 +261,7 @@ import io;
 // Low level tools
 ////////////////////////////////////////////////////////////////
 
-function getpixel_nearest(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+function getpixel_nearest(src, x, y, scx, scy, m0, m1, scale, clampc, fdata)
 {
 	local sx = (x * m0) - (y * m1);
 	local sy = (x * m1) + (y * m0);
@@ -260,7 +269,7 @@ function getpixel_nearest(src, x, y, scx, scy, m0, m1, scale, size, clampc)
 }
 
 
-function getpixel_linear(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+function getpixel_linear(src, x, y, scx, scy, m0, m1, scale, clampc, fdata)
 {
 	local sx = (x * m0) - (y * m1);
 	local sy = (x * m1) + (y * m0);
@@ -268,9 +277,17 @@ function getpixel_linear(src, x, y, scx, scy, m0, m1, scale, size, clampc)
 }
 
 
-function getpixel_dominant(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+function getpixel_filtered(src, x, y, scx, scy, m0, m1, scale, clampc, fdata)
 {
-	size *= .5;
+	local sx = (x * m0) - (y * m1);
+	local sy = (x * m1) + (y * m0);
+	return FilterPixel(src, scx + sx, scy + sy, fdata, clampc);
+}
+
+
+function getpixel_dominant(src, x, y, scx, scy, m0, m1, scale, clampc, fdata)
+{
+	local size = fdata * .5;
 	y -= size;	// FIXME: Why only y...? o.O
 	local dsx = m0 - m1 * scale;
 	local dsy = m1 + m0 * scale;
@@ -303,9 +320,9 @@ function getpixel_dominant(src, x, y, scx, scy, m0, m1, scale, size, clampc)
 }
 
 
-function getpixel_average(src, x, y, scx, scy, m0, m1, scale, size, clampc)
+function getpixel_average(src, x, y, scx, scy, m0, m1, scale, clampc, fdata)
 {
-	size *= .5;
+	local size = fdata * .5;
 	y -= size;	// FIXME: Why only y...? o.O
 	local dsx = m0 - m1 * scale;
 	local dsy = m1 + m0 * scale;
@@ -494,6 +511,7 @@ procedure CheckParams(self)
 				self.rows, " (", self.columns * p.tilew,
 				"x", self.rows * p.tileh, ")\n");
 
+	self.fdata = p.filtersize;
 	switch p.filtermode
 	  case 0, "nearest"
 		self.gpx = getpixel_nearest;
@@ -503,6 +521,20 @@ procedure CheckParams(self)
 		self.gpx = getpixel_dominant;
 	  case 3, "average"
 		self.gpx = getpixel_average;
+	  case 4, "circular"
+	  {
+		self.gpx = getpixel_filtered;
+		self.fdata = gfx.CircularFilterCore(
+				sqrt(1 / PI) * p.filtersize / p.scale, 1, 1);
+		gfx.NormalizeFilterCore(self.fdata);
+	  }
+	  case 5, "conical"
+	  {
+		self.gpx = getpixel_filtered;
+		self.fdata = gfx.CircularFilterCore(
+				sqrt(1 / PI) * p.filtersize / p.scale, 1, 0);
+		gfx.NormalizeFilterCore(self.fdata);
+	  }
 	  default
 		throw "Unknown transform filter mode " + p.filtermode + "!";
 }
@@ -582,11 +614,13 @@ procedure Load(self)
 
 
 // NOTE: The adding mode has no saturation, as it's intended for crossfading!
-procedure Transform(self, src, dr, rot, colormod, adding, xo, yo, scale,
-		sxo, syo, clampc)
+procedure Transform(self, layer, src, dr, rot, colormod, adding)
 {
+	local xo, local yo, local sxo, local syo, local clampc = layer.(
+			xoffset, yoffset, sxoffset, syoffset, clampcolor);
+	local scale = self.params.scale;
+	local fdata = self.fdata;
 	local dst = self.render_target;
-	local size = self.params.filtersize;
 	local gpx = self.gpx;
 	xo, yo *= scale;
 	local m0 = cos(rot) / scale;
@@ -600,7 +634,7 @@ procedure Transform(self, src, dr, rot, colormod, adding, xo, yo, scale,
 		for local x = -dr.w / 2 + .5, dr.w / 2 - .5
 		{
 			local s = gpx(src, x - xo, y - yo, sx, sy, m0, m1,
-					scale, size, clampc);
+					scale, clampc, fdata);
 			local d = GetPixel(dst, dcx + x, dcy + y);
 			local s_r = s & 0xff;
 			local s_g = (s >> 8) & 0xff;
@@ -744,17 +778,11 @@ procedure RenderLayer(self, layer, frame, dr)
 	// Render!
 	if l.crossfade
 	{
-		self:Transform(s, rdr, r, (1 - ifrac), false,
-				l.(xoffset, yoffset), p.scale,
-				l.(sxoffset, syoffset, clampcolor));
-		self:Transform(s2, rdr, r2, ifrac, true,
-				l.(xoffset, yoffset), p.scale,
-				l.(sxoffset, syoffset, clampcolor));
+		self:Transform(l, s, rdr, r, (1 - ifrac), false);
+		self:Transform(l, s2, rdr, r2, ifrac, true);
 	}
 	else
-		self:Transform(s, rdr, r, 1, false,
-				l.(xoffset, yoffset), p.scale,
-				l.(sxoffset, syoffset, clampcolor));
+		self:Transform(l, s, rdr, r, 1, false);
 
 	// Apply layer to target, unless rendered directly
 	if apply
