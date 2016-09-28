@@ -160,6 +160,12 @@ FIXME: The "average" and "dominant" modes are unoptimized and extremely slow!
 			* An integer source image index. This uses the entire
 			  source image of the specified source.
 
+			* An array [source, x, y, w, h], where 'source' is the
+			  index of a previously listed source, and the
+			  remaining fields are the position and size of the
+			  area of that source to use. This area will be tiled
+			  as indicated by 'tilew' and 'tileh'.
+
 	tilew, tileh		"auto"
 		Source sprite sheet tile size.
 
@@ -563,6 +569,7 @@ procedure Load(self)
 	{
 		local s = p.sources[i];
 		local img = s.source;
+		local b = gfx.SpriteBank();
 		self:Log("Source image ", i, ": ");
 		switch typeof(img)
 		  case Surface
@@ -578,20 +585,29 @@ procedure Load(self)
 			img = self.sources[img];
 		  }
 		  case array
-		  {
-			if sizeof img != 2
+			if sizeof img == 2
+			{
+				self:Log("source ", img[0], ", frame ", img[1],
+						"; ");
+				img = self.frames[img[0]][img[1]];
+			}
+			else if sizeof img == 5
+			{
+				self:Log("source ", img[0], " (", img[1], ", ",
+						img[2], ") ", img[3], "x",
+						img[4], "; ");
+				img = b:GrabFrame(self.sources[img[0]],
+						Rect[img[1, 2, 3, 4]]);
+			}
+			else
 				throw "Previous source reference must be "
-						"[source, frame]!";
-			self:Log("source ", img[0], ", frame ", img[1],"; ");
-			img = self.frames[img[0]][img[1]];
-		  }
+						"[source, frame] or "
+						"[source, x, y, w, h]!";
 		  default
 			throw "Unsupported source type '" +
 					(string)typeof(img) + "'";
 		self.sources[i] = img;
 		self:Log("", img.w, "x", img.h, "; converting... ");
-
-		local b = gfx.SpriteBank();
 
 		// Automatic tiling
 		if s.tilew and s.tileh
