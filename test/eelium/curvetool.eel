@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////
 // curvetool.eel - Simple graphing calculator
-// Copyright 2006, 2014 David Olofson
+// Copyright 2006, 2014, 2016 David Olofson
 /////////////////////////////////////////////////////////
 
 module curvetool;
@@ -26,6 +26,7 @@ static sel;
 static curves = [];
 
 static drawlines = false;
+static drawglyphs = true;
 static autoclear = true;
 
 static xmin = 0;
@@ -465,6 +466,14 @@ export function main<args>
 					curves[ci].lines = drawlines;
 				graph:Invalidate();
 			}).state = drawlines;
+	    gui.Toggle(p, "Draw Glyphs",
+			procedure(self)
+			{
+				drawglyphs = self.state;
+				for local ci = 0, sizeof curves - 1
+					curves[ci].glyphs = drawglyphs;
+				graph:Invalidate();
+			}).state = drawglyphs;
 	    gui.Toggle(p, "Auto Clear",
 			procedure(self)
 			{

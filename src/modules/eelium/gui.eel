@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 // gui.eel - The Eelium SDL 2D GUI Toolkit
-// Copyright 2005-2006, 2009-2011, 2014 David Olofson
-//////////////////////////////////////////////////////
+// Copyright 2005-2006, 2009-2011, 2014, 2016 David Olofson
+////////////////////////////////////////////////////////////
 
 module eelium.gui;
 
@@ -1873,6 +1873,24 @@ procedure graph_render_ring(self, graph)
 	}
 }
 
+procedure graph_select_glyph(curve)
+{
+	switch curve.glyph
+	  case "dot"
+		curve.Render = graph_render_dot;
+	  case "square"
+		curve.Render = graph_render_square;
+	  case "box"
+		curve.Render = graph_render_box;
+	  case "ring"
+		curve.Render = graph_render_ring;
+	  case "none"
+		curve.Render = graph_render_none;
+	  default
+		curve.Render = graph_render_none;
+	curve.selectedglyph = curve.glyph;
+}
+
 function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 {
 	local nc = {
@@ -1883,6 +1901,9 @@ function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 				g * .3 + (graph.paper_g * .7),
 				b * .3 + (graph.paper_b * .7)),
 		.lines		true,
+		.glyphs		true,
+		.glyph		glyph,
+		.selectedglyph	nil,
 		.visible	true,
 		.xscale		1.,
 		.yscale 	1.,
@@ -1940,19 +1961,7 @@ function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 	};
 	if specified lines
 		nc.lines = lines;
-	switch glyph
-	  case "dot"
-		nc.Render = graph_render_dot;
-	  case "square"
-		nc.Render = graph_render_square;
-	  case "box"
-		nc.Render = graph_render_box;
-	  case "ring"
-		nc.Render = graph_render_ring;
-	  case "none"
-		nc.Render = graph_render_none;
-	  default
-		nc.Render = graph_render_none;
+	graph_select_glyph(nc);
 	graph.curves[name] = nc;
 	return nc;
 }
@@ -1982,7 +1991,12 @@ export function Graph(parent)
 				continue;
 			if curve.lines
 				curve:RenderLines(self);
-			curve:Render(self);
+			if curve.glyphs
+			{
+				if curve.glyph != curve.selectedglyph
+					graph_select_glyph(curve);
+				curve:Render(self);
+			}
 		}
 	};
 	return w;
