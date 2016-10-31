@@ -45,8 +45,8 @@ export function Open[filename]
 				  case '\t'
 				  {
 					x -= startx;
-					x = floor((x + self.tabw) / self.tabw) *
-							self.tabw;
+					x = floor((x + self.tabw) /
+							self.tabw) * self.tabw;
 					x += startx;
 				  }
 				  default
@@ -79,22 +79,22 @@ export function Open[filename]
 				switch ch
 				  case '\n'
 				  {
-				  	mw >|= w;
+					mw >|= w;
 					w = 0;
 				  }
 				  case ' '
-				  	w += self.spacew;
+					w += self.spacew;
 				  case '\t'
-				  	w = floor((w + self.tabw) / self.tabw) *
-				  			self.tabw;
+					w = floor((w + self.tabw) /
+							self.tabw) * self.tabw;
 				  default
-				  	try
-				  	{
-				  		ch -= 33;
+					try
+					{
+						ch -= 33;
 						w += self.spacing[ch];
-				  	}
+					}
 			}
-		  	mw >|= w;
+			mw >|= w;
 			return mw;
 		}
 		procedure Offset(self, x, y)
@@ -108,7 +108,7 @@ export function Open[filename]
 		local sfont = Load(filename);
 	else
 		sfont = Load(sys.MODPATH + "/eelium/fonts/microfont_sh.png");
-	SetAlpha(sfont);
+	SetAlpha(sfont, 0);
 	local x = 0;
 	local last_cut = 0;
 	local last_mend = 0;
@@ -119,14 +119,16 @@ export function Open[filename]
 		if GetPixel(sfont, x, 0) == c
 		{
 			local mstart = x;
-			while x < (sfont.w - 1) and (GetPixel(sfont, x, 0) == c)
+			while x < (sfont.w - 1) and
+					(GetPixel(sfont, x, 0) == c)
 				x += 1;
 			local cut = (mstart + x) / 2;
 			if last_cut
 			{
-				local r = Rect [last_cut, 1, cut - last_cut, no.height];
+				local r = Rect [last_cut, 1, cut - last_cut,
+						no.height];
 				local s = Surface [0, r.w, r.h, 32];
-				SetAlpha(s);
+				SetAlpha(s, 0);
 				BlitSurface(sfont, r, s);
 				SetAlpha(s, SRCALPHA | RLEACCEL);
 				no.glyphs.+ DisplayFormatAlpha(s);
