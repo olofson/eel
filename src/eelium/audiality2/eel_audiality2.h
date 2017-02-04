@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_audiality2.h - EEL Audiality 2 binding
 ---------------------------------------------------------------------------
- * Copyright 2011-2012, 2015 David Olofson
+ * Copyright 2011-2012, 2015, 2017 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -30,10 +30,10 @@
 /* state */
 typedef struct
 {
-	A2_state	*state;
+	A2_interface	*iface;
 	EEL_object	*table;
-} EA2_state;
-EEL_MAKE_CAST(EA2_state)
+} EA2_iface;
+EEL_MAKE_CAST(EA2_iface)
 
 EEL_xno eel_audiality2_init(EEL_vm *vm);
 

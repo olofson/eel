@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_audiality2.h - EEL Audiality 2 binding
 ---------------------------------------------------------------------------
- * Copyright 2011-2012, 2014, 2016 David Olofson
+ * Copyright 2011-2012, 2014, 2016-2017 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -30,9 +30,9 @@
 typedef struct
 {
 	/* Class type IDs */
-	int		state_cid;
+	int		iface_cid;
 
-	EEL_object	*statefields;
+	EEL_object	*ifacefields;
 } A2_moduledata;
 
 /*FIXME: Can't get moduledata from within constructors... */
@@ -97,11 +97,11 @@ static EEL_xno get_raw_data(EEL_value *v, A2_sampleformats *fmt,
 
 
 /*----------------------------------------------------------
-	Audiality 2 state class
+	Audiality 2 interface class
 ----------------------------------------------------------*/
 
 /*
- * Master state:
+ * Master interface:
  *	initv [sample_rate, buffer_size, channels, flags]
  *
  * Substate:
@@ -110,17 +110,17 @@ static EEL_xno get_raw_data(EEL_value *v, A2_sampleformats *fmt,
 static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 		EEL_value *initv, int initc, EEL_value *result)
 {
-	EA2_state *ea2s;
-	A2_state *st;
+	EA2_iface *ea2i;
+	A2_interface *iface;
 	EEL_value v;
 	EEL_xno xno;
 	EEL_object *eo;
 	A2_config *cfg;
-	EA2_state *parentstate = NULL;
-	if(initc && (EEL_TYPE(initv) == a2_md.state_cid))
+	EA2_iface *parentiface = NULL;
+	if(initc && (EEL_TYPE(initv) == a2_md.iface_cid))
 	{
-		/* Grab the parent state and skip that initializer element! */
-		parentstate = o2EA2_state(initv->objref.v);
+		/* Grab the parent iface and skip that initializer element! */
+		parentiface = o2EA2_iface(initv->objref.v);
 		++initv;
 		--initc;
 	}
@@ -151,33 +151,33 @@ static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 			}
 		}
 	}
-	/* Hand it over to the state, so we don't have to keep track of it! */
-	cfg->flags |= A2_STATECLOSE;
-	if(parentstate)
+	/* Hand it over to the iface, so we don't have to keep track of it! */
+	cfg->flags |= A2_AUTOCLOSE;
+	if(parentiface)
 	{
-		if(!(st = a2_SubState(parentstate->state, cfg)))
+		if(!(iface = a2_SubState(parentiface->iface, cfg)))
 			return EEL_XDEVICEOPEN;
 	}
 	else
 	{
-		if(!(st = a2_Open(cfg)))
+		if(!(iface = a2_Open(cfg)))
 			return EEL_XDEVICEOPEN;
 	}
-	if(!(eo = eel_o_alloc(vm, sizeof(EA2_state), type)))
+	if(!(eo = eel_o_alloc(vm, sizeof(EA2_iface), type)))
 	{
-		a2_Close(st);
+		a2_Close(iface);
 		return EEL_XMEMORY;
 	}
-	ea2s = o2EA2_state(eo);
-	memset(ea2s, 0, sizeof(EA2_state));
-	ea2s->state = st;
+	ea2i = o2EA2_iface(eo);
+	memset(ea2i, 0, sizeof(EA2_iface));
+	ea2i->iface = iface;
 	if((xno = eel_o_construct(vm, EEL_CTABLE, NULL, 0, &v)))
 	{
 		eel_o_free(eo);
-		a2_Close(st);
+		a2_Close(iface);
 		return xno;
 	}
-	ea2s->table = eel_v2o(&v);
+	ea2i->table = eel_v2o(&v);
 	eel_o2v(result, eo);
 	return 0;
 }
@@ -185,23 +185,23 @@ static EEL_xno a2s_construct(EEL_vm *vm, EEL_types type,
 
 static EEL_xno a2s_destruct(EEL_object *eo)
 {
-	EA2_state *ea2s = o2EA2_state(eo);
-	a2_Close(ea2s->state);
-	ea2s->state = NULL;
-	eel_disown(ea2s->table);
-	ea2s->table = NULL;
+	EA2_iface *ea2i = o2EA2_iface(eo);
+	a2_Close(ea2i->iface);
+	ea2i->iface = NULL;
+	eel_disown(ea2i->table);
+	ea2i->table = NULL;
 	return 0;
 }
 
 
 static EEL_xno a2s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	EA2_state *ea2s = o2EA2_state(eo);
+	EA2_iface *ea2i = o2EA2_iface(eo);
 	/* Passive content only for now, so we just read the table directly! */
-	if(eel_table_get(a2_md.statefields, op1, op2) != EEL_XOK)
+	if(eel_table_get(a2_md.ifacefields, op1, op2) != EEL_XOK)
 	{
 		/* No hit! Fall through to extension table. */
-		EEL_xno x = eel_table_get(ea2s->table, op1, op2);
+		EEL_xno x = eel_table_get(ea2i->table, op1, op2);
 		if(x)
 			return x;
 		eel_v_own(op2);
@@ -215,10 +215,10 @@ static EEL_xno a2s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno a2s_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_value v;
-	EA2_state *ea2s = o2EA2_state(eo);
-	if(eel_table_get(a2_md.statefields, op1, &v) == EEL_XOK)
+	EA2_iface *ea2i = o2EA2_iface(eo);
+	if(eel_table_get(a2_md.ifacefields, op1, &v) == EEL_XOK)
 		return EEL_XCANTWRITE;
-	return eel_o_metamethod(ea2s->table, EEL_MM_SETINDEX, op1, op2);
+	return eel_o_metamethod(ea2i->table, EEL_MM_SETINDEX, op1, op2);
 }
 
 
@@ -231,11 +231,11 @@ static EEL_xno ea2_LastError(EEL_vm *vm)
 	if(vm->argc >= 1)
 	{
 		EEL_value *args = vm->heap + vm->argv;
-		EA2_state *ea2s;
-		if(EEL_TYPE(vm->heap + vm->argv) != a2_md.state_cid)
+		EA2_iface *ea2i;
+		if(EEL_TYPE(vm->heap + vm->argv) != a2_md.iface_cid)
 			return EEL_XWRONGTYPE;
-		ea2s = o2EA2_state(args->objref.v);
-		eel_l2v(vm->heap + vm->resv, a2_LastRTError(ea2s->state));
+		ea2i = o2EA2_iface(args->objref.v);
+		eel_l2v(vm->heap + vm->resv, a2_LastRTError(ea2i->iface));
 	}
 	else
 		eel_l2v(vm->heap + vm->resv, a2_LastError());
@@ -271,151 +271,151 @@ static EEL_xno ea2_ErrorDescription(EEL_vm *vm)
 	Handle management
 ---------------------------------------------------------*/
 
-/* function RootVoice(state) */
+/* function RootVoice(iface) */
 static EEL_xno ea2_RootVoice(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_RootVoice(ea2s->state));
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_RootVoice(ea2i->iface));
 	return 0;
 }
 
-/* function TypeOf(state, handle) */
+/* function TypeOf(iface, handle) */
 static EEL_xno ea2_TypeOf(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_TypeOf(ea2s->state, eel_v2l(args + 1)));
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_TypeOf(ea2i->iface, eel_v2l(args + 1)));
 	return 0;
 }
 
-/* function TypeName(state, typecode) */
+/* function TypeName(iface, typecode) */
 static EEL_xno ea2_TypeName(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *name;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((name = a2_TypeName(ea2s->state, eel_v2l(args + 1))))
+	ea2i = o2EA2_iface(args->objref.v);
+	if((name = a2_TypeName(ea2i->iface, eel_v2l(args + 1))))
 		eel_s2v(vm, vm->heap + vm->resv, name);
 	else
 		eel_nil2v(vm->heap + vm->resv);
 	return 0;
 }
 
-/* function String(state, handle) */
+/* function String(iface, handle) */
 static EEL_xno ea2_String(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((s = a2_String(ea2s->state, eel_v2l(args + 1))))
+	ea2i = o2EA2_iface(args->objref.v);
+	if((s = a2_String(ea2i->iface, eel_v2l(args + 1))))
 		eel_s2v(vm, vm->heap + vm->resv, s);
 	else
 		eel_nil2v(vm->heap + vm->resv);
 	return 0;
 }
 
-/* function Name(state, handle) */
+/* function Name(iface, handle) */
 static EEL_xno ea2_Name(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *name;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((name = a2_Name(ea2s->state, eel_v2l(args + 1))))
+	ea2i = o2EA2_iface(args->objref.v);
+	if((name = a2_Name(ea2i->iface, eel_v2l(args + 1))))
 		eel_s2v(vm, vm->heap + vm->resv, name);
 	else
 		eel_nil2v(vm->heap + vm->resv);
 	return 0;
 }
 
-/* function Size(state, handle) */
+/* function Size(iface, handle) */
 static EEL_xno ea2_Size(EEL_vm *vm)
 {
 	int res;
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	res = a2_Size(o2EA2_state(args->objref.v)->state, eel_v2l(args + 1));
+	res = a2_Size(o2EA2_iface(args->objref.v)->iface, eel_v2l(args + 1));
 	if(res < 0)
 		return ea2_translate_error(-res);
 	eel_l2v(vm->heap + vm->resv, res);
 	return 0;
 }
 
-/* procedure Retain(state, handle) */
+/* procedure Retain(iface, handle) */
 static EEL_xno ea2_Retain(EEL_vm *vm)
 {
 	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_Retain(ea2s->state, eel_v2l(args + 1))))
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_Retain(ea2i->iface, eel_v2l(args + 1))))
 		return ea2_translate_error(res);
 	return 0;
 }
 
-/* procedure Release(state, handle) */
+/* procedure Release(iface, handle) */
 static EEL_xno ea2_Release(EEL_vm *vm)
 {
 	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	res = a2_Release(ea2s->state, eel_v2l(args + 1));
+	ea2i = o2EA2_iface(args->objref.v);
+	res = a2_Release(ea2i->iface, eel_v2l(args + 1));
 	if(res && (res != A2_REFUSE))
 		return ea2_translate_error(res);
 	return 0;
 }
 
-/* procedure Assign(state, owner, handle) */
+/* procedure Assign(iface, owner, handle) */
 static EEL_xno ea2_Assign(EEL_vm *vm)
 {
 	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_Assign(ea2s->state, eel_v2l(args + 1),
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_Assign(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2))))
 		return ea2_translate_error(res);
 	return 0;
 }
 
-/* procedure Export(state, owner, handle)[name] */
+/* procedure Export(iface, owner, handle)[name] */
 static EEL_xno ea2_Export(EEL_vm *vm)
 {
 	A2_errors res;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *name;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(vm->argc >= 4)
 		name = eel_v2s(args + 3);
 	else
 		name = NULL;
-	if((res = a2_Export(ea2s->state, eel_v2l(args + 1),
+	if((res = a2_Export(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2), name)))
 		return ea2_translate_error(res);
 	return 0;
@@ -426,85 +426,85 @@ static EEL_xno ea2_Export(EEL_vm *vm)
 	Object loading/creation
 ---------------------------------------------------------*/
 
-/* function NewBank(state, name)[flags] */
+/* function NewBank(iface, name)[flags] */
 static EEL_xno ea2_NewBank(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *n;
 	int flags = 0;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(!(n = eel_v2s(args + 1)))
 		return EEL_XWRONGTYPE;
 	if(vm->argc >= 3)
 		flags = eel_v2l(args + 2);
-	eel_l2v(vm->heap + vm->resv, a2_NewBank(ea2s->state, n, flags));
+	eel_l2v(vm->heap + vm->resv, a2_NewBank(ea2i->iface, n, flags));
 	return 0;
 }
 
-/* function LoadString(state, code, name) */
+/* function LoadString(iface, code, name) */
 static EEL_xno ea2_LoadString(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *code;
 	const char *name = NULL;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(!(code = eel_v2s(args + 1)))
 		return EEL_XWRONGTYPE;
 	if(vm->argc >= 3)
 		if(!(name = eel_v2s(args + 2)))
 			return EEL_XWRONGTYPE;
-	eel_l2v(vm->heap + vm->resv, a2_LoadString(ea2s->state, code, name));
+	eel_l2v(vm->heap + vm->resv, a2_LoadString(ea2i->iface, code, name));
 	return 0;
 }
 
-/* function Load(state, filename) */
+/* function Load(iface, filename) */
 static EEL_xno ea2_Load(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	const char *fn;
 	unsigned flags = 0;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	if(!(fn = eel_v2s(args + 1)))
 		return EEL_XWRONGTYPE;
 	if(vm->argc >= 3)
 		flags = eel_v2l(args + 2);
 	eel_l2v(vm->heap + vm->resv,
-			a2_Load(o2EA2_state(args->objref.v)->state, fn,
+			a2_Load(o2EA2_iface(args->objref.v)->iface, fn,
 			flags));
 	return 0;
 }
 
-/* function NewString(state, string) */
+/* function NewString(iface, string) */
 static EEL_xno ea2_NewString(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(!(s = eel_v2s(args + 1)))
 		return EEL_XWRONGTYPE;
-	eel_l2v(vm->heap + vm->resv, a2_NewString(ea2s->state, s));
+	eel_l2v(vm->heap + vm->resv, a2_NewString(ea2i->iface, s));
 	return 0;
 }
 
-/* function UnloadAll(state) */
+/* function UnloadAll(iface) */
 static EEL_xno ea2_UnloadAll(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_UnloadAll(ea2s->state));
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_UnloadAll(ea2i->iface));
 	return 0;
 }
 
@@ -513,45 +513,45 @@ static EEL_xno ea2_UnloadAll(EEL_vm *vm)
 	Objects and exports
 ---------------------------------------------------------*/
 
-/* function Get(state, node, path) */
+/* function Get(iface, node, path) */
 static EEL_xno ea2_Get(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *path;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(!(path = eel_v2s(args + 2)))
 		return EEL_XWRONGTYPE;
-	eel_l2v(vm->heap + vm->resv, a2_Get(ea2s->state, eel_v2l(args + 1),
+	eel_l2v(vm->heap + vm->resv, a2_Get(ea2i->iface, eel_v2l(args + 1),
 			path));
 	return 0;
 }
 
-/* function GetExport(state, node, index) */
+/* function GetExport(iface, node, index) */
 static EEL_xno ea2_GetExport(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_GetExport(ea2s->state,
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_GetExport(ea2i->iface,
 			eel_v2l(args + 1), eel_v2l(args + 2)));
 	return 0;
 }
 
-/* function GetExportName(state, node, index) */
+/* function GetExportName(iface, node, index) */
 static EEL_xno ea2_GetExportName(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	const char *s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	s = a2_GetExportName(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2));
+	ea2i = o2EA2_iface(args->objref.v);
+	s = a2_GetExportName(ea2i->iface, eel_v2l(args + 1), eel_v2l(args + 2));
 	if(s)
 		eel_s2v(vm, vm->heap + vm->resv, s);
 	else
@@ -574,102 +574,102 @@ static EEL_xno ea2_TSDiff(EEL_vm *vm)
 }
 
 
-/* function TimestampNow(state) */
+/* function TimestampNow(iface) */
 static EEL_xno ea2_TimestampNow(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_TimestampNow(
-			o2EA2_state(args->objref.v)->state));
+			o2EA2_iface(args->objref.v)->iface));
 	return 0;
 }
 
 
-/* function TimestampGet(state) */
+/* function TimestampGet(iface) */
 static EEL_xno ea2_TimestampGet(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_TimestampGet(
-			o2EA2_state(args->objref.v)->state));
+			o2EA2_iface(args->objref.v)->iface));
 	return 0;
 }
 
 
-/* function TimestampSet(state, ts) */
+/* function TimestampSet(iface, ts) */
 static EEL_xno ea2_TimestampSet(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_TimestampSet(
-			o2EA2_state(args->objref.v)->state,
+			o2EA2_iface(args->objref.v)->iface,
 			eel_v2l(args + 1)));
 	return 0;
 }
 
 
-/* function ms2Timestamp(state, t) */
+/* function ms2Timestamp(iface, t) */
 static EEL_xno ea2_ms2Timestamp(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_ms2Timestamp(
-			o2EA2_state(args->objref.v)->state,
+			o2EA2_iface(args->objref.v)->iface,
 			eel_v2d(args + 1)));
 	return 0;
 }
 
 
-/* function Timestamp2ms(state, ts) */
+/* function Timestamp2ms(iface, ts) */
 static EEL_xno ea2_Timestamp2ms(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_d2v(vm->heap + vm->resv, a2_Timestamp2ms(
-			o2EA2_state(args->objref.v)->state,
+			o2EA2_iface(args->objref.v)->iface,
 			eel_v2l(args + 1)));
 	return 0;
 }
 
 
-/* function TimestampReset(state) */
+/* function TimestampReset(iface) */
 static EEL_xno ea2_TimestampReset(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_TimestampReset(
-			o2EA2_state(args->objref.v)->state));
+			o2EA2_iface(args->objref.v)->iface));
 	return 0;
 }
 
 
-/* function TimestampBump(state, dt) */
+/* function TimestampBump(iface, dt) */
 static EEL_xno ea2_TimestampBump(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_TimestampBump(
-			o2EA2_state(args->objref.v)->state,
+			o2EA2_iface(args->objref.v)->iface,
 			eel_v2l(args + 1)));
 	return 0;
 }
 
 
-/* function TimestampNudge(state, offset, amount) */
+/* function TimestampNudge(iface, offset, amount) */
 static EEL_xno ea2_TimestampNudge(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
 	eel_l2v(vm->heap + vm->resv, a2_TimestampNudge(
-			o2EA2_state(args->objref.v)->state,
+			o2EA2_iface(args->objref.v)->iface,
 			eel_v2l(args + 1), eel_v2d(args + 2)));
 	return 0;
 }
@@ -679,124 +679,124 @@ static EEL_xno ea2_TimestampNudge(EEL_vm *vm)
 	Playing and controlling
 ---------------------------------------------------------*/
 
-/* procedure PumpMessages(state) */
+/* procedure PumpMessages(iface) */
 static EEL_xno ea2_PumpMessages(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	a2_PumpMessages(o2EA2_state(args->objref.v)->state);
+	a2_PumpMessages(o2EA2_iface(args->objref.v)->iface);
 	return 0;
 }
 
 
-/* function NewGroup(state, parent) */
+/* function NewGroup(iface, parent) */
 static EEL_xno ea2_NewGroup(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_NewGroup(ea2s->state,
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_NewGroup(ea2i->iface,
 			eel_v2l(args + 1)));
 	return 0;
 }
 
-/* function Start(state, parent, program)<args> */
+/* function Start(iface, parent, program)<args> */
 static EEL_xno ea2_Start(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int i, a[A2_MAXARGS];
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(vm->argc - 3 > A2_MAXARGS)
 		return EEL_XMANYARGS;
 	for(i = 0; i < vm->argc - 3; ++i)
 		a[i] = eel_v2d(args + 3 + i) * 65536.0f;
-	eel_l2v(vm->heap + vm->resv, a2_Starta(ea2s->state, eel_v2l(args + 1),
+	eel_l2v(vm->heap + vm->resv, a2_Starta(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2), vm->argc - 3, a));
 	return 0;
 }
 
-/* function Play(state, parent, program)<args> */
+/* function Play(iface, parent, program)<args> */
 static EEL_xno ea2_Play(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int i, a[A2_MAXARGS];
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(vm->argc - 3 > A2_MAXARGS)
 		return EEL_XMANYARGS;
 	for(i = 0; i < vm->argc - 3; ++i)
 		a[i] = eel_v2d(args + 3 + i) * 65536.0f;
-	eel_l2v(vm->heap + vm->resv, a2_Playa(ea2s->state, eel_v2l(args + 1),
+	eel_l2v(vm->heap + vm->resv, a2_Playa(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2), vm->argc - 3, a));
 	return 0;
 }
 
-/* function Send(state, voice, entrypoint)<args> */
+/* function Send(iface, voice, entrypoint)<args> */
 static EEL_xno ea2_Send(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int i, a[A2_MAXARGS];
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(vm->argc - 3 > A2_MAXARGS)
 		return EEL_XMANYARGS;
 	for(i = 0; i < vm->argc - 3; ++i)
 		a[i] = eel_v2d(args + 3 + i) * 65536.0f;
-	eel_l2v(vm->heap + vm->resv, a2_Senda(ea2s->state, eel_v2l(args + 1),
+	eel_l2v(vm->heap + vm->resv, a2_Senda(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2), vm->argc - 3, a));
 	return 0;
 }
 
-/* function SendSub(state, voice, entrypoint)<args> */
+/* function SendSub(iface, voice, entrypoint)<args> */
 static EEL_xno ea2_SendSub(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int i, a[A2_MAXARGS];
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(vm->argc - 3 > A2_MAXARGS)
 		return EEL_XMANYARGS;
 	for(i = 0; i < vm->argc - 3; ++i)
 		a[i] = eel_v2d(args + 3 + i) * 65536.0f;
-	eel_l2v(vm->heap + vm->resv, a2_SendSuba(ea2s->state,
+	eel_l2v(vm->heap + vm->resv, a2_SendSuba(ea2i->iface,
 			eel_v2l(args + 1), eel_v2l(args + 2),
 			vm->argc - 3, a));
 	return 0;
 }
 
-/* function Kill(state, voice) */
+/* function Kill(iface, voice) */
 static EEL_xno ea2_Kill(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_Kill(ea2s->state, eel_v2l(args + 1)));
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_Kill(ea2i->iface, eel_v2l(args + 1)));
 	return 0;
 }
 
-/* function KillSub(state, voice) */
+/* function KillSub(iface, voice) */
 static EEL_xno ea2_KillSub(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_l2v(vm->heap + vm->resv, a2_KillSub(ea2s->state,
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_l2v(vm->heap + vm->resv, a2_KillSub(ea2i->iface,
 			eel_v2l(args + 1)));
 	return 0;
 }
@@ -806,18 +806,18 @@ static EEL_xno ea2_KillSub(EEL_vm *vm)
 	Streams
 ---------------------------------------------------------*/
 
-/* function OpenStream(state, handle)[channel, size, flags] */
+/* function OpenStream(iface, handle)[channel, size, flags] */
 static EEL_xno ea2_OpenStream(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int channel = 0;
 	int size = 0;
 	unsigned flags = 0;
 	A2_handle h;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	switch(vm->argc)
 	{
 	  case 5:
@@ -827,7 +827,7 @@ static EEL_xno ea2_OpenStream(EEL_vm *vm)
 	  case 3:
 		channel = eel_v2l(args + 2);
 	}
-	h = a2_OpenStream(ea2s->state, eel_v2l(args + 1),
+	h = a2_OpenStream(ea2i->iface, eel_v2l(args + 1),
 			channel, size, flags);
 	if(h < 0)
 		return ea2_translate_error(-h);
@@ -835,16 +835,16 @@ static EEL_xno ea2_OpenStream(EEL_vm *vm)
 	return 0;
 }
 
-/* function OpenSink(state, voice, channel, size)[flags] */
+/* function OpenSink(iface, voice, channel, size)[flags] */
 static EEL_xno ea2_OpenSink(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_handle h;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	h = a2_OpenSink(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+	ea2i = o2EA2_iface(args->objref.v);
+	h = a2_OpenSink(ea2i->iface, eel_v2l(args + 1), eel_v2l(args + 2),
 			eel_v2l(args + 3),
 			vm->argc >= 5 ? eel_v2l(args + 4) : 0);
 	if(h < 0)
@@ -853,16 +853,16 @@ static EEL_xno ea2_OpenSink(EEL_vm *vm)
 	return 0;
 }
 
-/* function OpenSource(state, voice, channel, size)[flags] */
+/* function OpenSource(iface, voice, channel, size)[flags] */
 static EEL_xno ea2_OpenSource(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_handle h;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	h = a2_OpenSource(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+	ea2i = o2EA2_iface(args->objref.v);
+	h = a2_OpenSource(ea2i->iface, eel_v2l(args + 1), eel_v2l(args + 2),
 			eel_v2l(args + 3),
 			vm->argc >= 5 ? eel_v2l(args + 4) : 0);
 	if(h < 0)
@@ -871,68 +871,68 @@ static EEL_xno ea2_OpenSource(EEL_vm *vm)
 	return 0;
 }
 
-/* procedure SetPosition(state, handle, offset) */
+/* procedure SetPosition(iface, handle, offset) */
 static EEL_xno ea2_SetPosition(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_errors res;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_SetPosition(ea2s->state, eel_v2l(args + 1),
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_SetPosition(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2))))
 		return ea2_translate_error(res);
 	return 0;
 }
 
-/* function GetPosition(state, handle) */
+/* function GetPosition(iface, handle) */
 static EEL_xno ea2_GetPosition(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int res;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_GetPosition(ea2s->state, eel_v2l(args + 1))) < 0)
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_GetPosition(ea2i->iface, eel_v2l(args + 1))) < 0)
 		return ea2_translate_error(-res);
 	eel_l2v(vm->heap + vm->resv, res);
 	return 0;
 }
 
-/* function Available(state, handle) */
+/* function Available(iface, handle) */
 static EEL_xno ea2_Available(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int res;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_Available(ea2s->state, eel_v2l(args + 1))) < 0)
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_Available(ea2i->iface, eel_v2l(args + 1))) < 0)
 		return ea2_translate_error(-res);
 	eel_l2v(vm->heap + vm->resv, res);
 	return 0;
 }
 
-/* function Space(state, handle) */
+/* function Space(iface, handle) */
 static EEL_xno ea2_Space(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	int res;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_Space(ea2s->state, eel_v2l(args + 1))) < 0)
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_Space(ea2i->iface, eel_v2l(args + 1))) < 0)
 		return ea2_translate_error(-res);
 	eel_l2v(vm->heap + vm->resv, res);
 	return 0;
 }
 
 /*
- * function Read(state, handle, frames)[target, offset]
+ * function Read(iface, handle, frames)[target, offset]
  *
  *	Reads the specified number of audio sample frames from stream 'handle'
  *	into an indexable container that is either provided by the caller, or
@@ -958,7 +958,7 @@ static EEL_xno ea2_Space(EEL_vm *vm)
 static EEL_xno ea2_Read(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	EEL_object *o;
 	A2_errors res;
 	A2_sampleformats fmt;
@@ -966,9 +966,9 @@ static EEL_xno ea2_Read(EEL_vm *vm)
 	unsigned size, isize;
 	unsigned offset = vm->argc >= 5 ? eel_v2l(args + 4) : 0;
 	unsigned frames = eel_v2l(args + 2);
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 
 	/* Create or get target object */
 	if(vm->argc < 4)
@@ -1013,7 +1013,7 @@ static EEL_xno ea2_Read(EEL_vm *vm)
 	size = isize * frames;
 
 	/* Read! */
-	if((res = a2_Read(ea2s->state, eel_v2l(args + 1), fmt, data, size)))
+	if((res = a2_Read(ea2i->iface, eel_v2l(args + 1), fmt, data, size)))
 		return ea2_translate_error(res);
 
 	eel_o2v(vm->heap + vm->resv, o);
@@ -1021,7 +1021,7 @@ static EEL_xno ea2_Read(EEL_vm *vm)
 }
 
 /*
- * procedure Write(state, handle, frames, source)[offset]
+ * procedure Write(iface, handle, frames, source)[offset]
  *
  *	Writes the specified number of audio sample frames from the indexable
  *	container 'source' to stream 'handle'. 'source' needs to be of a signed
@@ -1036,7 +1036,7 @@ static EEL_xno ea2_Read(EEL_vm *vm)
 static EEL_xno ea2_Write(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	EEL_object *o;
 	A2_errors res;
 	A2_sampleformats fmt;
@@ -1045,9 +1045,9 @@ static EEL_xno ea2_Write(EEL_vm *vm)
 	unsigned offset = vm->argc >= 5 ? eel_v2l(args + 4) : 0;
 	unsigned frames = eel_v2l(args + 2);
 
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 
 	/* Get and check source object */
 	if(!EEL_IS_OBJREF(args[3].type))
@@ -1061,21 +1061,21 @@ static EEL_xno ea2_Write(EEL_vm *vm)
 	size = isize * frames;
 
 	/* Write! */
-	if((res = a2_Write(ea2s->state, eel_v2l(args + 1), fmt, data, size)))
+	if((res = a2_Write(ea2i->iface, eel_v2l(args + 1), fmt, data, size)))
 		return ea2_translate_error(res);
 	return 0;
 }
 
-/* procedure Flush(state, handle) */
+/* procedure Flush(iface, handle) */
 static EEL_xno ea2_Flush(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_errors res;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	if((res = a2_Flush(ea2s->state, eel_v2l(args + 1))))
+	ea2i = o2EA2_iface(args->objref.v);
+	if((res = a2_Flush(ea2i->iface, eel_v2l(args + 1))))
 		return ea2_translate_error(res);
 	return 0;
 }
@@ -1085,16 +1085,16 @@ static EEL_xno ea2_Flush(EEL_vm *vm)
 	Waveform management
 ---------------------------------------------------------*/
 
-/* function NewWave(state, wavetype, period)[flags] */
+/* function NewWave(iface, wavetype, period)[flags] */
 static EEL_xno ea2_NewWave(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_handle h;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	h = a2_NewWave(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+	ea2i = o2EA2_iface(args->objref.v);
+	h = a2_NewWave(ea2i->iface, eel_v2l(args + 1), eel_v2l(args + 2),
 			vm->argc >= 4 ? eel_v2l(args + 3) : 0);
 	if(h < 0)
 		return ea2_translate_error(-h);
@@ -1103,22 +1103,22 @@ static EEL_xno ea2_NewWave(EEL_vm *vm)
 }
 
 
-/* function UploadWave(state, wavetype, period, flags, data) */
+/* function UploadWave(iface, wavetype, period, flags, data) */
 static EEL_xno ea2_UploadWave(EEL_vm *vm)
 {
 	EEL_xno res;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_sampleformats fmt;
 	void *data;
 	unsigned size;
 	A2_handle h;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if((res = get_raw_data(args + 4, &fmt, &data, &size, NULL)))
 		return res;
-	h = a2_UploadWave(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+	h = a2_UploadWave(ea2i->iface, eel_v2l(args + 1), eel_v2l(args + 2),
 			eel_v2l(args + 3), fmt, data, size);
 	if(h < 0)
 		return ea2_translate_error(-h);
@@ -1172,7 +1172,7 @@ static EEL_xno ea2_parse_properties(EEL_vm *vm, EEL_object *a, A2_property **p)
 
 
 /*
- * function RenderWave(state, wavetype, period, flags, samplerate, length)
+ * function RenderWave(iface, wavetype, period, flags, samplerate, length)
  *		<args>
  *
  * <args> is an optional array of properties (<property, value> pairs),
@@ -1182,15 +1182,15 @@ static EEL_xno ea2_parse_properties(EEL_vm *vm, EEL_object *a, A2_property **p)
 static EEL_xno ea2_RenderWave(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_handle h, progh;
 	A2_property *props = NULL;
 	int i, a[A2_MAXARGS], fargs;
 
 	/* State */
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 
 	/* Properties and/or program handle */
 	switch((EEL_classes)EEL_TYPE(args + 6))
@@ -1223,7 +1223,7 @@ static EEL_xno ea2_RenderWave(EEL_vm *vm)
 	for(i = 0; i < vm->argc - fargs; ++i)
 		a[i] = eel_v2d(args + fargs + i) * 65536.0f;
 
-	h = a2_RenderWave(ea2s->state,
+	h = a2_RenderWave(ea2i->iface,
 			eel_v2l(args + 1), eel_v2l(args + 2), /* wt, period */
 			eel_v2l(args + 3), eel_v2l(args + 4), /* flags, fs */
 			eel_v2l(args + 5), props, /* length, properties */
@@ -1241,7 +1241,7 @@ static EEL_xno ea2_RenderWave(EEL_vm *vm)
 ---------------------------------------------------------*/
 
 /*
- * function Run(state, frames)
+ * function Run(iface, frames)
  *
  * Run a state (or substate) that's using a driver without a thread or similar
  * context of its own, that is, one that implements the Run() method. Typically
@@ -1255,9 +1255,9 @@ static EEL_xno ea2_Run(EEL_vm *vm)
 {
 	int res;
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	res = a2_Run(o2EA2_state(args->objref.v)->state, eel_v2l(args + 1));
+	res = a2_Run(o2EA2_iface(args->objref.v)->iface, eel_v2l(args + 1));
 	if(res < 0)
 		return ea2_translate_error(-res);
 	eel_l2v(vm->heap + vm->resv, res);
@@ -1266,7 +1266,7 @@ static EEL_xno ea2_Run(EEL_vm *vm)
 
 
 /*
- * function Render(state, stream, samplerate, length)<args>
+ * function Render(iface, stream, samplerate, length)<args>
  *
  * Runs a program off-line with the specified arguments, rendering at
  * 'samplerate', writing the output to 'stream'. <args> is an optional array of
@@ -1281,15 +1281,15 @@ static EEL_xno ea2_Run(EEL_vm *vm)
 static EEL_xno ea2_Render(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
+	EA2_iface *ea2i;
 	A2_handle h, progh;
 	A2_property *props = NULL;
 	int i, a[A2_MAXARGS], fargs;
 
 	/* State */
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 
 	/* Properties and/or program handle */
 	switch((EEL_classes)EEL_TYPE(args + 4))
@@ -1323,7 +1323,7 @@ static EEL_xno ea2_Render(EEL_vm *vm)
 		a[i] = eel_v2d(args + fargs + i) * 65536.0f;
 
 	/* Render! */
-	h = a2_Render(ea2s->state, eel_v2l(args + 1), eel_v2l(args + 2),
+	h = a2_Render(ea2i->iface, eel_v2l(args + 1), eel_v2l(args + 2),
 			eel_v2l(args + 3), props, progh, vm->argc - fargs, a);
 	free(props);
 	if(h < 0)
@@ -1340,18 +1340,29 @@ static EEL_xno ea2_Render(EEL_vm *vm)
 static EEL_xno ea2_F2P(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	eel_d2v(vm->heap + vm->resv, a2_F2P(eel_v2d(args)));
+	float ref = vm->argc >= 2 ? eel_v2d(args + 1) : A2_MIDDLEC;
+	eel_d2v(vm->heap + vm->resv, a2_F2Pf(eel_v2d(args), ref));
 	return 0;
 }
+
+
+static EEL_xno ea2_P2I(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	eel_d2v(vm->heap + vm->resv, a2_P2I(eel_v2d(args) * 65536.0f) *
+			(1.0f / 16777216.0f));
+	return 0;
+}
+
 
 static EEL_xno ea2_Rand(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
-	eel_d2v(vm->heap + vm->resv, a2_Rand(ea2s->state, eel_v2d(args + 1)));
+	ea2i = o2EA2_iface(args->objref.v);
+	eel_d2v(vm->heap + vm->resv, a2_Rand(ea2i->iface, eel_v2d(args + 1)));
 	return 0;
 }
 
@@ -1360,41 +1371,41 @@ static EEL_xno ea2_Rand(EEL_vm *vm)
 	Object property interface
 ---------------------------------------------------------*/
 
-/* function GetProperty(state, handle, property) */
+/* function GetProperty(iface, handle, property) */
 static EEL_xno ea2_GetProperty(EEL_vm *vm)
 {
 	A2_errors ae;
 	int v;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(EEL_TYPE(args + 1) != EEL_TINTEGER)
 		return EEL_XWRONGTYPE;
 	if(EEL_TYPE(args + 2) != EEL_TINTEGER)
 		return EEL_XWRONGTYPE;
-	if((ae = a2_GetProperty(ea2s->state, eel_v2l(args + 1),
+	if((ae = a2_GetProperty(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2), &v)))
 		return ea2_translate_error(ae);
 	eel_l2v(vm->heap + vm->resv, v);
 	return 0;
 }
 
-/* procedure SetProperty(state, handle, property, value) */
+/* procedure SetProperty(iface, handle, property, value) */
 static EEL_xno ea2_SetProperty(EEL_vm *vm)
 {
 	A2_errors ae;
 	EEL_value *args = vm->heap + vm->argv;
-	EA2_state *ea2s;
-	if(EEL_TYPE(args) != a2_md.state_cid)
+	EA2_iface *ea2i;
+	if(EEL_TYPE(args) != a2_md.iface_cid)
 		return EEL_XWRONGTYPE;
-	ea2s = o2EA2_state(args->objref.v);
+	ea2i = o2EA2_iface(args->objref.v);
 	if(EEL_TYPE(args + 1) != EEL_TINTEGER)
 		return EEL_XWRONGTYPE;
 	if(EEL_TYPE(args + 2) != EEL_TINTEGER)
 		return EEL_XWRONGTYPE;
-	if((ae = a2_SetProperty(ea2s->state, eel_v2l(args + 1),
+	if((ae = a2_SetProperty(ea2i->iface, eel_v2l(args + 1),
 			eel_v2l(args + 2), eel_v2l(args + 3))))
 		return ea2_translate_error(ae);
 	return 0;
@@ -1463,8 +1474,8 @@ static EEL_xno eel_a2_unload(EEL_object *m, int closing)
 	/* Stick around until we explicitly close the EEL state */
 	if(closing)
 	{
-		if(a2_md.statefields)
-			eel_disown(a2_md.statefields);
+		if(a2_md.ifacefields)
+			eel_disown(a2_md.ifacefields);
 		memset(&a2_md, 0, sizeof(a2_md));
 		return 0;
 	}
@@ -1612,12 +1623,12 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	c = eel_export_class(m, "a2state", -1, a2s_construct, a2s_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, a2s_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, a2s_setindex);
-	a2_md.state_cid = eel_class_typeid(c);
+	a2_md.iface_cid = eel_class_typeid(c);
 
 	x = eel_o_construct(vm, EEL_CTABLE, NULL, 0, &v);
 	if(x)
 		return EEL_XMODULEINIT;
-	t = a2_md.statefields = eel_v2o(&v);
+	t = a2_md.ifacefields = eel_v2o(&v);
 
 	/* Error handling */
 	eel_export_cfunction(m, 1, "LastError", 0, 1, 0, ea2_LastError);
@@ -1693,7 +1704,8 @@ EEL_xno eel_audiality2_init(EEL_vm *vm)
 	addfunc(m, t, 1, "Render", 4, 0, 1, ea2_Render);
 
 	/* Utilities */
-	eel_export_cfunction(m, 1, "F2P", 1, 0, 0, ea2_F2P);
+	eel_export_cfunction(m, 1, "F2P", 1, 1, 0, ea2_F2P);
+	eel_export_cfunction(m, 1, "P2I", 1, 1, 0, ea2_P2I);
 	addfunc(m, t, 1, "Rand", 2, 0, 0, ea2_Rand);
 
 	/* Object property interface */
