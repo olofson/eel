@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_vm.h - EEL Virtual Machine (API)
 ---------------------------------------------------------------------------
- * Copyright 2005, 2006, 2009, 2011, 2014 David Olofson
+ * Copyright 2005, 2006, 2009, 2011, 2014, 2017 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -69,6 +69,13 @@ struct EEL_vm
 	void *(*malloc)(EEL_vm *vm, int size);
 	void *(*realloc)(EEL_vm *vm, void *block, int size);
 	void (*free)(EEL_vm *vm, void *block);
+
+	/*
+	 * VM-local scratch buffer, primarily for avoiding malloc()/free()
+	 * when processing arrays, variable length argument lists and similar.
+	 */
+	int		scratchsize;
+	void		*scratch;
 
 /*FIXME:*/
 /* For the C function API only! EEL functions use the callframe fields. */
@@ -188,6 +195,19 @@ static inline void *eel_realloc(EEL_vm *vm, void *block, int size)
 static inline void eel_free(EEL_vm *vm, void *block)
 {
 	return vm->free(vm, block);
+}
+
+/* Get scratch buffer, ensuring it is at least the specified size. */
+static inline void *eel_scratch(EEL_vm *vm, int size)
+{
+	if(vm->scratchsize < size)
+	{
+		void *newscratch = eel_realloc(vm, vm->scratch, size);
+		if(!newscratch)
+			return (void *)0;
+		vm->scratch = newscratch;
+	}
+	return vm->scratch;
 }
 
 

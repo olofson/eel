@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vm.c - EEL Virtual Machine
 ---------------------------------------------------------------------------
- * Copyright 2004-2014, 2019 David Olofson
+ * Copyright 2004-2014, 2017, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -2517,6 +2517,7 @@ void eel_vm_close(EEL_vm *vm)
 	printf("'----------------------------------"
 			"----------------- -- -- - - -  -  -\n");
 #endif
+	eel_free(vm, vm->scratch);
 	free(vm->heap);
 	free(vm);
 }
