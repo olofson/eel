@@ -73,7 +73,7 @@ include_directories(${AUDIALITY2_INCLUDE_DIRS})
 
 find_package(ALSA)
 if(ALSA_FOUND)
-	add_definitions(-DA2_HAVE_ALSA)
+	add_definitions(-DHAVE_ALSA)
 endif(ALSA_FOUND)
 
 
