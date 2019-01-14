@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_function.c - EEL Function Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2004-2005, 2009, 2011-2012, 2014 David Olofson
+ * Copyright 2004-2005, 2009, 2011-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -180,7 +180,7 @@ int eel_function_compare(EEL_function *f1, EEL_function *f2)
 		return 0;
 	if(f1->common.tupargs != f2->common.tupargs)
 		return 0;
-	if(f1->common.name != f1->common.name)
+	if(f1->common.name != f2->common.name)
 		return 0;
 /*
 FIXME: Do we compare default argument values as well here, or at least verify
