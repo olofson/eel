@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_register.c - EEL operator registry
 ---------------------------------------------------------------------------
- * Copyright 2002, 2005-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2002, 2005-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -408,23 +408,40 @@ void eel_set_unregister(EEL_object *classdef, EEL_unregister_cb ur)
 }
 
 
-/* Set classdata field for class 'cid' */
-void eel_set_classdata(EEL_object *classdef, void *classdata)
+void eel_set_classdata(EEL_vm *vm, unsigned cid, void *classdata)
 {
-	EEL_vm *vm = classdef->vm;
+	EEL_classdef *cd;
 	EEL_state *es = VMP->state;
-	if((EEL_classes)classdef->type != EEL_CCLASS)
-		eel_ierror(es, "Object %s passed to eel_set_unregister() "
-				"is not a classdef!", eel_o_stringrep(classdef));
-	o2EEL_classdef(classdef)->classdata = classdata;
+	if(cid >= es->nclasses)
+	{
+		eel_warning(es, "Attempted to set classdata for invalid class ID '%u'!", cid);
+		return;
+	}
+	cd = o2EEL_classdef(es->classes[cid]);
+	if(!cd)
+	{
+		eel_warning(es, "Attempted to set classdata for non-existent class '%u'!", cid);
+		return;
+	}
+	cd->classdata = classdata;
 }
 
 
-void *eel_get_classdata(EEL_object *object)
+void *eel_get_classdata(EEL_vm *vm, unsigned cid)
 {
-	EEL_vm *vm = object->vm;
+	EEL_classdef *cd;
 	EEL_state *es = VMP->state;
-	EEL_classdef *cd = o2EEL_classdef(es->classes[object->type]);
+	if(cid >= es->nclasses)
+	{
+		eel_warning(es, "Attempted to get classdata for invalid class ID '%u'!", cid);
+		return NULL;
+	}
+	cd = o2EEL_classdef(es->classes[cid]);
+	if(!cd)
+	{
+		eel_warning(es, "Attempted to get classdata for non-existent class '%u'!", cid);
+		return NULL;
+	}
 	return cd->classdata;
 }
 

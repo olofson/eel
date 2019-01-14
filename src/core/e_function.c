@@ -74,7 +74,7 @@ static EEL_xno f_destruct(EEL_object *eo)
 
 static EEL_xno f_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	EEL_function_cd *cd = (EEL_function_cd *)eel_get_classdata(eo);
+	EEL_function_cd *cd = (EEL_function_cd *)eel_get_classdata(eo->vm, eo->type);
 	if(!EEL_IS_OBJREF(op1->type))
 		return EEL_XWRONGINDEX;
 	if(op1->objref.v == cd->i_name)
@@ -160,7 +160,7 @@ void eel_cfunction_register(EEL_vm *vm)
 		eel_serror(es, "Could not initialize EEL_function classdata!\n");
 	}
 	eel_set_unregister(c, f_unregister);
-	eel_set_classdata(c, cd);
+	eel_set_classdata(vm, EEL_CFUNCTION, cd);
 }
 
 

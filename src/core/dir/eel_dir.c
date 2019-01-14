@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_dir.c - EEL Directory Handling
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2010 David Olofson
+ * Copyright 2005-2006, 2009-2010, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -88,7 +88,7 @@ static EEL_xno d_destruct(EEL_object *eo)
 
 static EEL_xno d_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	EEL_directory_cd *cd = (EEL_directory_cd *)eel_get_classdata(eo);
+	EEL_directory_cd *cd = (EEL_directory_cd *)eel_get_classdata(eo->vm, eo->type);
 	if(!EEL_IS_OBJREF(op1->type))
 		return EEL_XWRONGINDEX;
 	if(op1->objref.v == cd->i_read)
@@ -221,7 +221,7 @@ EEL_xno eel_dir_init(EEL_vm *vm)
 		return EEL_XMODULEINIT;
 	}
 	eel_set_unregister(c, d_unregister);
-	eel_set_classdata(c, cd);
+	eel_set_classdata(vm, md->dir_cid, cd);
 
 	eel_disown(m);
 	return 0;
