@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_class.h - EEL Class Definition
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009 David Olofson
+ * Copyright 2005-2006, 2009, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -36,7 +36,7 @@ typedef struct
 	EEL_dtor_cb		destruct;
 	EEL_rector_cb		reconstruct;
 	EEL_mm_cb		mmethods[EEL_MM__COUNT];
-	EEL_types		typeid;
+	EEL_types		classid;
 	EEL_types		ancestor;
 	int			registered;
 } EEL_classdef;

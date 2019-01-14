@@ -81,7 +81,7 @@ static inline int eel_c2cid(EEL_object *c)
 	if((EEL_classes)c->type != EEL_CCLASS)
 		return -1;
 	cd = o2EEL_classdef(c);
-	return cd->typeid;
+	return cd->classid;
 }
 
 
@@ -332,7 +332,7 @@ static EEL_object *eel__register_class(EEL_vm *vm,
 		cd = o2EEL_classdef(es->classes[type]);
 
 		/* Set this and ancestor class */
-		cd->typeid = type;
+		cd->classid = type;
 		cd->ancestor = ancestor;
 
 		/* Register constructor and destructor */
