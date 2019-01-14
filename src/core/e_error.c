@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_error.c - EEL Compiler and VM Error Handling
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2008, 2010, 2012, 2014 David Olofson
+ * Copyright 2002-2006, 2008, 2010, 2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -52,8 +52,9 @@ static const char *emtag(EEL_emtype t)
 	  case EEL_EM_APPEND:	return NULL;
 	  case EEL_EM_APPEND_NL:return NULL;
 	  case EEL_EM_INFO:	return "";
-	  case EEL_EM_CWARNING:	return "WARNING: ";
-	  case EEL_EM_CERROR:	return "ERROR: ";
+	  case EEL_EM_WARNING:	return "WARNING: ";
+	  case EEL_EM_CWARNING:	return "COMPILE WARNING: ";
+	  case EEL_EM_CERROR:	return "COMPILE ERROR: ";
 	  case EEL_EM_CDUMP:	return "";
 	  case EEL_EM_VMWARNING:return "VM WARNING: ";
 	  case EEL_EM_VMERROR:	return "VM ERROR: ";
@@ -541,6 +542,15 @@ void eel_info(EEL_state *es, const char *format, ...)
 }
 
 
+void eel_warning(EEL_state *es, const char *format, ...)
+{
+	va_list	args;
+	va_start(args, format);
+	eel_vmsg(es, EEL_EM_WARNING, format, args);
+	va_end(args);
+}
+
+
 void eel_vmdump(EEL_vm *vm, const char *format, ...)
 {
 	va_list	args;
@@ -599,6 +609,7 @@ void eel_clear_errors(EEL_state *es)
 			eel_msg_unlink(es, m);
 			free(m->buffer);
 			free(m);
+		  case EEL_EM_WARNING:
 		  case EEL_EM_CWARNING:
 		  case EEL_EM_VMWARNING:
 			break;
@@ -616,6 +627,7 @@ void eel_clear_warnings(EEL_state *es)
 		EEL_emessage *nm = m->next;
 		switch(m->type)
 		{
+		  case EEL_EM_WARNING:
 		  case EEL_EM_CWARNING:
 		  case EEL_EM_VMWARNING:
 			eel_msg_unlink(es, m);
@@ -657,6 +669,7 @@ int eel_warning_count(EEL_state *es)
 	{
 		switch(msg->type)
 		{
+		  case EEL_EM_WARNING:
 		  case EEL_EM_CWARNING:
 		  case EEL_EM_VMWARNING:
 			++cnt;

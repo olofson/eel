@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_error.h - EEL Compiler and VM Error Handling
 ---------------------------------------------------------------------------
- * Copyright 2002-2005, 2009, 2013-2014 David Olofson
+ * Copyright 2002-2005, 2009, 2013-2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -36,6 +36,7 @@ typedef enum
 	EEL_EM_APPEND_NL = -2,	/* Append to last, starting at new line */
 	EEL_EM_APPEND = -1,	/* Append text to last message */
 	EEL_EM_INFO = 0,	/* Info, what we're doing etc... */
+	EEL_EM_WARNING,		/* General warning message (API etc) */
 	EEL_EM_CWARNING,	/* Compile Warning */
 	EEL_EM_CERROR,		/* Compile Error */
 	EEL_EM_CDUMP,		/* Compiler symbol tree dump */
@@ -131,6 +132,9 @@ void eel_cwarning(EEL_state *es, const char *format, ...);
 
 /* Add info message to log */
 void eel_info(EEL_state *es, const char *format, ...);
+
+/* Add warning message to log */
+void eel_warning(EEL_state *es, const char *format, ...);
 
 /* Clear all messages except warnings */
 void eel_clear_errors(EEL_state *es);
