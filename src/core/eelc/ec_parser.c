@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_parser.c - The EEL Parser/Compiler
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2002-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -4114,7 +4114,7 @@ static int statement2(EEL_state *es)
 				(minor != EEL_MINOR_VERSION) ||
 				(micro != EEL_MICRO_VERSION))
 		{
-			char buf[32];
+			char buf[40];
 			if(minor == -1)
 				snprintf(buf, sizeof(buf), "%d", major);
 			else if(micro == -1)
