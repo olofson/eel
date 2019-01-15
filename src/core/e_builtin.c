@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_builtin.c - EEL built-in functions
 ---------------------------------------------------------------------------
- * Copyright 2002-2014 David Olofson
+ * Copyright 2002-2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -64,10 +64,10 @@ typedef struct
 static EEL_xno bi__version(EEL_vm *vm)
 {
 	EEL_value *arg = vm->heap + vm->argv;
-	if(arg->type != EEL_TINTEGER)
+	if(arg->classid != EEL_CINTEGER)
 		return EEL_XNEEDINTEGER;
 
-	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].classid = EEL_CINTEGER;
 	switch(arg->integer.v)
 	{
 	  case 0:
@@ -95,7 +95,7 @@ static EEL_xno bi__xname(EEL_vm *vm)
 	EEL_object *s;
 	const char *n;
 
-	if(arg->type != EEL_TINTEGER)
+	if(arg->classid != EEL_CINTEGER)
 		return EEL_XNEEDINTEGER;
 	if(arg->integer.v >= EEL__XCOUNT)
 		return EEL_XHIGHINDEX;
@@ -106,7 +106,7 @@ static EEL_xno bi__xname(EEL_vm *vm)
 	s = eel_ps_new(vm, n);
 	if(!s)
 		return EEL_XCONSTRUCTOR;
-	vm->heap[vm->resv].type = EEL_TOBJREF;
+	vm->heap[vm->resv].classid = EEL_COBJREF;
 	vm->heap[vm->resv].objref.v = s;
 	return 0;
 }
@@ -118,7 +118,7 @@ static EEL_xno bi__xdesc(EEL_vm *vm)
 	EEL_object *s;
 	const char *n;
 
-	if(arg->type != EEL_TINTEGER)
+	if(arg->classid != EEL_CINTEGER)
 		return EEL_XNEEDINTEGER;
 	if(arg->integer.v >= EEL__XCOUNT)
 		return EEL_XHIGHINDEX;
@@ -129,7 +129,7 @@ static EEL_xno bi__xdesc(EEL_vm *vm)
 	s = eel_ps_new(vm, n);
 	if(!s)
 		return EEL_XCONSTRUCTOR;
-	vm->heap[vm->resv].type = EEL_TOBJREF;
+	vm->heap[vm->resv].classid = EEL_COBJREF;
 	vm->heap[vm->resv].objref.v = s;
 	return 0;
 }
@@ -137,13 +137,13 @@ static EEL_xno bi__xdesc(EEL_vm *vm)
 
 static EEL_xno print_object(EEL_vm *vm, EEL_object *o)
 {
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CNIL:
 	  case EEL_CREAL:
 	  case EEL_CINTEGER:
 	  case EEL_CBOOLEAN:
-	  case EEL_CTYPEID:
+	  case EEL_CCLASSID:
 	  case EEL_COBJREF:
 	  case EEL_CWEAKREF:
 		return EEL_XNEEDOBJECT;
@@ -161,20 +161,7 @@ static EEL_xno print_object(EEL_vm *vm, EEL_object *o)
 		EEL_dstring *ds = o2EEL_dstring(o);
 		return printf("%.*s", ds->length, ds->buffer);
 	  }
-	  case EEL_CFUNCTION:
-	  case EEL_CMODULE:
-	  case EEL_CARRAY:
-	  case EEL_CTABLE:
-	  case EEL_CVECTOR:
-	  case EEL_CVECTOR_U8:
-	  case EEL_CVECTOR_S8:
-	  case EEL_CVECTOR_U16:
-	  case EEL_CVECTOR_S16:
-	  case EEL_CVECTOR_U32:
-	  case EEL_CVECTOR_S32:
-	  case EEL_CVECTOR_F:
-	  case EEL_CVECTOR_D:
-	  case EEL__CUSER:
+	  default:
 		break;
 	}
 	{
@@ -192,32 +179,34 @@ static EEL_xno bi_print(EEL_vm *vm)
 	for(i = 0; i < vm->argc; ++i)
 	{
 		EEL_value *v = &vm->heap[vm->argv + i];
-		switch((EEL_types)v->type)
+		switch(v->classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			count += printf("<nil>");
 			break;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			count += printf(EEL_REAL_FMT, v->real.v);
 			break;
-		  case EEL_TINTEGER:
+		  case EEL_CINTEGER:
 			count += printf("%d", v->integer.v);
 			break;
-		  case EEL_TBOOLEAN:
+		  case EEL_CBOOLEAN:
 			count += printf(v->integer.v ? "true" : "false");
 			break;
-		  case EEL_TTYPEID:
+		  case EEL_CCLASSID:
 			count += printf("<typeid %s>",
 					eel_o2s(o2EEL_classdef(VMP->state->classes[
 					v->integer.v])->name));
 			break;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			count += print_object(vm, v->objref.v);
 			break;
+		  default:
+			count += printf("<illegal value; classid %d>",
+					v->classid);
+			break;
 		}
-		if((EEL_nontypes)v->type > EEL_TLASTTYPE)
-			count += printf("<illegal value; type %d>", v->type);
 	}
 	eel_l2v(vm->heap + vm->resv, count);
 	return 0;
@@ -256,7 +245,7 @@ static EEL_xno bi__compile(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	unsigned flags = (unsigned)eel_v2l(args + 1);
-	if(EEL_TYPE(args + 0) != (EEL_types)EEL_CMODULE)
+	if(EEL_CLASS(args + 0) != EEL_CMODULE)
 		return EEL_XNEEDMODULE;
 	eel_try(VMP->state)
 		eel_compile(VMP->state, args[0].objref.v, flags);
@@ -273,7 +262,7 @@ static EEL_xno bi__exports(EEL_vm *vm)
 	if(vm->argc >= 1)
 	{
 		EEL_function *f;
-		if((EEL_classes)EEL_TYPE(arg) != EEL_CFUNCTION)
+		if(EEL_CLASS(arg) != EEL_CFUNCTION)
 			return EEL_XWRONGTYPE;
 		f = o2EEL_function(arg->objref.v);
 		m = f->common.module;
@@ -287,7 +276,7 @@ static EEL_xno bi__exports(EEL_vm *vm)
 		if(!m)
 			return EEL_XBADCONTEXT;
 	}
-	vm->heap[vm->resv].type = EEL_TOBJREF;
+	vm->heap[vm->resv].classid = EEL_COBJREF;
 	vm->heap[vm->resv].objref.v = o2EEL_module(m)->exports;
 	eel_o_own(vm->heap[vm->resv].objref.v);
 	return 0;
@@ -315,7 +304,7 @@ static unsigned long get_ticks(BI_moduledata *md)
 static EEL_xno bi_getms(EEL_vm *vm)
 {
 	BI_moduledata *md = (BI_moduledata *)eel_get_current_moduledata(vm);
-	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].classid = EEL_CINTEGER;
 	vm->heap[vm->resv].integer.v = get_ticks(md);
 	return 0;
 }
@@ -338,7 +327,7 @@ static EEL_xno bi_getus(EEL_vm *vm)
 	ticks = (now.tv_sec - md->start.tv_sec) * 1000000.0f +
 			(now.tv_usec - md->start.tv_usec);
 #endif
-	vm->heap[vm->resv].type = EEL_TREAL;
+	vm->heap[vm->resv].classid = EEL_CREAL;
 	vm->heap[vm->resv].real.v = ticks;
 	return 0;
 }
@@ -376,14 +365,14 @@ static EEL_xno bi_sleep(EEL_vm *vm)
 		}
 	vm->heap[vm->resv].integer.v = now - t1;
 #endif
-	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].classid = EEL_CINTEGER;
 	return 0;
 }
 
 
 static EEL_xno bi_getis(EEL_vm *vm)
 {
-	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].classid = EEL_CINTEGER;
 #if DBG6B(1)+0 == 1
 	vm->heap[vm->resv].integer.v = VMP->instructions;
 #else
@@ -395,7 +384,7 @@ static EEL_xno bi_getis(EEL_vm *vm)
 
 static EEL_xno bi_getmt(EEL_vm *vm)
 {
-	vm->heap[vm->resv].type = EEL_TOBJREF;
+	vm->heap[vm->resv].classid = EEL_COBJREF;
 	vm->heap[vm->resv].objref.v = VMP->state->modules;
 	eel_o_own(VMP->state->modules);
 	return 0;
@@ -419,13 +408,13 @@ static EEL_xno bi_caller(EEL_vm *vm)
 		cf = (EEL_callframe *)(vm->heap + cf->r_base - EEL_CFREGS);
 		if(cf->f)
 		{
-			vm->heap[vm->resv].type = EEL_TOBJREF;
+			vm->heap[vm->resv].classid = EEL_COBJREF;
 			vm->heap[vm->resv].objref.v = cf->f;
 			eel_o_own(cf->f);
 			return 0;
 		}
 	}
-	vm->heap[vm->resv].type = EEL_TNIL;
+	vm->heap[vm->resv].classid = EEL_CNIL;
 	return 0;
 }
 
@@ -500,7 +489,7 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 static EEL_xno bi_insert(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	return eel_insert(args->objref.v, args + 1, args + 2);
 }
@@ -509,7 +498,7 @@ static EEL_xno bi_insert(EEL_vm *vm)
 static EEL_xno bi_delete(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	switch(vm->argc)
 	{
@@ -534,7 +523,7 @@ static EEL_xno bi_copy(EEL_vm *vm)
 	EEL_value start;
 	EEL_value len;
 	EEL_value *args = vm->heap + vm->argv;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	o = args->objref.v;
 	eel_l2v(&start, vm->argc >= 2 ? eel_v2l(args + 1) : 0);
@@ -559,9 +548,9 @@ static EEL_xno bi_index(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EEL_value *res = vm->heap + vm->resv;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
-	switch((EEL_classes)EEL_TYPE(args))
+	switch(EEL_CLASS(args))
 	{
 	  case EEL_CTABLE:
 	  {
@@ -588,9 +577,9 @@ static EEL_xno bi_key(EEL_vm *vm)
 	EEL_value *res = vm->heap + vm->resv;
 	EEL_tableitem *ti;
 	int i;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
-	if((EEL_classes)EEL_TYPE(args) != EEL_CTABLE)
+	if(EEL_CLASS(args) != EEL_CTABLE)
 		return EEL_XNEEDTABLE;
 	i = eel_v2l(args + 1);
 	if(i < 0)
@@ -607,7 +596,7 @@ static EEL_xno bi_tryindex(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EEL_value *res = vm->heap + vm->resv;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	if(eel_o__metamethod(args->objref.v, EEL_MM_GETINDEX, args + 1, res))
 	{
@@ -626,9 +615,9 @@ static EEL_xno bi_vacall(EEL_vm *vm)
 	EEL_value *res = vm->heap + vm->resv;
 	EEL_tableitem *ti;
 	int i;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
-	if(EEL_TYPE(args) != EEL_CTABLE)
+	if(EEL_CLASS(args) != EEL_CTABLE)
 		return EEL_XNEEDTABLE;
 	i = eel_v2l(args + 1);
 	if(i < 0)

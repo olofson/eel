@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	'eel' command line executive
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2012, 2014 David Olofson
+ * Copyright 2005-2007, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -45,7 +45,7 @@ static EEL_xno find_function(EEL_object *m, const char *name,
 	EEL_value f;
 	if((x = eel_getsindex(m, name, &f)))
 		return x;
-	if((EEL_classes)f.objref.v->type != EEL_CFUNCTION)
+	if(f.objref.v->classid != EEL_CFUNCTION)
 		return EEL_XWRONGTYPE;
 	*fo = f.objref.v;
 	eel_disown(*fo); /* Not going away until the module is unloaded... */

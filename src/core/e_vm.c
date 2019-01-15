@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vm.c - EEL Virtual Machine
 ---------------------------------------------------------------------------
- * Copyright 2004-2014 David Olofson
+ * Copyright 2004-2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -54,7 +54,7 @@
 static inline void eel__throw(EEL_vm *vm, EEL_xno x)
 {
         eel_v_disown_nz(&VMP->exception);  /* Free any old object */
-        VMP->exception.type = EEL_TINTEGER;
+        VMP->exception.classid = EEL_CINTEGER;
         VMP->exception.integer.v = x;
         DBG5B(eel_vmdump(vm, "(DEBUG: Exception %s thrown.)",
 			eel_v_stringrep(vm, &VMP->exception));)
@@ -310,10 +310,10 @@ static inline void limbo_clean(EEL_vm *vm, EEL_callframe *cf)
 
 static inline EEL_xno get_function(EEL_vm *vm, EEL_value *ref, EEL_object **o)
 {
-	if(!EEL_IS_OBJREF(ref->type))
+	if(!EEL_IS_OBJREF(ref->classid))
 		return EEL_XNEEDOBJECT;
 	*o = ref->objref.v;
-	if((EEL_classes)(*o)->type != EEL_CFUNCTION)
+	if((*o)->classid != EEL_CFUNCTION)
 		return EEL_XNEEDCALLABLE;
 	return 0;
 }
@@ -452,7 +452,7 @@ static inline EEL_xno push_frame(EEL_vm *vm, unsigned cleansize, unsigned frames
 		int i;
 		for(i = 0; i < framesize; ++i)
 		{
-			vm->heap[base + i].type = EEL_TILLEGAL;
+			vm->heap[base + i].classid = EEL_CILLEGAL;
 			vm->heap[base + i].integer.v = 1002;
 		}
 	}
@@ -514,7 +514,7 @@ static inline EEL_xno call_eel(EEL_vm *vm, EEL_object *fo, int result, int level
 #ifdef EEL_VM_CHECKING
 		if(cf->result >= 0)
 		{
-			vm->heap[cf->result].type = EEL_TILLEGAL;
+			vm->heap[cf->result].classid = EEL_CILLEGAL;
 			vm->heap[cf->result].integer.v = 1003;
 		}
 #endif
@@ -568,7 +568,7 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 
 	cf = b2callframe(vm, vm->base);
 	DBG4E(cf->magic = EEL_CALLFRAME_MAGIC_C;)
-	vm->heap[vm->base].type = EEL_TNIL;
+	vm->heap[vm->base].classid = EEL_CNIL;
 
 	/*
 	 * Grab result ref
@@ -587,7 +587,7 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 	else
 		cf->result = vm->base;
 #ifdef EEL_VM_CHECKING
-	vm->heap[cf->result].type = EEL_TILLEGAL;
+	vm->heap[cf->result].classid = EEL_CILLEGAL;
 	vm->heap[cf->result].integer.v = 1006;
 #endif
 
@@ -639,7 +639,7 @@ static inline EEL_xno call_c(EEL_vm *vm, EEL_object *fo, int result, int levels)
 	if(f->common.flags & EEL_FF_RESULTS)
 	{
 #ifdef EEL_VM_CHECKING
-		if((EEL_nontypes)vm->heap[cf->result].type == EEL_TILLEGAL)
+		if(vm->heap[cf->result].classid == EEL_CILLEGAL)
 		{
 			eel_vmdump(vm, "C function forgot to return a result! "
 					"(Value source: %d)",
@@ -712,7 +712,7 @@ TODO: Fast shortcut instead of dummy/empty catchers!
 	 */
 	R = vm->heap + vm->base;
 	eel_v_move(&R[0], &VMP->exception);
-	VMP->exception.type = EEL_TNIL;
+	VMP->exception.classid = EEL_CNIL;
 	((EEL_callframe *)(R - EEL_CFREGS))->flags |= EEL_CFF_CATCHER;
 /*printf("### call_catcher(); exception: %s\tresult: %d\n",
 		eel_v_stringrep(vm, &R[0]), cf->result);
@@ -792,19 +792,19 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 	int x;
 
 	/* Figure out what the exception is about */
-	switch(VMP->exception.type)
+	switch(VMP->exception.classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		x = EEL_XYIELD;
 		break;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		x = VMP->exception.integer.v;
 		break;
-	  case EEL_TREAL:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_CREAL:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 		x = EEL_XOTHER;
 		break;
 	  default:
@@ -863,8 +863,7 @@ static EEL_xno eel__scheduler(EEL_vm *vm, EEL_vmstate *vms)
 		DBGK4(if(result >= 0)
 			printf("Expecting result in heap[%d].\n", result);)
 #ifdef EEL_VM_CHECKING
-		if((result >= 0) && (EEL_nontypes)vm->heap[result].type ==
-				EEL_TILLEGAL)
+		if((result >= 0) && vm->heap[result].classid == EEL_CILLEGAL)
 		{
 			eel_vmdump(vm, "Exception block forgot to return a "
 					"result!");
@@ -1033,7 +1032,7 @@ static inline EEL_value *get_tuparg_default(EEL_callframe *cf, unsigned pos)
 			if(!vms.cf->f)					\
 				DUMP(EEL_XINTERNAL, "Bad context! "	\
 						"No function.");	\
-			if((EEL_classes)vms.cf->f->type != EEL_CFUNCTION)	\
+			if(vms.cf->f->classid != EEL_CFUNCTION)		\
 				DUMP(EEL_XINTERNAL, "Bad context! "	\
 						"Object is not a "	\
 						"function.");		\
@@ -1212,7 +1211,7 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	/* Not interested in anything thrown outside the VM... */
 	eel_v_disown_nz(&VMP->exception);
-	VMP->exception.type = EEL_TNIL;
+	VMP->exception.classid = EEL_CNIL;
 
 	reload_context(vm, &vms);
 	DBG5(printf(">>>>>>>>>>>>>>>> Entering VM >>>>>>>>>>>>>>>>\n");)
@@ -1274,7 +1273,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		 * Cast all values to real first, so we
 		 * can save some cycles inside the loop.
 		 */
-		if(R[A].type != EEL_TREAL)
+		if(R[A].classid != EEL_CREAL)
 		{
 			EEL_real v;
 #ifdef DEBUG
@@ -1282,27 +1281,27 @@ EEL_xno eel_run(EEL_vm *vm)
 #endif
 			XCHECK(eel_get_realval(vm, &R[A], &v));
 			eel_v_disown_nz(&R[A]);	/* R[A] is a variable! */
-			R[A].type = EEL_TREAL;
+			R[A].classid = EEL_CREAL;
 			R[A].real.v = v;
 		}
-		if(R[B].type != EEL_TREAL)
+		if(R[B].classid != EEL_CREAL)
 		{
 			EEL_real v;
 #ifdef DEBUG
 			v = 0.0f;
 #endif
 			XCHECK(eel_get_realval(vm, &R[B], &v));
-			R[B].type = EEL_TREAL;
+			R[B].classid = EEL_CREAL;
 			R[B].real.v = v;
 		}
-		if(R[C].type != EEL_TREAL)
+		if(R[C].classid != EEL_CREAL)
 		{
 			EEL_real v;
 #ifdef DEBUG
 			v = 0.0f;
 #endif
 			XCHECK(eel_get_realval(vm, &R[C], &v));
-			R[C].type = EEL_TREAL;
+			R[C].classid = EEL_CREAL;
 			R[C].real.v = v;
 		}
 		/*
@@ -1323,7 +1322,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		 * R[A] is a variable, so someone might
 		 * "damage" it from inside the loop!
 		 */
-		if(R[A].type != EEL_TREAL)
+		if(R[A].classid != EEL_CREAL)
 		{
 			EEL_real v;
 #ifdef DEBUG
@@ -1331,7 +1330,7 @@ EEL_xno eel_run(EEL_vm *vm)
 #endif
 			XCHECK(eel_get_realval(vm, &R[A], &v));
 			eel_v_disown_nz(&R[A]);
-			R[A].type = EEL_TREAL;
+			R[A].classid = EEL_CREAL;
 			R[A].real.v = v;
 		}
 		R[A].real.v += R[B].real.v;
@@ -1374,25 +1373,25 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_IPUSHI
 		CHECK_STACK(1);
-		S[0].type = EEL_TINTEGER;
+		S[0].classid = EEL_CINTEGER;
 		S[0].integer.v = A;
 		++vm->sp;
 
 	  EEL_IPHTRUE
 		CHECK_STACK(1);
-		S[0].type = EEL_TBOOLEAN;
+		S[0].classid = EEL_CBOOLEAN;
 		S[0].integer.v = 1;
 		++vm->sp;
 
 	  EEL_IPHFALSE
 		CHECK_STACK(1);
-		S[0].type = EEL_TBOOLEAN;
+		S[0].classid = EEL_CBOOLEAN;
 		S[0].integer.v = 0;
 		++vm->sp;
 
 	  EEL_IPUSHNIL
 		CHECK_STACK(1);
-		S[0].type = EEL_TNIL;
+		S[0].classid = EEL_CNIL;
 		++vm->sp;
 
 	  EEL_IPUSHC
@@ -1411,7 +1410,7 @@ EEL_xno eel_run(EEL_vm *vm)
 	  EEL_IPUSHIC
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		CHECK_STACK(2);
-		S[0].type = EEL_TINTEGER;
+		S[0].classid = EEL_CINTEGER;
 		S[0].integer.v = B;
 		eel_v_copy(S + 1, &f->e.constants[A]);
 		vm->sp += 2;
@@ -1420,7 +1419,7 @@ EEL_xno eel_run(EEL_vm *vm)
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		CHECK_STACK(2);
 		eel_v_copy(S, &f->e.constants[A]);
-		S[1].type = EEL_TINTEGER;
+		S[1].classid = EEL_CINTEGER;
 		S[1].integer.v = B;
 		vm->sp += 2;
 
@@ -1497,10 +1496,10 @@ EEL_xno eel_run(EEL_vm *vm)
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		DBG4E(dump_callframe(vm, CALLFRAME, "CCALL");)
 #ifdef EEL_VM_CHECKING
-		if(!EEL_IS_OBJREF(f->e.constants[B].type))
+		if(!EEL_IS_OBJREF(f->e.constants[B].classid))
 			DUMP(EEL_XARGUMENTS, "CCALL: Constant is not an object "
 					"reference!");
-		if((EEL_classes)f->e.constants[B].objref.v->type != EEL_CFUNCTION)
+		if(f->e.constants[B].objref.v->classid != EEL_CFUNCTION)
 			DUMP(EEL_XARGUMENTS, "CCALL: Object is not a function!");
 #endif
 		XCHECK(call_f(vm, f->e.constants[B].objref.v, -1, A));
@@ -1510,10 +1509,10 @@ EEL_xno eel_run(EEL_vm *vm)
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 		DBG4E(dump_callframe(vm, CALLFRAME, "CCALLR");)
 #ifdef EEL_VM_CHECKING
-		if(!EEL_IS_OBJREF(f->e.constants[C].type))
+		if(!EEL_IS_OBJREF(f->e.constants[C].classid))
 			DUMP(EEL_XARGUMENTS, "CCALL: Constant is not an object "
 					"reference!");
-		if((EEL_classes)f->e.constants[C].objref.v->type != EEL_CFUNCTION)
+		if(f->e.constants[C].objref.v->classid != EEL_CFUNCTION)
 			DUMP(EEL_XARGUMENTS, "CCALL: Object is not a function!");
 #endif
 		XCHECK(call_f(vm, f->e.constants[C].objref.v, vm->base + B, A));
@@ -1578,7 +1577,7 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  /* Optional/tuple argument checking */
 	  EEL_IARGC
-		R[A].type = EEL_TINTEGER;
+		R[A].classid = EEL_CINTEGER;
 		R[A].integer.v = CALLFRAME->argc;
 
 	  EEL_ITUPC
@@ -1587,13 +1586,13 @@ EEL_xno eel_run(EEL_vm *vm)
 		if(!f->common.tupargs)
 			DUMP(EEL_XVMCHECK, "TUPC in function with no tuple args!");
 #endif
-		R[A].type = EEL_TINTEGER;
+		R[A].classid = EEL_CINTEGER;
 		R[A].integer.v = CALLFRAME->argc;
 		R[A].integer.v -= f->common.reqargs;
 		R[A].integer.v /= f->common.tupargs;
 
 	  EEL_ISPEC
-		R[B].type = EEL_TBOOLEAN;
+		R[B].classid = EEL_CBOOLEAN;
 		R[B].integer.v = A < CALLFRAME->argc;
 
 	  EEL_ITSPEC
@@ -1615,24 +1614,24 @@ EEL_xno eel_run(EEL_vm *vm)
 			THROW(EEL_XLOWINDEX);
 		tupc -= f->common.reqargs;
 		tupc /= f->common.tupargs;
-		R[B].type = EEL_TBOOLEAN;
+		R[B].classid = EEL_CBOOLEAN;
 		R[B].integer.v = ind < tupc;
 
 	  /* Immediate values, constants etc */
 	  EEL_ILDI
-		R[A].type = EEL_TINTEGER;
+		R[A].classid = EEL_CINTEGER;
 		R[A].integer.v = B;
 
 	  EEL_ILDTRUE
-		R[A].type = EEL_TBOOLEAN;
+		R[A].classid = EEL_CBOOLEAN;
 		R[A].integer.v = 1;
 
 	  EEL_ILDFALSE
-		R[A].type = EEL_TBOOLEAN;
+		R[A].classid = EEL_CBOOLEAN;
 		R[A].integer.v = 0;
 
 	  EEL_ILDNIL
-		R[A].type = EEL_TNIL;
+		R[A].classid = EEL_CNIL;
 
 	  EEL_ILDC
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
@@ -1648,12 +1647,12 @@ EEL_xno eel_run(EEL_vm *vm)
 		ADDCLEAN(A);
 
 	  EEL_IINITI
-		R[A].type = EEL_TINTEGER;
+		R[A].classid = EEL_CINTEGER;
 		R[A].integer.v = B;
 		ADDCLEAN(A);
 
 	  EEL_IINITNIL
-		R[A].type = EEL_TNIL;
+		R[A].classid = EEL_CNIL;
 		ADDCLEAN(A);
 
 	  EEL_IINITC
@@ -1667,12 +1666,12 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_IASSIGNI
 		eel_v_disown_nz(&R[A]);
-		R[A].type = EEL_TINTEGER;
+		R[A].classid = EEL_CINTEGER;
 		R[A].integer.v = B;
 
 	  EEL_IASNNIL
 		eel_v_disown_nz(&R[A]);
-		R[A].type = EEL_TNIL;
+		R[A].classid = EEL_CNIL;
 
 	  EEL_IASSIGNC
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
@@ -1701,13 +1700,13 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  /* Indexed access (array/table)  */
 	  EEL_IINDGETI
-		switch(R[C].type)
+		switch(R[C].classid)
 		{
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 		  {
 			EEL_value i;
-			i.type = EEL_TINTEGER;
+			i.classid = EEL_CINTEGER;
 			i.integer.v = B;
 			XCHECK(eel_o__metamethod(R[C].objref.v,
 					EEL_MM_GETINDEX, &i, &R[A]));
@@ -1719,13 +1718,13 @@ EEL_xno eel_run(EEL_vm *vm)
 		}
 
 	  EEL_IINDSETI
-		switch(R[C].type)
+		switch(R[C].classid)
 		{
-		  case EEL_TWEAKREF:
-		  case EEL_TOBJREF:
+		  case EEL_CWEAKREF:
+		  case EEL_COBJREF:
 		  {
 			EEL_value i;
-			i.type = EEL_TINTEGER;
+			i.classid = EEL_CINTEGER;
 			i.integer.v = B;
 			XCHECK(eel_o__metamethod(R[C].objref.v,
 					EEL_MM_SETINDEX, &i, &R[A]));
@@ -1736,10 +1735,10 @@ EEL_xno eel_run(EEL_vm *vm)
 		}
 
 	  EEL_IINDGET
-		switch(R[C].type)
+		switch(R[C].classid)
 		{
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			XCHECK(eel_o__metamethod(R[C].objref.v,
 					EEL_MM_GETINDEX, &R[B], &R[A]));
 			eel_v_receive(&R[A]);
@@ -1749,10 +1748,10 @@ EEL_xno eel_run(EEL_vm *vm)
 		}
 
 	  EEL_IINDSET
-		switch(R[C].type)
+		switch(R[C].classid)
 		{
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			XCHECK(eel_o__metamethod(R[C].objref.v,
 					EEL_MM_SETINDEX, &R[B], &R[A]));
 			NEXT;
@@ -1762,10 +1761,10 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_IINDGETC
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
-		switch(R[B].type)
+		switch(R[B].classid)
 		{
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			XCHECK(eel_o__metamethod(R[B].objref.v,
 					EEL_MM_GETINDEX, &f->e.constants[C],
 					&R[A]));
@@ -1777,10 +1776,10 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_IINDSETC
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
-		switch(R[B].type)
+		switch(R[B].classid)
 		{
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			XCHECK(eel_o__metamethod(R[B].objref.v,
 					EEL_MM_SETINDEX, &f->e.constants[C],
 					&R[A]));
@@ -2055,14 +2054,14 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_IBOPI
 		EEL_value iv;
-		iv.type = EEL_TINTEGER;
+		iv.classid = EEL_CINTEGER;
 		iv.integer.v = D;
 		XCHECK(eel_operate(&R[B], C, &iv, &R[A]));
 		eel_v_receive(&R[A]);
 
 	  EEL_IPHBOPI
 		EEL_value iv;
-		iv.type = EEL_TINTEGER;
+		iv.classid = EEL_CINTEGER;
 		iv.integer.v = C;
 		CHECK_STACK(1);
 		XCHECK(eel_operate(&R[A], B, &iv, S));
@@ -2070,7 +2069,7 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_IIPBOPI
 		EEL_value iv;
-		iv.type = EEL_TINTEGER;
+		iv.classid = EEL_CINTEGER;
 		iv.integer.v = D;
 		XCHECK(eel_ipoperate(&R[B], C, &iv, &R[A]));
 		eel_v_receive(&R[A]);
@@ -2103,24 +2102,23 @@ EEL_xno eel_run(EEL_vm *vm)
 
 	  EEL_ICAST
 		EEL_value *right = &R[B];
-		switch(right->type)
+		switch(right->classid)
 		{
-		  case EEL_TNIL:
-		  case EEL_TREAL:
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
-			if(EEL_TTYPEID != R[C].type)
+		  case EEL_CNIL:
+		  case EEL_CREAL:
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
+		  case EEL_CCLASSID:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
+			if(EEL_CCLASSID != R[C].classid)
 				THROW(EEL_XWRONGTYPE);
 			XCHECK(eel_cast(vm, right, &R[A], R[C].integer.v));
 			eel_v_receive(&R[A]);
 			NEXT;
+		  default:
+			THROW(EEL_XWRONGTYPE);
 		}
-#ifdef EEL_VM_CHECKING
-		THROW(EEL_XWRONGTYPE);
-#endif
 
 	  EEL_ITYPEOF
 		XCHECK(eel_op_typeof(&R[B], &R[A]));
@@ -2129,11 +2127,11 @@ EEL_xno eel_run(EEL_vm *vm)
 		XCHECK(eel_op_sizeof(&R[B], &R[A]));
 
 	  EEL_IWEAKREF
-		if(R[B].type == EEL_TNIL)
-			R[A].type = EEL_TNIL;
+		if(R[B].classid == EEL_CNIL)
+			R[A].classid = EEL_CNIL;
 		else
 		{
-			if(R[B].type != EEL_TOBJREF)
+			if(R[B].classid != EEL_COBJREF)
 				THROW(EEL_XNEEDOBJECT);
 			eel_o2wr(&R[A], R[B].objref.v);
 		}
@@ -2208,13 +2206,13 @@ EEL_xno eel_run(EEL_vm *vm)
 	  EEL_ITRY
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 #ifdef EEL_VM_CHECKING
-		if(!EEL_IS_OBJREF(f->e.constants[B].type))
+		if(!EEL_IS_OBJREF(f->e.constants[B].classid))
 			DUMP(EEL_XINTERNAL, "TRY: Try block is not an object!");
-		if((EEL_classes)f->e.constants[B].objref.v->type != EEL_CFUNCTION)
+		if(f->e.constants[B].objref.v->classid != EEL_CFUNCTION)
 			DUMP(EEL_XINTERNAL, "TRY: Try block is not a function!");
-		if(!EEL_IS_OBJREF(f->e.constants[A].type))
+		if(!EEL_IS_OBJREF(f->e.constants[A].classid))
 			DUMP(EEL_XINTERNAL, "TRY: Catcher is not an object!");
-		if((EEL_classes)f->e.constants[A].objref.v->type != EEL_CFUNCTION)
+		if(f->e.constants[A].objref.v->classid != EEL_CFUNCTION)
 			DUMP(EEL_XINTERNAL, "TRY: Catcher is not a function!");
 #endif
 		DBGK4(printf("TRY passing on result index heap[%d].\n",
@@ -2228,9 +2226,9 @@ EEL_xno eel_run(EEL_vm *vm)
 	  EEL_IUNTRY
 		EEL_function *f = o2EEL_function(CALLFRAME->f);
 #ifdef EEL_VM_CHECKING
-		if(!EEL_IS_OBJREF(f->e.constants[A].type))
+		if(!EEL_IS_OBJREF(f->e.constants[A].classid))
 			DUMP(EEL_XINTERNAL, "UNTRY: Try block is not an object!");
-		if((EEL_classes)f->e.constants[A].objref.v->type != EEL_CFUNCTION)
+		if(f->e.constants[A].objref.v->classid != EEL_CFUNCTION)
 			DUMP(EEL_XINTERNAL, "UNTRY: Try block is not a function!");
 #endif
 		DBGK4(printf("UNTRY passing on result index heap[%d].\n",
@@ -2380,7 +2378,7 @@ static inline int vm_init(EEL_state *es, EEL_vm *vm, int heap)
 		return -1;
 	}
 	vm->sbase = vm->sp = 1;		/* Leave one register for the result! */
-	vm->heap[vm->base].type = EEL_TNIL;	/* "Expect no result" mark */
+	vm->heap[vm->base].classid = EEL_CNIL;	/* "Expect no result" mark */
 	return 0;
 }
 
@@ -2528,10 +2526,10 @@ static EEL_object *find_function(EEL_vm *vm, EEL_object *module, const char *nam
 {
 	EEL_xno x;
 	EEL_value n, f;
-	if((EEL_classes)module->type != EEL_CMODULE)
+	if(module->classid != EEL_CMODULE)
 		return NULL;
 
-	n.type = EEL_TOBJREF;
+	n.classid = EEL_COBJREF;
 	n.objref.v = eel_ps_new(vm, name);
 	if(!n.objref.v)
 		return NULL;
@@ -2545,7 +2543,7 @@ static EEL_object *find_function(EEL_vm *vm, EEL_object *module, const char *nam
 /*
 FIXME: If modules ever use weakrefs for functions, we need to handle that here!
 */
-	if((EEL_classes)f.objref.v->type != EEL_CFUNCTION)
+	if(f.objref.v->classid != EEL_CFUNCTION)
 	{
 		eel_v_disown_nz(&f);
 		eel_v_disown_nz(&n);
@@ -2569,7 +2567,7 @@ static inline void reset_args(EEL_vm *vm)
  */
 	eel_v_disown_nz(vm->heap + vm->base);
 #endif
-	vm->heap[vm->base].type = EEL_TNIL;
+	vm->heap[vm->base].classid = EEL_CNIL;
 }
 
 
@@ -2593,39 +2591,39 @@ EEL_xno eel_vargf(EEL_vm *vm, const char *fmt, va_list args)
 			 * We put a 'true' here to tell eel_call() that we
 			 * expect a result! (Anything non-nil will do.)
 			 */
-			vm->heap[vm->base].type = EEL_TBOOLEAN;;
+			vm->heap[vm->base].classid = EEL_CBOOLEAN;;
 			vm->heap[vm->base].integer.v = 1;
 			*resv = vm->base;
 			break;
 		  }
 		  case 'n':
-			S->type = EEL_TNIL;
+			S->classid = EEL_CNIL;
 			++vm->sp;
 			break;
 		  case 'i':
-			S->type = EEL_TINTEGER;
+			S->classid = EEL_CINTEGER;
 			S->integer.v = va_arg(args, int);
 			++vm->sp;
 			break;
 		  case 'r':
-			S->type = EEL_TREAL;
+			S->classid = EEL_CREAL;
 			S->real.v = va_arg(args, EEL_real);
 			++vm->sp;
 			break;
 		  case 'b':
-			S->type = EEL_TBOOLEAN;
+			S->classid = EEL_CBOOLEAN;
 			S->integer.v = va_arg(args, int) != 0;
 			++vm->sp;
 			break;
 		  case 's':
-			S->type = EEL_TOBJREF;
+			S->classid = EEL_COBJREF;
 			S->objref.v = eel_ps_new(vm, va_arg(args, const char *));
 			if(!S->objref.v)
 				return EEL_XCONSTRUCTOR;
 			++vm->sp;
 			break;
 		  case 'o':
-			S->type = EEL_TOBJREF;
+			S->classid = EEL_COBJREF;
 			S->objref.v = va_arg(args, EEL_object *);
 			eel_own(S->objref.v);
 			++vm->sp;
@@ -2693,7 +2691,7 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 	int save_argc = vm->argc;
 /*FIXME:*/
 	eel_clear_errors(VMP->state);
-	if((EEL_classes)fo->type != EEL_CFUNCTION)
+	if(fo->classid != EEL_CFUNCTION)
 	{
 		call_msg(fo, EEL_EM_VMERROR, "  Object is not callable!");
 		return EEL_XNEEDCALLABLE;
@@ -2731,7 +2729,7 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 	}
 
 	/* Enter function */
-	if(vm->heap[vm->base].type != EEL_TNIL)
+	if(vm->heap[vm->base].classid != EEL_CNIL)
 		result = vm->base;
 	else
 		result = -1;
@@ -2844,7 +2842,7 @@ EEL_xno eel_push_vm_context(EEL_vm *vm)
 	vmctx->limbo = VMP->limbo;
 
 	/* Initialize */
-	VMP->exception.type = EEL_TNIL;
+	VMP->exception.classid = EEL_CNIL;
 	vm->heapsize = 0;
 	vm->heap = NULL;
 	vm_init(VMP->state, vm, EEL_INITHEAP);

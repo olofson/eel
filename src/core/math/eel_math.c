@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_math.c - EEL standard math module
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2010, 2012 David Olofson
+ * Copyright 2005-2006, 2009-2010, 2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -63,16 +63,16 @@ static EEL_xno m_abs(EEL_vm *vm)
 	EEL_vector *v, *r;
 	EEL_value *arg = vm->heap + vm->argv;
 	int i, size;
-	switch((EEL_classes)EEL_TYPE(arg))
+	switch(EEL_CLASS(arg))
 	{
-	  case EEL_TNIL:
-	  case EEL_TBOOLEAN:
+	  case EEL_CNIL:
+	  case EEL_CBOOLEAN:
 		vm->heap[vm->resv] = *arg;
 		return 0;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		eel_l2v(vm->heap + vm->resv, labs(arg->integer.v));
 		return 0;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		eel_d2v(vm->heap + vm->resv, fabs(arg->real.v));
 		return 0;
 	  case EEL_CVECTOR_U8:
@@ -86,7 +86,7 @@ static EEL_xno m_abs(EEL_vm *vm)
 	  {
 		EEL_object *o;
 		size = eel_length(arg->objref.v);
-		o = eel_cv_new_noinit(vm, EEL_TYPE(arg), size);
+		o = eel_cv_new_noinit(vm, EEL_CLASS(arg), size);
 		if(!o)
 			return EEL_XMEMORY;
 		eel_o2v(vm->heap + vm->resv, o);
@@ -97,7 +97,7 @@ static EEL_xno m_abs(EEL_vm *vm)
 	  default:
 		return EEL_XWRONGTYPE;
 	}
-	switch((EEL_classes)EEL_TYPE(arg))
+	switch(EEL_CLASS(arg))
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_U16:

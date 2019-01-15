@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_table.c - EEL Table Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2005-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -65,9 +65,9 @@ static inline int t_setsize(EEL_object *eo, int newlength)
 		int min = t->length < newlength ? t->length : newlength;
 		for(i = 0; i < min; ++i)
 		{
-			if(ni[i].key.type == EEL_TWEAKREF)
+			if(ni[i].key.classid == EEL_CWEAKREF)
 				eel_weakref_relocate(&ni[i].key);
-			if(ni[i].value.type == EEL_TWEAKREF)
+			if(ni[i].value.classid == EEL_CWEAKREF)
 				eel_weakref_relocate(&ni[i].value);
 		}
 		t->items = ni;
@@ -204,43 +204,44 @@ static inline int t__find(EEL_object *eo, EEL_value *key, EEL_hash h)
 	}
 	
 	/* Fast-path for string lookups */
-	if(EEL_IS_OBJREF(key->type) && ((EEL_classes)key->objref.v->type == EEL_CSTRING))
+	if(EEL_IS_OBJREF(key->classid) &&
+			(key->objref.v->classid == EEL_CSTRING))
 	{
 		for(i = first; (i < t->length) && (ti[i].hash == h); ++i)
 			/* NOTE: Nasty backwards testing here...! */
 			if(ti[i].key.objref.v == key->objref.v)
-				if(EEL_IS_OBJREF(ti[i].key.type))
+				if(EEL_IS_OBJREF(ti[i].key.classid))
 					return i;	/* Found! */
 		return ~first;	/* Not found! */
 	}
 
 	/* Generic linear scan - NO shortcuts for strings! */
 	for(i = first; (i < t->length) && (ti[i].hash == h); ++i)
-		switch(key->type)
+		switch(key->classid)
 		{
-		  case EEL_TNIL:
-			if(ti[i].key.type == EEL_TNIL)
+		  case EEL_CNIL:
+			if(ti[i].key.classid == EEL_CNIL)
 				return i;
 			continue;
-		  case EEL_TREAL:
-			if(ti[i].key.type != EEL_TREAL)
+		  case EEL_CREAL:
+			if(ti[i].key.classid != EEL_CREAL)
 				continue;
 			if(ti[i].key.real.v == key->real.v)
 				return i;
 			continue;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
-			if(ti[i].key.type != key->type)
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
+		  case EEL_CCLASSID:
+			if(ti[i].key.classid != key->classid)
 				continue;
 			if(ti[i].key.integer.v == key->integer.v)
 				return i;
 			continue;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 		  {
 			EEL_value v;
-			if(!EEL_IS_OBJREF(ti[i].key.type))
+			if(!EEL_IS_OBJREF(ti[i].key.classid))
 				continue;
 			if(ti[i].key.objref.v == key->objref.v)
 				return i;	/* Same instance! ==> */
@@ -251,12 +252,11 @@ static inline int t__find(EEL_object *eo, EEL_value *key, EEL_hash h)
 				continue;	/* Not equal! */
 			return i;
 		  }
-#ifdef EEL_VM_CHECKING
 		  default:
-			fprintf(stderr, "e_table.c: INTERNAL ERROR: Illegal "
+			eel_ierror(eel_vm2p(eo->vm)->state,
+					"e_table.c: INTERNAL ERROR: Illegal "
 					"key type for t__find()!\n");
 			return -1;
-#endif
 		}
 	return ~first;	/* Not found! */
 }
@@ -317,12 +317,12 @@ static EEL_xno insert_items(EEL_object *eo, EEL_object *from)
 }
 
 
-static EEL_xno t_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno t_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	int i;
 	EEL_table *t;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_table), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_table), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	t = o2EEL_table(eo);
@@ -383,7 +383,7 @@ static inline EEL_object *t__clone(EEL_object *orig)
 
 
 static EEL_xno t_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no = t__clone(src->objref.v);
 	if(!no)
@@ -420,12 +420,12 @@ static EEL_xno t_in(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int pos = t__find(eo, op1, eel_v2hash(op1));
 	if(pos >= 0)
 	{
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = pos;
 	}
 	else
 	{
-		op2->type = EEL_TBOOLEAN;
+		op2->classid = EEL_CBOOLEAN;
 		op2->integer.v = 0;
 	}
 	return 0;
@@ -498,7 +498,7 @@ static EEL_xno t_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno t_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_xno x;
-	if((EEL_classes)EEL_TYPE(op1) != EEL_CTABLE)
+	if(EEL_CLASS(op1) != EEL_CTABLE)
 		return EEL_XWRONGTYPE;
 	eo = t__clone(eo);
 	if(!eo)
@@ -517,7 +517,7 @@ static EEL_xno t_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno t_ipadd(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_xno x;
-	if((EEL_classes)EEL_TYPE(op1) != EEL_CTABLE)
+	if(EEL_CLASS(op1) != EEL_CTABLE)
 		return EEL_XWRONGTYPE;
 	x = insert_items(eo, op1->objref.v);
 	if(x)
@@ -548,7 +548,7 @@ void eel_ctable_register(EEL_vm *vm)
 EEL_tableitem *eel_table_get_item(EEL_object *to, int i)
 {
 #ifdef EEL_VM_CHECKING
-	if((EEL_classes)to->type != EEL_CTABLE)
+	if(to->classid != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_get_item() used on "
 				"non-table object %s!\n",
@@ -567,7 +567,7 @@ EEL_xno eel_table_get(EEL_object *to, EEL_value *key, EEL_value *value)
 	EEL_table *t = o2EEL_table(to);
 	EEL_hash h = eel_v2hash(key);
 #ifdef EEL_VM_CHECKING
-	if((EEL_classes)to->type != EEL_CTABLE)
+	if(to->classid != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_get() used on "
 				"non-table object %s!\n",
@@ -609,7 +609,7 @@ const char *eel_table_getss(EEL_object *to, const char *key)
 EEL_xno eel_table_set(EEL_object *to, EEL_value *key, EEL_value *value)
 {
 #ifdef EEL_VM_CHECKING
-	if((EEL_classes)to->type != EEL_CTABLE)
+	if(to->classid != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_set() used on "
 				"non-table object %s!\n",
@@ -662,7 +662,7 @@ EEL_value *eel_table_get_value(EEL_tableitem *ti)
 EEL_xno eel_table_delete(EEL_object *to, EEL_value *key)
 {
 #ifdef EEL_VM_CHECKING
-	if((EEL_classes)to->type != EEL_CTABLE)
+	if(to->classid != EEL_CTABLE)
 		eel_ierror(eel_vm2p(to->vm)->state,
 				"eel_table_delete() used on "
 				"non-table object %s!\n",

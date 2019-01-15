@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_object.h - EEL Object
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -149,7 +149,7 @@ typedef enum
 				 *	false.
 				 */
 	EEL_MM_CAST,		/* 'object' cast to type 'op1'
-				 * In:	op1 -> value (EEL_TTYPEID)
+				 * In:	op1 -> value (EEL_CCLASSID)
 				 * Out:	*op2 = new value or object
 				 */
 	EEL_MM_SERIALIZE,	/* Serialize all contained data and write it
@@ -254,10 +254,9 @@ typedef enum
  * EEL Object Header
  *
  * NOTE:
- *	The 'type' field counts as a reference to the
- *	EEL_CCLASS that implements the class. This
- *	ensures that classes are not removed as long as
- *	instances remain.
+ *	The 'classid' field counts as a reference to the EEL_CCLASS that
+ *	implements the class. This ensures that classes are not removed as long
+ *	as instances remain.
  */
 struct EEL_object
 {
@@ -265,7 +264,7 @@ struct EEL_object
 	EEL_vm		*vm;		/* Owner VM */
 	void		*weakrefs;	/* Weak reference management */
 	int		refcount;	/* Reference count */
-	EEL_types	type;		/* Class type ID */
+	EEL_classes	classid;	/* Class/type ID */
 	/*
 	 * (Implementation struct follows)
 	 */
@@ -288,7 +287,7 @@ struct EEL_object
  *	  allocated in case of failure - including the object!
  *	  (Must be freed with eel_o_free().)
  *
- * In:	type = object type (for constructors for multiple types)
+ * In:	cid = object class ID (for constructors for multiple types)
  *	inits = initializers
  *	initc = number of initializers
  *	result -> space for result EEL_value
@@ -296,7 +295,7 @@ struct EEL_object
  * SUCCESS: Returns 0. 'result' -> OBJREF to new object.
  * FAILURE: Returns exception number. 'result' is undefined.
  */
-typedef EEL_xno (*EEL_ctor_cb)(EEL_vm *vm, EEL_types type,
+typedef EEL_xno (*EEL_ctor_cb)(EEL_vm *vm, EEL_classes cid,
 		EEL_value *inits, int initc, EEL_value *result);
 
 /*
@@ -306,14 +305,14 @@ typedef EEL_xno (*EEL_ctor_cb)(EEL_vm *vm, EEL_types type,
  * of reconstructing objects from streams, parsing data generated
  * by the SERIALIZE metamethod of the same class.
  *
- * In:	type = object type (for constructors for multiple types)
+ * In:	cid = object class ID (for constructors for multiple types)
  *	stream = source stream
  *	result -> space for result EEL_value
  *
  * SUCCESS: Returns 0. 'result' -> OBJREF to new object.
  * FAILURE: Returns exception number. 'result' is undefined.
  */
-typedef EEL_xno (*EEL_rector_cb)(EEL_vm *vm, EEL_types type,
+typedef EEL_xno (*EEL_rector_cb)(EEL_vm *vm, EEL_classes cid,
 		EEL_object *stream, EEL_value *result);
 
 
@@ -348,7 +347,7 @@ typedef EEL_xno (*EEL_mm_cb)(EEL_object *object,
  * FAILURE: Returns exception number. Results undefined.
  */
 typedef EEL_xno (*EEL_cast_cb)(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t);
+		const EEL_value *src, EEL_value *dst, EEL_classes cid);
 
 /*
  * Perform metamethod 'mm' on 'object', with arguments
@@ -361,12 +360,12 @@ EELAPI(EEL_xno)eel_o_metamethod(EEL_object *object,
 		EEL_mmindex mm, EEL_value *op1, EEL_value *op2);
 
 /*
- * Create an instance of class 'type'.
+ * Create an instance of class 'classid'.
  *
  * SUCCESS: Points 'result' at instance with refcount 1 and returns 0.
  * FAILURE: Leaves 'result' undefined and returns a VM exception code.
  */
-EELAPI(EEL_xno)eel_o_construct(EEL_vm *vm, EEL_types type,
+EELAPI(EEL_xno)eel_o_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *inits, int initc, EEL_value *result);
 
 /*
@@ -379,8 +378,8 @@ EELAPI(EEL_xno)eel_o_clone(EEL_vm *vm, EEL_object *orig, EEL_value *result);
 
 /*
  * Allocate an object with 'size' bytes reserved for instance data.
- * The object will be initialized with 'vm' as owner and 'type' in
- * the type field. The instance data area is NOT cleared.
+ * The object will be initialized with 'vm' as owner and 'cid' in
+ * the classid field. The instance data area is NOT cleared.
  *
  * SUCCESS:	Returns the address of the object.
  * FAILURE:	Returns NULL.
@@ -388,7 +387,7 @@ EELAPI(EEL_xno)eel_o_clone(EEL_vm *vm, EEL_object *orig, EEL_value *result);
  * WARNING:
  *	DO NOT free() OR eel_free() POINTERS RETURNED BY THIS CALL!
  */
-EELAPI(EEL_object *)eel_o_alloc(EEL_vm *vm, int size, EEL_types type);
+EELAPI(EEL_object *)eel_o_alloc(EEL_vm *vm, int size, EEL_classes cid);
 
 /* Untangle and free 'object'. */
 EELAPI(void)eel_o_free(EEL_object *object);
@@ -410,14 +409,14 @@ static inline EEL_object *t##2o(t *o)	\
 
 
 /*
- * Get type of value, whether it's a simple value or an objref.
+ * Get class ID of value, whether it's a simple value or an objref.
  */
-static inline EEL_types EEL_TYPE(const EEL_value *v)
+static inline EEL_classes EEL_CLASS(const EEL_value *v)
 {
-	if(EEL_IS_OBJREF(v->type))
-		return v->objref.v->type;
+	if(EEL_IS_OBJREF(v->classid))
+		return v->objref.v->classid;
 	else
-		return v->type;
+		return v->classid;
 }
 
 
@@ -442,10 +441,10 @@ EELAPI(void)eel_disown(EEL_object *o);
  */
 static inline void eel_v_own(EEL_value *value)
 {
-	if(value->type == EEL_TOBJREF)
+	if(value->classid == EEL_COBJREF)
 		eel_own(value->objref.v);
 #ifdef DEBUG
-	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
+	else if(value->classid == EEL_CILLEGAL)
 		fprintf(stderr, "INTERNAL ERROR: eel_v_own(): ILLEGAL value! "
 				"(Source: %d)", value->integer.v);
 #endif

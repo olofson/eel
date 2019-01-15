@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_string.c - EEL String Class + string pool
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2008, 2010-2012, 2014 David Olofson
+ * Copyright 2005-2006, 2008, 2010-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -345,7 +345,7 @@ void eel_ps_close(EEL_vm *vm)
 	String class implementation
 -------------------------------------------------------------------------*/
 
-static EEL_xno s_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno s_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EEL_object *eo;
@@ -404,14 +404,14 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int i;
 
 	/* Cast index to int */
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -425,7 +425,7 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		return EEL_XHIGHINDEX;
 
 	/* Read value */
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	op2->integer.v = s->buffer[i] & 0xff;	/* Treat as unsigned! */
 	return 0;
 }
@@ -434,14 +434,14 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno s_in(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_string *s = o2EEL_string(eo);
-	switch((EEL_classes)EEL_TYPE(op1))
+	switch(EEL_CLASS(op1))
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		return eel_s_char_in(s->buffer, s->length, op1->integer.v,
 				op2);
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		return eel_s_char_in(s->buffer, s->length, floor(op1->real.v),
 				op2);
 	  case EEL_CSTRING:
@@ -450,7 +450,7 @@ static EEL_xno s_in(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		if(op1->objref.v == eo)
 		{
 			/* Same instance! */
-			op2->type = EEL_TINTEGER;
+			op2->classid = EEL_CINTEGER;
 			op2->integer.v = 0;
 			return 0;
 		}
@@ -486,14 +486,14 @@ static EEL_xno s_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	op2->objref.v = eel_ps_nnew(eo->vm, s->buffer + start, length);
 	if(!op2->objref.v)
 		return EEL_XCONSTRUCTOR;
-	op2->type = EEL_TOBJREF;
+	op2->classid = EEL_COBJREF;
 	return 0;
 }
 
 
 static EEL_xno s_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	op2->integer.v = o2EEL_string(eo)->length;
 	return 0;
 }
@@ -504,11 +504,11 @@ static EEL_xno s_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	EEL_string *s;
 	const char *s2buf;
 	int s2len;
-	if(!EEL_IS_OBJREF(op1->type))
+	if(!EEL_IS_OBJREF(op1->classid))
 		return EEL_XWRONGTYPE;
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 
-	switch((EEL_classes)op1->objref.v->type)
+	switch(op1->objref.v->classid)
 	{
 	  case EEL_CSTRING:
 	  {
@@ -554,47 +554,48 @@ static EEL_xno s_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 
 static EEL_xno s_eq(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TNIL:
-	  case EEL_TREAL:
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-		op2->type = EEL_TBOOLEAN;
+	  case EEL_CNIL:
+	  case EEL_CREAL:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
+		op2->classid = EEL_CBOOLEAN;
 		op2->integer.v = 0;
 		return 0;
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 	  {
 		EEL_object *o = op1->objref.v;
-		if((EEL_classes)o->type == EEL_CSTRING)
+		if(o->classid == EEL_CSTRING)
 		{
-			op2->type = EEL_TBOOLEAN;
+			op2->classid = EEL_CBOOLEAN;
 			op2->integer.v = (eo == o);
 			return 0;
 		}
-		else if((EEL_classes)o->type == EEL_CDSTRING)
+		else if(o->classid == EEL_CDSTRING)
 		{
 			s_compare(eo, op1, op2);
-			op2->type = EEL_TBOOLEAN;
+			op2->classid = EEL_CBOOLEAN;
 			op2->integer.v = (op2->integer.v == 0);
 			return 0;
 		}
 		else
 		{
-			op2->type = EEL_TBOOLEAN;
+			op2->classid = EEL_CBOOLEAN;
 			op2->integer.v = 0;
 			return 0;
 		}
 	  }
+	  default:
+		return EEL_XBADTYPE;
 	}
-	return EEL_XBADTYPE;
 }
 
 
 static EEL_xno s_cast_to_real(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_string *s = o2EEL_string(src->objref.v);
 	eel_d2v(dst, atof(s->buffer));
@@ -603,7 +604,7 @@ static EEL_xno s_cast_to_real(EEL_vm *vm,
 
 
 static EEL_xno s_cast_to_integer(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_string *s = o2EEL_string(src->objref.v);
 	eel_l2v(dst, atol(s->buffer));
@@ -612,10 +613,10 @@ static EEL_xno s_cast_to_integer(EEL_vm *vm,
 
 
 static EEL_xno s_cast_to_boolean(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_string *s = o2EEL_string(src->objref.v);
-	dst->type = EEL_TBOOLEAN;
+	dst->classid = EEL_CBOOLEAN;
 	if(!strncmp("true", s->buffer, 4) ||
 			!strncmp("yes", s->buffer, 3) ||
 			!strncmp("1", s->buffer, 1) ||
@@ -628,19 +629,19 @@ static EEL_xno s_cast_to_boolean(EEL_vm *vm,
 
 
 static EEL_xno s_cast_to_dstring(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_string *s = o2EEL_string(src->objref.v);
 	dst->objref.v = eel_ds_nnew(vm, s->buffer, s->length);
 	if(!dst->objref.v)
 		return EEL_XMEMORY;
-	dst->type = EEL_TOBJREF;
+	dst->classid = EEL_COBJREF;
 	return 0;
 }
 
 
 static EEL_xno s_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	/* NOP, more or less - strings are immutable! */
 	eel_o2v(dst, src->objref.v);
@@ -650,7 +651,7 @@ static EEL_xno s_clone(EEL_vm *vm,
 
 
 static EEL_xno s_cast_from_nil(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no = eel_ps_nnew(vm, "nil", 3);
 	if(!no)
@@ -661,7 +662,7 @@ static EEL_xno s_cast_from_nil(EEL_vm *vm,
 
 
 static EEL_xno s_cast_from_integer(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no;
 	char buf[24];
@@ -678,7 +679,7 @@ static EEL_xno s_cast_from_integer(EEL_vm *vm,
 
 
 static EEL_xno s_cast_from_real(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no;
 	char buf[64];
@@ -695,7 +696,7 @@ static EEL_xno s_cast_from_real(EEL_vm *vm,
 
 
 static EEL_xno s_cast_from_boolean(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no;
 	if(src->integer.v)
@@ -710,7 +711,7 @@ static EEL_xno s_cast_from_boolean(EEL_vm *vm,
 
 
 static EEL_xno s_cast_from_typeid(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no = eel_ps_new(vm, eel_typename(vm, src->integer.v));
 	if(!no)
@@ -728,7 +729,7 @@ static EEL_xno s_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	char *buf;
 
 	/* Operand */
-	switch((EEL_classes)EEL_TYPE(op1))
+	switch(EEL_CLASS(op1))
 	{
 	  case EEL_CSTRING:
 	  {
@@ -777,7 +778,7 @@ static EEL_xno s_add(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		eel_free(eo->vm, buf);
 		return EEL_XCONSTRUCTOR;
 	}
-	op2->type = EEL_TOBJREF;
+	op2->classid = EEL_COBJREF;
 	return 0;
 }
 
@@ -798,13 +799,13 @@ void eel_cstring_register(EEL_vm *vm)
 	eel_set_metamethod(c, EEL_MM_EQ, s_eq);
 	eel_set_metamethod(c, EEL_MM_ADD, s_add);
 	eel_set_casts(vm, EEL_CSTRING, EEL_CSTRING, s_clone);
-	eel_set_casts(vm, EEL_CSTRING, EEL_TREAL, s_cast_to_real);
-	eel_set_casts(vm, EEL_CSTRING, EEL_TINTEGER, s_cast_to_integer);
-	eel_set_casts(vm, EEL_CSTRING, EEL_TBOOLEAN, s_cast_to_boolean);
+	eel_set_casts(vm, EEL_CSTRING, EEL_CREAL, s_cast_to_real);
+	eel_set_casts(vm, EEL_CSTRING, EEL_CINTEGER, s_cast_to_integer);
+	eel_set_casts(vm, EEL_CSTRING, EEL_CBOOLEAN, s_cast_to_boolean);
 	eel_set_casts(vm, EEL_CSTRING, EEL_CDSTRING, s_cast_to_dstring);
-	eel_set_casts(vm, EEL_TNIL, EEL_CSTRING, s_cast_from_nil);
-	eel_set_casts(vm, EEL_TREAL, EEL_CSTRING, s_cast_from_real);
-	eel_set_casts(vm, EEL_TINTEGER, EEL_CSTRING, s_cast_from_integer);
-	eel_set_casts(vm, EEL_TBOOLEAN, EEL_CSTRING, s_cast_from_boolean);
-	eel_set_casts(vm, EEL_TTYPEID, EEL_CSTRING, s_cast_from_typeid);
+	eel_set_casts(vm, EEL_CNIL, EEL_CSTRING, s_cast_from_nil);
+	eel_set_casts(vm, EEL_CREAL, EEL_CSTRING, s_cast_from_real);
+	eel_set_casts(vm, EEL_CINTEGER, EEL_CSTRING, s_cast_from_integer);
+	eel_set_casts(vm, EEL_CBOOLEAN, EEL_CSTRING, s_cast_from_boolean);
+	eel_set_casts(vm, EEL_CCLASSID, EEL_CSTRING, s_cast_from_typeid);
 }

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vector.c - EEL Vector Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010, 2012, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -50,10 +50,10 @@ static inline EEL_xno v_setsize(EEL_object *eo, int newsize)
 static inline EEL_xno write_index(EEL_object *eo, int i, EEL_value *v)
 {
 	EEL_vector *vec = o2EEL_vector(eo);
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TNIL:
-		switch((EEL_classes)eo->type)
+	  case EEL_CNIL:
+		switch(eo->classid)
 		{
 		  /*
 		   * No sign extension needed as long as all vector types
@@ -82,10 +82,10 @@ static inline EEL_xno write_index(EEL_object *eo, int i, EEL_value *v)
 			return EEL_XINTERNAL;
 		}
 		break;
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
-		switch((EEL_classes)eo->type)
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
+		switch(eo->classid)
 		{
 		  /*
 		   * No sign extension needed as long as all vector types
@@ -114,8 +114,8 @@ static inline EEL_xno write_index(EEL_object *eo, int i, EEL_value *v)
 			return EEL_XINTERNAL;
 		}
 		break;
-	  case EEL_TREAL:
-		switch((EEL_classes)eo->type)
+	  case EEL_CREAL:
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -151,7 +151,7 @@ static inline EEL_integer get_ivalue(EEL_object *o, int i)
 	EEL_vector *vec = o2EEL_vector(o);
 	if(i >= vec->length)
 		return 0;
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CVECTOR_U8:
 		return vec->buffer.u8[i];
@@ -180,7 +180,7 @@ static inline EEL_real get_rvalue(EEL_object *o, int i)
 	EEL_vector *vec = o2EEL_vector(o);
 	if(i >= vec->length)
 		return 0.0;
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CVECTOR_U8:
 		return vec->buffer.u8[i];
@@ -204,9 +204,9 @@ static inline EEL_real get_rvalue(EEL_object *o, int i)
 }
 
 
-static inline int item_size(EEL_types vt)
+static inline int item_size(EEL_classes vt)
 {
-	switch((EEL_classes)vt)
+	switch(vt)
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -234,7 +234,7 @@ static EEL_xno v_delete(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	EEL_xno x = eel_get_delete_range(&i0, &i1, op1, op2, v->length);
 	if(x)
 		return x;
-	is = item_size(eo->type);
+	is = item_size(eo->classid);
 	memmove(v->buffer.u8 + i0 * is, v->buffer.u8 + (i1 + 1) * is,
 			(v->length - i1 - 1) * is);
 	v->length -= i1 - i0 + 1;
@@ -251,7 +251,8 @@ static EEL_xno v_delete(EEL_object *eo, EEL_value *op1, EEL_value *op2)
  *	block that you're meant to overwrite without reading.
  * Return 0 upon success, or -1 if in case of failure.
  */
-static inline int make_clone_nc(EEL_vm *vm, EEL_object *clone, EEL_object *orig)
+static inline int make_clone_nc(EEL_vm *vm, EEL_object *clone,
+		EEL_object *orig)
 {
 	EEL_vector *origv = o2EEL_vector(orig);
 	EEL_vector *clonev = o2EEL_vector(clone);
@@ -269,7 +270,7 @@ static inline int make_clone_nc(EEL_vm *vm, EEL_object *clone, EEL_object *orig)
 static inline EEL_object *empty_clone(EEL_object *orig)
 {
 	EEL_vm *vm = orig->vm;
-	EEL_object *clone = eel_o_alloc(vm, sizeof(EEL_vector), orig->type);
+	EEL_object *clone = eel_o_alloc(vm, sizeof(EEL_vector), orig->classid);
 	if(!clone)
 		return NULL;
 	if(make_clone_nc(vm, clone, orig) < 0)
@@ -295,18 +296,18 @@ static inline EEL_object *full_clone(EEL_object *orig)
 }
 
 
-static EEL_xno v_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno v_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	int i;
 	EEL_vector *vec;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_vector), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_vector), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	vec = o2EEL_vector(eo);
 
 	/* Initialize as empty vector */
-	vec->isize = item_size(eo->type);
+	vec->isize = item_size(eo->classid);
 	vec->length = vec->maxlength = 0;
 	vec->buffer.u8 = NULL;
 	if(!initc)
@@ -337,14 +338,14 @@ static EEL_xno v_construct(EEL_vm *vm, EEL_types type,
 }
 
 
-EEL_object *eel_cv_new_noinit(EEL_vm *vm, EEL_types type, unsigned size)
+EEL_object *eel_cv_new_noinit(EEL_vm *vm, EEL_classes cid, unsigned size)
 {
 	EEL_vector *vec;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_vector), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_vector), cid);
 	if(!eo)
 		return NULL;
 	vec = o2EEL_vector(eo);
-	vec->isize = item_size(eo->type);
+	vec->isize = item_size(eo->classid);
 	vec->length = vec->maxlength = size;
 	vec->buffer.u8 = eel_malloc(vm, vec->length * vec->isize);
 	if(!vec->buffer.u8)
@@ -369,14 +370,14 @@ static EEL_xno v_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int i;
 
 	/* Cast index to int */
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -390,38 +391,38 @@ static EEL_xno v_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		return EEL_XHIGHINDEX;
 
 	/* Read value */
-	switch((EEL_classes)eo->type)
+	switch(eo->classid)
 	{
 	  case EEL_CVECTOR_U8:
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = vec->buffer.u8[i];
 		break;
 	  case EEL_CVECTOR_S8:
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = vec->buffer.s8[i];
 		break;
 	  case EEL_CVECTOR_U16:
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = vec->buffer.u16[i];
 		break;
 	  case EEL_CVECTOR_S16:
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = vec->buffer.s16[i];
 		break;
 	  case EEL_CVECTOR_U32:
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = vec->buffer.u32[i];
 		break;
 	  case EEL_CVECTOR_S32:
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = vec->buffer.s32[i];
 		break;
 	  case EEL_CVECTOR_F:
-		op2->type = EEL_TREAL;
+		op2->classid = EEL_CREAL;
 		op2->real.v = vec->buffer.f[i];
 		break;
 	  case EEL_CVECTOR_D:
-		op2->type = EEL_TREAL;
+		op2->classid = EEL_CREAL;
 		op2->real.v = vec->buffer.d[i];
 		break;
 	  default:
@@ -438,14 +439,14 @@ static EEL_xno v_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int i;
 
 	/* Cast index to int */
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -485,14 +486,14 @@ static EEL_xno v_insert(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	int x, i, is;
 	EEL_vector *v = o2EEL_vector(eo);
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -508,7 +509,7 @@ static EEL_xno v_insert(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	++v->length;
 
 	/* Move */
-	is = item_size(eo->type);
+	is = item_size(eo->classid);
 	memmove(v->buffer.u8 + (i + 1) * is, v->buffer.u8 + i * is,
 			(v->length - i - 1) * is);
 
@@ -533,7 +534,7 @@ static EEL_xno v_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		return EEL_XWRONGINDEX;
 	else if(start + length > ov->length)
 		return EEL_XHIGHINDEX;
-	so = eel_o_alloc(vm, sizeof(EEL_vector), eo->type);
+	so = eel_o_alloc(vm, sizeof(EEL_vector), eo->classid);
 	if(!so)
 		return EEL_XCONSTRUCTOR;
 	sv = o2EEL_vector(so);
@@ -555,7 +556,7 @@ static EEL_xno v_copy(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 
 static EEL_xno v_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	op2->integer.v = o2EEL_vector(eo)->length;
 	return 0;
 }
@@ -579,17 +580,15 @@ static inline int vcmp_u8_u8(EEL_uint8 *a, EEL_uint8 *b, int length)
 static EEL_xno v_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_vector *v, *ov;
-	if(!EEL_IS_OBJREF(op1->type))
+	if(!EEL_IS_OBJREF(op1->classid))
 		return EEL_XWRONGTYPE;
-	if((EEL_nontypes)op1->type > EEL_TLASTTYPE)
-		return EEL_XBADTYPE;
 
-	if(op1->objref.v->type != eo->type)
+	if(op1->objref.v->classid != eo->classid)
 		return EEL_XNOTIMPLEMENTED;
 
 	v = o2EEL_vector(eo);
 	ov = o2EEL_vector(op1->objref.v);
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	if(v->length > ov->length)
 	{
 		op2->integer.v = 1;
@@ -600,7 +599,7 @@ static EEL_xno v_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		op2->integer.v = -1;
 		return 0;
 	}
-	switch((EEL_classes)eo->type)
+	switch(eo->classid)
 	{
 	  case EEL_CVECTOR_U8:
 		op2->integer.v = vcmp_u8_u8(v->buffer.u8, ov->buffer.u8, v->length);
@@ -620,7 +619,7 @@ static EEL_xno v_compare(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 
 
 static EEL_xno v_cast_to_string(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 
 {
 	int i;
@@ -638,13 +637,13 @@ static EEL_xno v_cast_to_string(EEL_vm *vm,
 		eel_free(vm, buf);
 		return EEL_XCONSTRUCTOR;
 	}
-	dst->type = EEL_TOBJREF;
+	dst->classid = EEL_COBJREF;
 	return 0;
 }
 
 
 static EEL_xno v_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *orig = src->objref.v;
 	EEL_object *no = full_clone(orig);
@@ -662,18 +661,18 @@ static inline EEL_xno do_vadd(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	EEL_real rv;
 	EEL_vector *source = o2EEL_vector(eo);
 	EEL_vector *target = o2EEL_vector(to);
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		if(target == source)
 			return 0;
 		memcpy(target->buffer.u8, source->buffer.u8,
 				source->length * source->isize);
 		return 0;
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
-		switch((EEL_classes)eo->type)
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
+		switch(eo->classid)
 		{
 		  /*
 		   * Sign is irrelevant to addition, so we group u* and s*.
@@ -709,8 +708,8 @@ static inline EEL_xno do_vadd(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		  default:
 			return EEL_XINTERNAL;
 		}
-	  case EEL_TREAL:
-		switch((EEL_classes)eo->type)
+	  case EEL_CREAL:
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -743,10 +742,10 @@ static inline EEL_xno do_vadd(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		  default:
 			return EEL_XINTERNAL;
 		}
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 	  {
-		switch((EEL_classes)eo->type)
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -821,18 +820,18 @@ static inline EEL_xno do_vsub(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	EEL_real rv;
 	EEL_vector *source = o2EEL_vector(eo);
 	EEL_vector *target = o2EEL_vector(to);
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		if(target == source)
 			return 0;
 		memcpy(target->buffer.u8, source->buffer.u8,
 				source->length * source->isize);
 		return 0;
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
-		switch((EEL_classes)eo->type)
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
+		switch(eo->classid)
 		{
 		  /*
 		   * Sign is irrelevant to addition, so we group u* and s*.
@@ -868,8 +867,8 @@ static inline EEL_xno do_vsub(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		  default:
 			return EEL_XINTERNAL;
 		}
-	  case EEL_TREAL:
-		switch((EEL_classes)eo->type)
+	  case EEL_CREAL:
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -902,10 +901,10 @@ static inline EEL_xno do_vsub(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		  default:
 			return EEL_XINTERNAL;
 		}
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 	  {
-		switch((EEL_classes)eo->type)
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -980,17 +979,17 @@ static inline EEL_xno do_vmul(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	EEL_real rv;
 	EEL_vector *source = o2EEL_vector(eo);
 	EEL_vector *target = o2EEL_vector(to);
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		if(target == source)
 			return 0;
 		memset(target->buffer.u8, 0, source->length * source->isize);
 		return 0;
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
-		switch((EEL_classes)eo->type)
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
+		switch(eo->classid)
 		{
 		  /*
 		   * Sign is irrelevant to addition, so we group u* and s*.
@@ -1026,8 +1025,8 @@ static inline EEL_xno do_vmul(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		  default:
 			return EEL_XINTERNAL;
 		}
-	  case EEL_TREAL:
-		switch((EEL_classes)eo->type)
+	  case EEL_CREAL:
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -1060,10 +1059,10 @@ static inline EEL_xno do_vmul(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		  default:
 			return EEL_XINTERNAL;
 		}
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 	  {
-		switch((EEL_classes)eo->type)
+		switch(eo->classid)
 		{
 		  case EEL_CVECTOR_U8:
 		  case EEL_CVECTOR_S8:
@@ -1137,7 +1136,7 @@ static inline EEL_xno v__append(EEL_object *eo, EEL_value *op1, EEL_object *to)
 	EEL_xno x;
 	EEL_vector *vec = o2EEL_vector(eo);
 	int start = vec->length;
-	int len = EEL_IS_OBJREF(op1->type) ? eel_length(op1->objref.v) : -1;
+	int len = EEL_IS_OBJREF(op1->classid) ? eel_length(op1->objref.v) : -1;
 	if(!len)
 		return 0;	/* Nothing to do! */
 	if(len > 0)
@@ -1146,7 +1145,7 @@ static inline EEL_xno v__append(EEL_object *eo, EEL_value *op1, EEL_object *to)
 		/* Append items from indexable type. */
 		if(v_setsize(eo, start + len) < 0)
 			return EEL_XMEMORY;
-		if((EEL_classes)EEL_TYPE(op1) == EEL_CTABLE)
+		if(EEL_CLASS(op1) == EEL_CTABLE)
 			return EEL_XWRONGTYPE;
 		for(i = 0; i < len; ++i)
 		{
@@ -1204,7 +1203,7 @@ static EEL_xno v_ipadd(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 }
 
 
-static EEL_xno default_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno default_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	return v_construct(vm, EEL_DEFAULT_VECTOR_SUBCLASS,
@@ -1218,7 +1217,7 @@ static EEL_xno v_serialize(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 }
 
 
-static EEL_xno v_reconstruct(EEL_vm *vm, EEL_types type,
+static EEL_xno v_reconstruct(EEL_vm *vm, EEL_classes cid,
 		EEL_object *stream, EEL_value *result)
 {
 	return EEL_XNOTIMPLEMENTED;

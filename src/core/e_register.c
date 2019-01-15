@@ -32,14 +32,14 @@
 #include "e_string.h"
 #include "e_table.h"
 
-void eel_register_essx(EEL_vm *vm, EEL_types t, EEL_symbol *s)
+void eel_register_essx(EEL_vm *vm, EEL_classes cid, EEL_symbol *s)
 {
-	switch((EEL_classes)t)
+	switch(cid)
 	{
-	  case EEL_TREAL:	VMP->state->tokentab[ESSX_REAL] = s; break;
-	  case EEL_TINTEGER:	VMP->state->tokentab[ESSX_INTEGER] = s; break;
-	  case EEL_TBOOLEAN:	VMP->state->tokentab[ESSX_BOOLEAN] = s; break;
-	  case EEL_TTYPEID:	VMP->state->tokentab[ESSX_TYPEID] = s; break;
+	  case EEL_CREAL:	VMP->state->tokentab[ESSX_REAL] = s; break;
+	  case EEL_CINTEGER:	VMP->state->tokentab[ESSX_INTEGER] = s; break;
+	  case EEL_CBOOLEAN:	VMP->state->tokentab[ESSX_BOOLEAN] = s; break;
+	  case EEL_CCLASSID:	VMP->state->tokentab[ESSX_CLASSID] = s; break;
 	  case EEL_CSTRING:	VMP->state->tokentab[ESSX_STRING] = s; break;
 	  case EEL_CFUNCTION:	VMP->state->tokentab[ESSX_FUNCTION] = s; break;
 	  case EEL_CMODULE:	VMP->state->tokentab[ESSX_MODULE] = s; break;
@@ -78,7 +78,7 @@ static inline EEL_object *eel_cid2c(EEL_vm *vm, int cid)
 static inline int eel_c2cid(EEL_object *c)
 {
 	EEL_classdef *cd;
-	if((EEL_classes)c->type != EEL_CCLASS)
+	if(c->classid != EEL_CCLASS)
 		return -1;
 	cd = o2EEL_classdef(c);
 	return cd->classid;
@@ -401,7 +401,7 @@ void eel_set_unregister(EEL_object *classdef, EEL_unregister_cb ur)
 {
 	EEL_vm *vm = classdef->vm;
 	EEL_state *es = VMP->state;
-	if((EEL_classes)classdef->type != EEL_CCLASS)
+	if(classdef->classid != EEL_CCLASS)
 		eel_ierror(es, "Object %s passed to eel_set_unregister() "
 				"is not a classdef!", eel_o_stringrep(classdef));
 	o2EEL_classdef(classdef)->unregister = ur;
@@ -528,7 +528,7 @@ EEL_object *eel_export_class(EEL_object *module,
 }
 
 
-EEL_types eel_class_typeid(EEL_object *c)
+EEL_classes eel_class_cid(EEL_object *c)
 {
 	return eel_c2cid(c);
 }

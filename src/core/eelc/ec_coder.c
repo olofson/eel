@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_coder.c - EEL VM Code Generation Tools
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -226,7 +226,7 @@ const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc,
 	const char *tmp = NULL;
 	const char *tmp2 = NULL;
 	char *rbuf, *buf;
-	if((EEL_classes)fo->type != EEL_CFUNCTION)
+	if(fo->classid != EEL_CFUNCTION)
 		return "INTERNAL ERROR";
 	f = o2EEL_function(fo);
 	if(!code)
@@ -569,7 +569,7 @@ const char *eel_i_stringrep(EEL_state *es, EEL_object *fo, int pc,
 		count = snprintf(buf, BS, "C%d, C%d", B, A);
 		while(count < 24)
 			buf[count++] = ' ';
-		if(EEL_IS_OBJREF(f->e.constants[A].type))
+		if(EEL_IS_OBJREF(f->e.constants[A].classid))
 			catcher = o2EEL_string(o2EEL_function(
 					f->e.constants[A].objref.v)->
 					common.name)->buffer;
@@ -620,7 +620,7 @@ EEL_coder *eel_coder_open(EEL_state *es, EEL_object *fo)
 {
 	EEL_function *f;
 	EEL_coder *cdr;
-	if((EEL_classes)fo->type != EEL_CFUNCTION)
+	if(fo->classid != EEL_CFUNCTION)
 		eel_ierror(es, "Object is not a function!");
 	f = o2EEL_function(fo);
 	if(f->common.flags & EEL_FF_CFUNC)
@@ -739,7 +739,7 @@ static int objects_equal(EEL_object *o1, EEL_object *o2)
 {
 	EEL_xno x;
 	EEL_value v2, r;
-	v2.type = EEL_TOBJREF;
+	v2.classid = EEL_COBJREF;
 	v2.objref.v = o2;
 	x = eel_o__metamethod(o1, EEL_MM_COMPARE, &v2, &r);
 	if(x)
@@ -764,37 +764,36 @@ int eel_coder_add_constant(EEL_coder *cdr, EEL_value *value)
 	if(!value)
 		eel_ierror(cdr->state, "Constant needs initializer!");
 
-	if((EEL_nontypes)value->type > EEL_TLASTTYPE)
-		eel_cerror(cdr->state, "Illegal constant type!");
-
 	/* First check if we have one with this value already! */
 /*FIXME: Can be time consuming when compiling large programs... */
 	for(i = 0; i < f->e.nconstants; ++i)
 	{
-		if(c[i].type != value->type)
+		if(c[i].classid != value->classid)
 			continue;
-		switch(value->type)
+		switch(value->classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			return i;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			if(c[i].real.v == value->real.v)
 				return i;
 			break;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
-		  case EEL_TTYPEID:
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
+		  case EEL_CCLASSID:
 			if(c[i].integer.v == value->integer.v)
 				return i;
 			break;
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			if(c[i].objref.v == value->objref.v)
 				return i;
-			if(c[i].objref.v->type != value->objref.v->type)
+			if(c[i].objref.v->classid != value->objref.v->classid)
 				break;
 			if(objects_equal(c[i].objref.v, value->objref.v))
 				return i;
+			break;
+		  default:
 			break;
 		}
 	}
@@ -807,8 +806,8 @@ int eel_coder_add_constant(EEL_coder *cdr, EEL_value *value)
 	 * Constant tables take ownership of constant
 	 * objects, except functions in the same module!
 	 */
-	if(EEL_IS_OBJREF(value->type) &&
-			(((EEL_classes)value->objref.v->type != EEL_CFUNCTION) ||
+	if(EEL_IS_OBJREF(value->classid) &&
+			((value->objref.v->classid != EEL_CFUNCTION) ||
 			(o2EEL_function(value->objref.v)->common.module !=
 					f->common.module)))
 		eel_v_own(&c[f->e.nconstants]);
@@ -853,14 +852,9 @@ int eel_coder_add_variable(EEL_coder *cdr, EEL_value *value)
 	v = m->variables + m->nvariables;
 
 	if(value)
-	{
-		if((EEL_nontypes)value->type > EEL_TLASTTYPE)
-			eel_cerror(cdr->state, "Illegal variable"
-					" initializer type!");
 		eel_v_copy(v, value);
-	}
 	else
-		v->type = EEL_TNIL;
+		v->classid = EEL_CNIL;
 
 	return m->nvariables++;
 }

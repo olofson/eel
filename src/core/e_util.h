@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_util.h - EEL engine utilities
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2009, 2011-2012 David Olofson
+ * Copyright 2002-2006, 2009, 2011-2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -280,22 +280,22 @@ static inline EEL_hash eel_hashmem(const void *dat, unsigned len)
 
 static inline EEL_hash eel_v2hash(EEL_value *v)
 {
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return 1315423911;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 	  {
 		unsigned *i = (unsigned *)&v->real;
 		return 1315423911 ^ (42422421131 + (i[0] ^ i[1]));
 	  }
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
-		return (1315423911 << v->type) ^ v->integer.v;
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		if((EEL_classes)v->objref.v->type == EEL_CSTRING)
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
+		return (1315423911 << v->classid) ^ v->integer.v;
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
+		if(v->objref.v->classid == EEL_CSTRING)
 			return o2EEL_string(v->objref.v)->hash;
 		else
 		{
@@ -306,8 +306,9 @@ static inline EEL_hash eel_v2hash(EEL_value *v)
 				hash ^= ((hash << 5) + i[j] + (hash >> 2));
 			return hash;
 	 	}
+	  default:
+		return 0;
 	}
-	return 0;
 }
 
 
@@ -320,7 +321,7 @@ static inline EEL_hash eel_v2hash(EEL_value *v)
  */
 const char *eel_data_is(const EEL_value *d);
 
-/* Returns a string with the name of type 'type'. */
-const char *eel_typename(EEL_vm *vm, EEL_types type);
+/* Returns a string with the name of class 'type'. */
+const char *eel_typename(EEL_vm *vm, EEL_classes type);
 
 #endif /*EEL_E_UTIL_H*/

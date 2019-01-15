@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_symtab.c - Symbol Table/Tree
 ---------------------------------------------------------------------------
- * Copyright 2000-2006, 2009-2012 David Olofson
+ * Copyright 2000-2006, 2009-2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -251,7 +251,7 @@ static int get_export(EEL_symbol *st, EEL_object *n, EEL_value *v,
 	EEL_vm *vm = n->vm;
 	EEL_state *es = VMP->state;
 	EEL_symbol *s;
-	switch((EEL_classes)EEL_TYPE(v))
+	switch(EEL_CLASS(v))
 	{
 	  case EEL_CFUNCTION:
 		s = eel_s_add(es, st, NULL, EEL_SFUNCTION);
@@ -294,7 +294,7 @@ int eel_s_get_exports(EEL_symbol *st, EEL_object *m)
 	EEL_vm *vm;
 	EEL_state *es;
 	EEL_object *im;
-	if((EEL_classes)m->type != EEL_CMODULE)
+	if(m->classid != EEL_CMODULE)
 		return -1;
 	vm = m->vm;
 	es = VMP->state;
@@ -314,7 +314,7 @@ int eel_s_get_exports(EEL_symbol *st, EEL_object *m)
 				eel_v2s(k), eel_v_stringrep(vm, v));)
 
 		/* Key must be string! */
-		if((EEL_classes)EEL_TYPE(k) != EEL_CSTRING)
+		if(EEL_CLASS(k) != EEL_CSTRING)
 		{
 			eel_o_disown_nz(im);
 			eel_ierror(es, "eel_s_add_exports() got a table "

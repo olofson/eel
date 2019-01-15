@@ -31,7 +31,7 @@
 #include "e_string.h"
 
 /* Trap constructor that throws XNOCONSTRUCTOR */
-static EEL_xno no_constructor(EEL_vm *vm, EEL_types type,
+static EEL_xno no_constructor(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	return EEL_XNOCONSTRUCTOR;
@@ -54,20 +54,19 @@ EEL_xno eel_cclass_no_method(EEL_object *object,
 static EEL_xno eel_cclass_default_eq(EEL_object *object,
 		EEL_value *op1, EEL_value *op2)
 {
-	if((object->type == EEL_TYPE(op1)) &&
-			(object == eel_v2o(op1)))
+	if((object->classid == EEL_CLASS(op1)) && (object == eel_v2o(op1)))
 		eel_b2v(op2, 1);
 	else
 		eel_b2v(op2, 0);
 	return 0;
 }
 
-static EEL_xno c_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno c_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	int mm;
 	EEL_classdef *cd;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_classdef), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_classdef), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	eo->refcount = 1;
@@ -101,7 +100,7 @@ static EEL_xno c_destruct(EEL_object *eo)
 	if(es->classes)
 		es->classes[cd->classid] = NULL;
 
-	if((EEL_classes)cd->classid == EEL_CCLASS)
+	if(cd->classid == EEL_CCLASS)
 	{
 		/*
 		 * CCLASS is the last one to be destroyed when

@@ -35,11 +35,11 @@
 	Function Class
 ----------------------------------------------------------*/
 
-static EEL_xno f_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno f_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EEL_function *f;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_function), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_function), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	f = o2EEL_function(eo);
@@ -74,8 +74,9 @@ static EEL_xno f_destruct(EEL_object *eo)
 
 static EEL_xno f_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
-	EEL_function_cd *cd = (EEL_function_cd *)eel_get_classdata(eo->vm, eo->type);
-	if(!EEL_IS_OBJREF(op1->type))
+	EEL_function_cd *cd = (EEL_function_cd *)eel_get_classdata(eo->vm,
+			eo->classid);
+	if(!EEL_IS_OBJREF(op1->classid))
 		return EEL_XWRONGINDEX;
 	if(op1->objref.v == cd->i_name)
 	{
@@ -203,12 +204,12 @@ void eel_function_detach(EEL_function *f)
 	for(i = 0; i < f->e.nconstants; ++i)
 	{
 		EEL_object *o;
-		if(!EEL_IS_OBJREF(f->e.constants[i].type))
+		if(!EEL_IS_OBJREF(f->e.constants[i].classid))
 			continue;
 		o = f->e.constants[i].objref.v;
-		if(((EEL_classes)o->type == EEL_CFUNCTION) &&
+		if((o->classid == EEL_CFUNCTION) &&
 				(o2EEL_function(o)->common.module ==
 						f->common.module))
-			f->e.constants[i].type = EEL_TNIL;
+			f->e.constants[i].classid = EEL_CNIL;
 	}
 }

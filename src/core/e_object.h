@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_object.h - EEL Object (Internal)
 ---------------------------------------------------------------------------
- * Copyright 2004-2007, 2009-2012, 2014 David Olofson
+ * Copyright 2004-2007, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -24,8 +24,8 @@
 /*
    VM coding and weakrefs
    ----------------------
-	Weakrefs are implemented as a special value type EEL_TWEAKREF.
-	It is similar to EEL_TOBJREF, but adds an index field in the
+	Weakrefs are implemented as a special value type EEL_CWEAKREF.
+	It is similar to EEL_COBJREF, but adds an index field in the
 	value struct, and an array of back-pointers in the target
 	object. (The index field is a performance hack, and holds the
 	index of the particular back-pointer to the value at hand.)
@@ -123,14 +123,14 @@ static inline void eel_weakref_attach(EEL_value *v)
 	EEL_vm *vm = v->objref.v->vm;
 	int nrefs, size;
 #ifdef EEL_VM_CHECKING
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		eel_vmdump(vm, "INTERNAL ERROR: Tried to attach an objref "
 				"value! (Needs weakref.)\n");
 		eel_perror(vm, 1);
 		return;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 		if(EEL_IN_HEAP(vm, v))
 		{
 			VMP->weakrefs++;
@@ -184,13 +184,13 @@ static inline void eel__weakref_detach(EEL_value *v)
 	EEL_weakrefs *wr = v->objref.v->weakrefs;
 	DBG7W(fprintf(stderr, "eel__weakref_detach(%p)\n", v);)
 #ifdef EEL_VM_CHECKING
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		fprintf(stderr, "INTERNAL ERROR: Tried to detach non-weakref "
 				"value!\n");
 		return;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 		break;
 	  default:
 		fprintf(stderr, "INTERNAL ERROR: Tried to eel_weak_detach() "
@@ -239,7 +239,7 @@ static inline void eel__weakref_detach(EEL_value *v)
 	}
 
 	// Clear the ref
-	v->type = EEL_TNIL;
+	v->classid = EEL_CNIL;
 }
 
 
@@ -248,7 +248,7 @@ static inline void eel_weakref_relocate(EEL_value *to)
 	EEL_weakrefs *wr;
 #ifdef EEL_VM_CHECKING
 	EEL_vm *vm;
-	if(to->type != EEL_TWEAKREF)
+	if(to->classid != EEL_CWEAKREF)
 	{
 		fprintf(stderr, "INTERNAL ERROR: Tried to relocate non-weakref "
 				"value!\n");
@@ -298,7 +298,7 @@ static inline void eel_kill_weakrefs(EEL_object *o)
 	}
 #endif
 	for(i = 0; i < wr->nrefs; i++)
-		wr->refs[i]->type = EEL_TNIL;
+		wr->refs[i]->classid = EEL_CNIL;
 	o->vm->free(o->vm, wr);
 	o->weakrefs = NULL;
 	DBG7W(fprintf(stderr, "    Done\n");)
@@ -338,7 +338,7 @@ static inline void eel_o__dispose(EEL_object *object)
 #else /* EEL_HYPER_AGGRESSIVE_MM */
 #  ifdef EEL_CACHE_STRINGS
 	/* The string class has it's own "garbage bin"... */
-	if(EEL_CSTRING == object->type)
+	if(EEL_CSTRING == object->classid)
 		eel_o__destruct(object);
 	else
 #  else /* EEL_CACHE_STRINGS */
@@ -451,12 +451,12 @@ static inline void eel_o_disown_nz(EEL_object *o)
  */
 static inline void eel_v_disown_nz(EEL_value *value)
 {
-	if(value->type == EEL_TOBJREF)
+	if(value->classid == EEL_COBJREF)
 		eel_o_disown_nz(value->objref.v);
-	else if(value->type == EEL_TWEAKREF)
+	else if(value->classid == EEL_CWEAKREF)
 		eel__weakref_detach(value);
 #ifdef EEL_VM_CHECKING
-	else if((EEL_nontypes)value->type == EEL_TILLEGAL)
+	else if(value->classid == EEL_CILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_disown_nz(): ILLEGAL "
 				"value! (Source: %d)\n", value->integer.v);
@@ -504,7 +504,7 @@ static inline void eel_o_limbo(EEL_object *o)
  */
 static inline void eel_v_limbo(EEL_value *v)
 {
-	if(EEL_IS_OBJREF(v->type))
+	if(EEL_IS_OBJREF(v->classid))
 	{
 		EEL_vm *vm = v->objref.v->vm;
 		EEL_callframe *cf = (EEL_callframe *)
@@ -523,7 +523,7 @@ static inline void eel_v_limbo(EEL_value *v)
 		eel_limbo_push(&cf->limbo, v->objref.v);
 	}
 #ifdef EEL_VM_CHECKING
-	if((EEL_nontypes)v->type == EEL_TILLEGAL)
+	if(v->classid == EEL_CILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_limbo(): ILLEGAL value!"
 				" (Source: %d)\n", v->integer.v);
@@ -550,7 +550,7 @@ static inline void eel_v_limbo(EEL_value *v)
  */
 static inline void eel_v_receive(EEL_value *v)
 {
-	if(EEL_IS_OBJREF(v->type))
+	if(EEL_IS_OBJREF(v->classid))
 	{
 		EEL_object *o = v->objref.v;
 #if DBGK4(1) + DBGM(1) + 0 >= 1
@@ -589,7 +589,7 @@ static inline void eel_v_receive(EEL_value *v)
 		DBGK4(eel_sfree(es, s);)
 	}
 #ifdef EEL_VM_CHECKING
-	if((EEL_nontypes)v->type == EEL_TILLEGAL)
+	if(v->classid == EEL_CILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_receive(): ILLEGAL value! (Source: %d)\n", v->integer.v);
 		DBGZ2(abort();)
@@ -610,14 +610,14 @@ static inline void eel_v_receive(EEL_value *v)
  */
 static inline void eel_v_grab(EEL_value *v)
 {
-	if(EEL_IS_OBJREF(v->type))
+	if(EEL_IS_OBJREF(v->classid))
 		if(!eel_in_limbo(v->objref.v))
 		{
 			eel_o_own(v->objref.v);
 			eel_o_limbo(v->objref.v);
 		}
 #ifdef EEL_VM_CHECKING
-	if((EEL_nontypes)v->type == EEL_TILLEGAL)
+	if(v->classid == EEL_CILLEGAL)
 	{
 		fprintf(stderr, "INTERNAL ERROR: eel_v_grab(): ILLEGAL value! "
 				"(Source: %d)\n", v->integer.v);
@@ -641,24 +641,24 @@ static inline void eel_v_grab(EEL_value *v)
 static inline void eel_v_clone(EEL_value *value, const EEL_value *from)
 {
 #ifdef EEL_CLEAN_COPY
-	value->type = from->type;
-	switch(from->type)
+	value->classid = from->classid;
+	switch(from->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		value->real.v = from->real.v;
 		return;
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
 		value->integer.v = from->integer.v;
 		return;
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		value->objref.v = from->objref.v;
 		eel_o_own(value->objref.v);
 		return;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 		DBG7W(fprintf(stderr, "eel_v_clone(): WEAKREF %p -> %p!\n",
 				from, value);)
 		value->objref.v = from->objref.v;
@@ -670,14 +670,14 @@ static inline void eel_v_clone(EEL_value *value, const EEL_value *from)
 		return;
 	}
 	fprintf(stderr, "INTERNAL ERROR: Tried to clone "
-			"a value of illegal type %d!\n",
-			value->type);
+			"a value of illegal class %d!\n",
+			value->classid);
 	DBGZ2(abort();)
 #else
 	*value = *from;
-	if(value->type == EEL_TOBJREF)
+	if(value->classid == EEL_COBJREF)
 		eel_o_own(value->objref.v);
-	else if(value->type == EEL_TWEAKREF)
+	else if(value->classid == EEL_CWEAKREF)
 		eel_weakref_attach(value);
 #endif
 }
@@ -690,24 +690,24 @@ static inline void eel_v_clone(EEL_value *value, const EEL_value *from)
 static inline void eel_v_copy(EEL_value *value, const EEL_value *from)
 {
 #ifdef EEL_CLEAN_COPY
-	value->type = from->type;
-	switch(from->type)
+	value->classid = from->classid;
+	switch(from->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		value->real.v = from->real.v;
 		return;
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
 		value->integer.v = from->integer.v;
 		return;
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		value->objref.v = from->objref.v;
 		eel_o_own(value->objref.v);
 		return;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 		DBG7W(fprintf(stderr, "eel_v_copy(): WEAKREF %p -> %p!\n",
 				from, value);)
 		value->objref.v = from->objref.v;
@@ -724,27 +724,27 @@ static inline void eel_v_copy(EEL_value *value, const EEL_value *from)
 		else
 		{
 			DBG7W(fprintf(stderr, "     Converted to OBJREF!\n");)
-			value->type = EEL_TOBJREF;
+			value->classid = EEL_COBJREF;
 			eel_o_own(value->objref.v);
 		}
 		DBG7W(fprintf(stderr, "eel_v_copy(): Done!\n");)
 		return;
 	}
 	fprintf(stderr, "INTERNAL ERROR: Tried to copy "
-			"a value of illegal type %d!\n",
-			value->type);
+			"a value of illegal class %d!\n",
+			value->classid);
 	DBGZ2(abort();)
 #else
 	*value = *from;
-	if(value->type == EEL_TOBJREF)
+	if(value->classid == EEL_COBJREF)
 		eel_o_own(value->objref.v);
-	else if(value->type == EEL_TWEAKREF)
+	else if(value->classid == EEL_CWEAKREF)
 	{
 		if(from->objref.index == EEL_WEAKREF_UNWIRED)
 			eel_weakref_attach(value);
 		else
 		{
-			value->type = EEL_TOBJREF;
+			value->classid = EEL_COBJREF;
 			eel_o_own(value->objref.v);
 		}
 	}
@@ -760,23 +760,23 @@ static inline void eel_v_copy(EEL_value *value, const EEL_value *from)
 static inline void eel_v_move(EEL_value *value, const EEL_value *from)
 {
 #ifdef EEL_CLEAN_COPY
-	value->type = from->type;
-	switch(from->type)
+	value->classid = from->classid;
+	switch(from->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		value->real.v = from->real.v;
 		return;
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
 		value->integer.v = from->integer.v;
 		return;
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		value->objref.v = from->objref.v;
 		return;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 		DBG7W(fprintf(stderr, "eel_v_move(): WEAKREF!\n");)
 		value->objref.v = from->objref.v;
 		value->objref.index = from->objref.index;
@@ -784,12 +784,12 @@ static inline void eel_v_move(EEL_value *value, const EEL_value *from)
 		return;
 	}
 	fprintf(stderr, "INTERNAL ERROR: Tried to move "
-			"a value of illegal type %d!\n",
-			value->type);
+			"a value of illegal class %d!\n",
+			value->classid);
 	DBGZ2(abort();)
 #else
 	*value = *from;
-	if(value->type == EEL_TWEAKREF)
+	if(value->classid == EEL_CWEAKREF)
 		eel_weakref_relocate(value);
 #endif
 }
@@ -804,36 +804,36 @@ static inline void eel_v_move(EEL_value *value, const EEL_value *from)
 static inline void eel_v_qcopy(EEL_value *value, const EEL_value *from)
 {
 #ifdef EEL_CLEAN_COPY
-	value->type = from->type;
-	switch(from->type)
+	value->classid = from->classid;
+	switch(from->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		value->real.v = from->real.v;
 		return;
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
 		value->integer.v = from->integer.v;
 		return;
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		value->objref.v = from->objref.v;
 		return;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 		DBG7W(fprintf(stderr, "eel_v_qcopy(): WEAKREF!\n");)
 		value->objref.v = from->objref.v;
-		value->type = EEL_TOBJREF;
+		value->classid = EEL_COBJREF;
 		return;
 	}
 	fprintf(stderr, "INTERNAL ERROR: Tried to qcopy "
-			"a value of illegal type %d!\n",
-			value->type);
+			"a value of illegal class %d!\n",
+			value->classid);
 	DBGZ2(abort();)
 #else
 	*value = *from;
-	if(value->type == EEL_TWEAKREF)
-		value->type = EEL_TOBJREF;
+	if(value->classid == EEL_CWEAKREF)
+		value->classid = EEL_COBJREF;
 #endif
 }
 
@@ -866,14 +866,14 @@ static inline EEL_xno eel_get_delete_range(int *i0, int *i1,
 	if(op1)
 	{
 		/* Get start index */
-		switch(op1->type)
+		switch(op1->classid)
 		{
-		  case EEL_TBOOLEAN:
-		  case EEL_TINTEGER:
-		  case EEL_TTYPEID:
+		  case EEL_CBOOLEAN:
+		  case EEL_CINTEGER:
+		  case EEL_CCLASSID:
 			*i0 = op1->integer.v;
 			break;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			*i0 = floor(op1->real.v);
 			break;
 		  default:
@@ -881,14 +881,14 @@ static inline EEL_xno eel_get_delete_range(int *i0, int *i1,
 		}
 		if(op2)
 			/* Get item count */
-			switch(op2->type)
+			switch(op2->classid)
 			{
-			  case EEL_TBOOLEAN:
-			  case EEL_TINTEGER:
-			  case EEL_TTYPEID:
+			  case EEL_CBOOLEAN:
+			  case EEL_CINTEGER:
+			  case EEL_CCLASSID:
 				*i1 = *i0 + op2->integer.v - 1;
 				break;
-			  case EEL_TREAL:
+			  case EEL_CREAL:
 				*i1 = *i0 + floor(op2->real.v) - 1;
 				break;
 			  default:

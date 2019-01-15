@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_lexer.c - EEL lexer
 ---------------------------------------------------------------------------
- * Copyright 2002-2006, 2010, 2012, 2014 David Olofson
+ * Copyright 2002-2006, 2010, 2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -785,7 +785,7 @@ void eel_lexer_cleanup(EEL_state *es)
 int eel_lexer_start(EEL_state *es, EEL_object *mo)
 {
 	EEL_module *m;
-	if((EEL_classes)mo->type != EEL_CMODULE)
+	if(mo->classid != EEL_CMODULE)
 		eel_ierror(es, "Object is not a module!");
 	m = o2EEL_module(mo);
 

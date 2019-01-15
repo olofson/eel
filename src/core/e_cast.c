@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_cast.c - EEL Typecasting Utilities
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010, 2012 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -30,14 +30,14 @@
 
 
 static EEL_xno cast_not_implemented(EEL_vm *vm,
-		const EEL_value *op1, EEL_value *op2, EEL_types t)
+		const EEL_value *op1, EEL_value *op2, EEL_classes cid)
 {
 	return EEL_XNOTIMPLEMENTED;
 }
 
 
 static EEL_xno generic_indexable_cast(EEL_vm *vm,
-		const EEL_value *op1, EEL_value *op2, EEL_types t)
+		const EEL_value *op1, EEL_value *op2, EEL_classes cid)
 {
 	EEL_xno x;
 	EEL_value iv;
@@ -47,7 +47,7 @@ static EEL_xno generic_indexable_cast(EEL_vm *vm,
 	x = eel_o__metamethod(o1, EEL_MM_LENGTH, NULL, &iv);
 	if(x)
 		return x;
-	x = eel_o__construct(vm, t, NULL, 0, op2);
+	x = eel_o__construct(vm, cid, NULL, 0, op2);
 	if(x)
 		return x;
 	o2 = op2->objref.v;
@@ -103,10 +103,10 @@ int eel_realloc_cast_matrix(EEL_state *es, int newdim)
 }
 
 
-static inline int has_mm(EEL_state *es, EEL_types t, EEL_mmindex mm)
+static inline int has_mm(EEL_state *es, EEL_classes cid, EEL_mmindex mm)
 {
 	EEL_classdef *cd;
-	EEL_object *co = es->classes[t];
+	EEL_object *co = es->classes[cid];
 	if(!co)
 		return 0;
 	cd = o2EEL_classdef(co);
@@ -119,17 +119,17 @@ static inline int has_mm(EEL_state *es, EEL_types t, EEL_mmindex mm)
 
 
 static EEL_xno set_multiple_casts(EEL_vm *vm,
-		EEL_types from, EEL_types to, EEL_cast_cb cb)
+		EEL_classes from, EEL_classes to, EEL_cast_cb cb)
 {
 	EEL_state *es = VMP->state;
 	int x, y;
 	for(y = 0; y < es->castersdim; ++y)
 	{
-		switch((EEL_nontypes)from)
+		switch(from)
 		{
-		  case EEL_TANYTYPE:
+		  case EEL_CANY:
 			break;
-		  case EEL_TANYINDEXABLE:
+		  case EEL_CINDEXABLE:
 			if(!has_mm(es, y, EEL_MM_GETINDEX))
 				continue;
 			break;
@@ -138,11 +138,11 @@ static EEL_xno set_multiple_casts(EEL_vm *vm,
 		}
 		for(x = 0; x < es->castersdim; ++x)
 		{
-			switch((EEL_nontypes)to)
+			switch(to)
 			{
-			  case EEL_TANYTYPE:
+			  case EEL_CANY:
 				break;
-			  case EEL_TANYINDEXABLE:
+			  case EEL_CINDEXABLE:
 				if(!has_mm(es, x, EEL_MM_SETINDEX))
 					continue;
 				break;
@@ -159,7 +159,8 @@ static EEL_xno set_multiple_casts(EEL_vm *vm,
 }
 
 
-EEL_xno eel_set_casts(EEL_vm *vm, int from, int to, EEL_cast_cb cb)
+EEL_xno eel_set_casts(EEL_vm *vm, EEL_classes from, EEL_classes to,
+		EEL_cast_cb cb)
 {
 	EEL_state *es = VMP->state;
 	if((from < 0) || (to < 0))
@@ -180,7 +181,7 @@ EEL_xno eel_cast_open(EEL_state *es)
 void eel_cast_init(EEL_state *es)
 {
 	EEL_vm *vm = es->vm;
-	eel_set_casts(vm, EEL_TANYINDEXABLE, EEL_TANYINDEXABLE,
+	eel_set_casts(vm, EEL_CINDEXABLE, EEL_CINDEXABLE,
 			generic_indexable_cast);
 }
 

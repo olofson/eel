@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_xno.h - EEL Exception/Error codes (API)
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009, 2013-2014, 2016 David Olofson
+ * Copyright 2005-2006, 2009, 2013-2014, 2016, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -93,7 +93,7 @@ extern "C" {
   EEL_DEFEX(XNEEDCALLABLE,	"Argument must be callable object")\
   EEL_DEFEX(XNEEDEVEN,		"Needs even number of items")\
   EEL_DEFEX(XWRONGTYPE,		"Wrong type")\
-  EEL_DEFEX(XBADTYPE,		"Illegal type ID")\
+  EEL_DEFEX(XBADTYPE,		"Illegal value type ID")\
   EEL_DEFEX(XBADCLASS,		"Illegal class type ID")\
   EEL_DEFEX(XLOWINDEX,		"Index out of range; too low")\
   EEL_DEFEX(XHIGHINDEX,		"Index out of range; too high")\

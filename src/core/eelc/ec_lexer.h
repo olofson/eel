@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_lexer.h - EEL engine lexer
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009-2011, 2014 David Olofson
+ * Copyright 2002, 2004-2006, 2009-2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -178,7 +178,7 @@ typedef enum
 	ESSX_REAL,
 	ESSX_INTEGER,
 	ESSX_BOOLEAN,
-	ESSX_TYPEID,
+	ESSX_CLASSID,
 
 	/* Classes */
 	ESSX_STRING,

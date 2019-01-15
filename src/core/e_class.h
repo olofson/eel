@@ -36,8 +36,8 @@ typedef struct
 	EEL_dtor_cb		destruct;
 	EEL_rector_cb		reconstruct;
 	EEL_mm_cb		mmethods[EEL_MM__COUNT];
-	EEL_types		classid;
-	EEL_types		ancestor;
+	EEL_classes		classid;
+	EEL_classes		ancestor;
 	int			registered;
 } EEL_classdef;
 EEL_MAKE_CAST(EEL_classdef)

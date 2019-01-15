@@ -342,9 +342,9 @@ static void vm_msg(EEL_vm *vm, EEL_emtype t,
 		eel_msg(es, -1, "module \"%s\", file \"%s\":\n",
 				eel_module_modname(f->common.module),
 				eel_module_filename(f->common.module));
-		switch((EEL_classes)EEL_TYPE(&VMP->exception))
+		switch(EEL_CLASS(&VMP->exception))
 		{
-		  case EEL_TINTEGER:
+		  case EEL_CINTEGER:
 			eel_msg(es, -1, "Unhandled exception '%s'\n",
 					eel_x_name(vm, VMP->exception.integer.v));
 			break;
@@ -420,7 +420,7 @@ static void vm_msg(EEL_vm *vm, EEL_emtype t,
 		else
 			eel_msg(es, t, "In some place not a function:\n");
 		eel_msg(es, -1, "Unhandled exception '%s'\n",
-				(EEL_TINTEGER == VMP->exception.type) ?
+				(VMP->exception.classid == EEL_CINTEGER) ?
 				eel_x_name(vm, VMP->exception.integer.v) :
 				"<object>");
 		eel_vmsg(es, -1, format, args);

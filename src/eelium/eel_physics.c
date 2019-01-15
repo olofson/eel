@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_physics.c - EEL 2D Physics
 ---------------------------------------------------------------------------
- * Copyright 2011-2012, 2014 David Olofson
+ * Copyright 2011-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -104,14 +104,14 @@ FIXME: Might be something to look into...
 	space class
 ----------------------------------------------------------*/
 
-static EEL_xno space_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno space_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EPH_space *space;
 	EPH_zmap *zmap;
 	EEL_value v;
 	EEL_xno xno;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EPH_space), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EPH_space), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	space = o2EPH_space(eo);
@@ -275,7 +275,7 @@ static EEL_xno eph_initz(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_space *space;
 	EPH_zmap *zmap;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	zmap = &space->zmap;
@@ -298,7 +298,7 @@ static EEL_xno eph_setz(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_space *space;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	return eph_setz_raw(&space->zmap, eel_v2l(args + 1), eel_v2l(args + 2),
@@ -313,7 +313,7 @@ static EEL_xno eph_getz(EEL_vm *vm)
 	EPH_zmap *zmap;
 	float x = eel_v2d(args + 1);
 	float y = eel_v2d(args + 2);
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	zmap = &space->zmap;
@@ -335,7 +335,7 @@ static EEL_xno eph_testlinez(EEL_vm *vm)
 	EPH_space *space;
 	EPH_zmap *zmap;
 	float z, xa, ya, xb, yb;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	zmap = &space->zmap;
@@ -528,7 +528,7 @@ static inline void om_semiextra(EPH_body *body, float weight)
 static EEL_xno eph_advance(EEL_vm *vm)
 {
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) == eph_md.body_cid)
+	if(EEL_CLASS(arg) == eph_md.body_cid)
 	{
 		EPH_body *body = o2EPH_body(arg->objref.v);
 		if(!body->space)
@@ -536,7 +536,7 @@ static EEL_xno eph_advance(EEL_vm *vm)
 		advance(body);
 		return 0;
 	}
-	else if(EEL_TYPE(arg) == eph_md.space_cid)
+	else if(EEL_CLASS(arg) == eph_md.space_cid)
 	{
 		EPH_space *space = o2EPH_space(arg->objref.v);
 		EPH_body *body;
@@ -583,7 +583,7 @@ static EEL_xno eph_tween(EEL_vm *vm)
 	else if(w > 1.0f)
 		w = 1.0f;
 #if 0
-	if(EEL_TYPE(args) == eph_md.body_cid)
+	if(EEL_CLASS(args) == eph_md.body_cid)
 	{
 		EPH_body *body = o2EPH_body(args->objref.v);
 		tween(body, w);
@@ -591,7 +591,7 @@ static EEL_xno eph_tween(EEL_vm *vm)
 	}
 	else
 #endif
-	if(EEL_TYPE(args) == eph_md.space_cid)
+	if(EEL_CLASS(args) == eph_md.space_cid)
 	{
 		EPH_space *space = o2EPH_space(args->objref.v);
 		EPH_body *body;
@@ -627,7 +627,7 @@ static EEL_xno eph_frame(EEL_vm *vm)
 	EPH_space *space;
 	EPH_body *b;
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	for(b = space->first; b; b = b->next)
@@ -762,7 +762,7 @@ static EEL_xno eph_collidez(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	unsigned mask = eel_v2l(args + 1);
 	EPH_zmap *m;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	m = &space->zmap;
@@ -913,7 +913,7 @@ static EEL_xno eph_collide(EEL_vm *vm)
 	EPH_space *space;
 	EPH_body *b1, *b2;
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	for(b1 = space->first; b1; b1 = b1->next)
@@ -935,7 +935,7 @@ static EEL_xno eph_rendershadows(EEL_vm *vm)
 	EPH_body *b;
 	EEL_value *args = vm->heap + vm->argv;
 	unsigned mask = eel_v2l(args + 1);
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	xmin = space->vx + space->vxmin - EPH_MAXSHADOWDIST;
@@ -969,7 +969,7 @@ static EEL_xno eph_render(EEL_vm *vm)
 	EPH_body *b;
 	EEL_value *args = vm->heap + vm->argv;
 	unsigned mask = eel_v2l(args + 1);
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	xmin = space->vx + space->vxmin;
@@ -999,7 +999,7 @@ static EEL_xno eph_render(EEL_vm *vm)
 static EEL_xno eph_kill(EEL_vm *vm)
 {
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) != eph_md.body_cid)
+	if(EEL_CLASS(arg) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	return kill_body(o2EPH_body(arg->objref.v), 1);
 }
@@ -1011,7 +1011,7 @@ static EEL_xno eph_killall(EEL_vm *vm)
 	EPH_space *space;
 	EPH_body *b;
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) != eph_md.space_cid)
+	if(EEL_CLASS(arg) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(arg->objref.v);
 	/*
@@ -1034,7 +1034,7 @@ static EEL_xno eph_clean(EEL_vm *vm)
 	EPH_space *space;
 	EPH_body *b;
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) != eph_md.space_cid)
+	if(EEL_CLASS(arg) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(arg->objref.v);
 	if(space->clean_constraints)
@@ -1077,7 +1077,7 @@ static EEL_xno eph_clean(EEL_vm *vm)
 
 
 // Init: space, x, y, r, mass, inertia, group
-static EEL_xno body_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno body_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EPH_space *space;
@@ -1090,11 +1090,11 @@ static EEL_xno body_construct(EEL_vm *vm, EEL_types type,
 	EEL_object *eo;
 	if(initc < 1)
 		return EEL_XARGUMENTS;
-	if(!(eo = eel_o_alloc(vm, sizeof(EPH_body), type)))
+	if(!(eo = eel_o_alloc(vm, sizeof(EPH_body), cid)))
 		return EEL_XMEMORY;
 	body = o2EPH_body(eo);
 	memset(body, 0, sizeof(EPH_body));
-	if(EEL_TYPE(initv) != eph_md.space_cid)
+	if(EEL_CLASS(initv) != eph_md.space_cid)
 	{
 		eel_o_free(eo);
 		return EEL_XWRONGTYPE;
@@ -1273,11 +1273,11 @@ static EEL_xno body_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	ind = v.integer.v & 0xff;
 	if((v.integer.v & 0xff00) == EPH_B_METHODS)
 	{
-		if(op2->type == EEL_TNIL)
+		if(op2->classid == EEL_CNIL)
 			body->methods[ind] = NULL;
 		else
 		{
-			if(EEL_TYPE(op2) != (EEL_types)EEL_CFUNCTION)
+			if(EEL_CLASS(op2) != EEL_CFUNCTION)
 				return EEL_XNEEDCALLABLE;
 			body->methods[ind] = op2->objref.v;
 			eel_own(body->methods[ind]);
@@ -1347,7 +1347,7 @@ static EEL_xno eph_force(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_f a = eel_v2d(args + 1);
 	EPH_f f = eel_v2d(args + 2);
-	if(EEL_TYPE(args) != eph_md.body_cid)
+	if(EEL_CLASS(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	eph_Force(o2EPH_body(args->objref.v), a, f);
 	return 0;
@@ -1360,7 +1360,7 @@ static EEL_xno eph_forceat(EEL_vm *vm)
 	EPH_f y = eel_v2d(args + 2);
 	EPH_f a = eel_v2d(args + 3);
 	EPH_f f = eel_v2d(args + 4);
-	if(EEL_TYPE(args) != eph_md.body_cid)
+	if(EEL_CLASS(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	eph_ForceAt(o2EPH_body(args->objref.v), x, y, a, f);
 	return 0;
@@ -1373,7 +1373,7 @@ static EEL_xno eph_forceatv(EEL_vm *vm)
 	EPH_f y = eel_v2d(args + 2);
 	EPH_f fx = eel_v2d(args + 3);
 	EPH_f fy = eel_v2d(args + 4);
-	if(EEL_TYPE(args) != eph_md.body_cid)
+	if(EEL_CLASS(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	eph_ForceAtV(o2EPH_body(args->objref.v), x, y, fx, fy);
 	return 0;
@@ -1384,7 +1384,7 @@ static EEL_xno eph_forcerel(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_f a = eel_v2d(args + 1);
 	EPH_f f = eel_v2d(args + 2);
-	if(EEL_TYPE(args) != eph_md.body_cid)
+	if(EEL_CLASS(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	eph_ForceRel(o2EPH_body(args->objref.v), a, f);
 	return 0;
@@ -1397,7 +1397,7 @@ static EEL_xno eph_forceatrel(EEL_vm *vm)
 	EPH_f y = eel_v2d(args + 2);
 	EPH_f a = eel_v2d(args + 3);
 	EPH_f f = eel_v2d(args + 4);
-	if(EEL_TYPE(args) != eph_md.body_cid)
+	if(EEL_CLASS(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	eph_ForceAtRel(o2EPH_body(args->objref.v), x, y, a, f);
 	return 0;
@@ -1409,7 +1409,7 @@ static EEL_xno eph_velocity(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_body *body;
 	EPH_f a, v;
-	if(EEL_TYPE(args) != eph_md.body_cid)
+	if(EEL_CLASS(args) != eph_md.body_cid)
 		return EEL_XWRONGTYPE;
 	body = o2EPH_body(args->objref.v);
 	a = eel_v2d(args + 1);
@@ -1432,7 +1432,7 @@ static EEL_xno eph_velocity(EEL_vm *vm)
 //	DAMPEDSPRING:	a, ax, ay,	b, bx, by,	d0, k, k2, kd
 // TODO:	If 'b' is nil, the 'b end' is attached to the world at (bx, by).
 //
-static EEL_xno constraint_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno constraint_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EPH_space *space;
@@ -1440,21 +1440,21 @@ static EEL_xno constraint_construct(EEL_vm *vm, EEL_types type,
 	EEL_object *eo;
 	if(initc != 13)
 		return EEL_XARGUMENTS;
-	if(EEL_TYPE(initv) != eph_md.space_cid)
+	if(EEL_CLASS(initv) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(initv->objref.v);
-	eo = eel_o_alloc(vm, sizeof(EPH_constraint), type);
+	eo = eel_o_alloc(vm, sizeof(EPH_constraint), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	c = o2EPH_constraint(eo);
 	c->kind = /*(EPH_constraints)*/eel_v2l(initv + 1);
-	if(EEL_TYPE(initv + 3) != eph_md.body_cid)
+	if(EEL_CLASS(initv + 3) != eph_md.body_cid)
 	{
 		eel_o_free(eo);
 		return EEL_XWRONGTYPE;
 	}
 	c->a = o2EPH_body(eel_v2o(initv + 3));
-	if(EEL_TYPE(initv + 6) != eph_md.body_cid)
+	if(EEL_CLASS(initv + 6) != eph_md.body_cid)
 	{
 		eel_o_free(eo);
 		return EEL_XWRONGTYPE;
@@ -1560,11 +1560,11 @@ static EEL_xno constraint_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op
 	switch(v.integer.v)
 	{
 	  case EPH_CBROKEN:
-		if(op2->type == EEL_TNIL)
+		if(op2->classid == EEL_CNIL)
 			c->broken_cb = NULL;
 		else
 		{
-			if(EEL_TYPE(op2) != (EEL_types)EEL_CFUNCTION)
+			if(EEL_CLASS(op2) != EEL_CFUNCTION)
 				return EEL_XNEEDCALLABLE;
 			c->broken_cb = op2->objref.v;
 			eel_own(c->broken_cb);
@@ -1650,7 +1650,7 @@ static EEL_xno eph_applyconstraints(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_space *space;
 	EPH_constraint *c;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(eel_v2o(args));
 	c = space->firstc;
@@ -1688,7 +1688,7 @@ static EEL_xno eph_firstconstraint(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_space *space;
 	EPH_constraint *c;
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(eel_v2o(args));
 	for(c = space->firstc; c; c = c->next)
@@ -1707,7 +1707,7 @@ static EEL_xno eph_nextconstraint(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EPH_constraint *c;
-	if(EEL_TYPE(args) != eph_md.constraint_cid)
+	if(EEL_CLASS(args) != eph_md.constraint_cid)
 		return EEL_XWRONGTYPE;
 	for(c = o2EPH_constraint(eel_v2o(args))->next; c; c = c->next)
 	{
@@ -1773,13 +1773,13 @@ static EEL_xno eph_cross(EEL_vm *vm)
 
 static inline EEL_xno grab_xy(EEL_value *arg, EPH_f *cx, EPH_f *cy)
 {
-	if(EEL_TYPE(arg) == eph_md.body_cid)
+	if(EEL_CLASS(arg) == eph_md.body_cid)
 	{
 		EPH_body *b = o2EPH_body(arg->objref.v);
 		*cx = b->c[EPH_X];
 		*cy = b->c[EPH_Y];
 	}
-	else if((EEL_classes)EEL_TYPE(arg) == EEL_CVECTOR_D)
+	else if(EEL_CLASS(arg) == EEL_CVECTOR_D)
 	{
 		EEL_vector *v = o2EEL_vector(arg->objref.v);
 		if(v->length < 2)
@@ -1808,14 +1808,14 @@ static inline EEL_xno grab_xy(EEL_value *arg, EPH_f *cx, EPH_f *cy)
 
 static inline EEL_xno grab_xya(EEL_value *arg, EPH_f *cx, EPH_f *cy, EPH_f *ca)
 {
-	if(EEL_TYPE(arg) == eph_md.body_cid)
+	if(EEL_CLASS(arg) == eph_md.body_cid)
 	{
 		EPH_body *b = o2EPH_body(arg->objref.v);
 		*cx = b->c[EPH_X];
 		*cy = b->c[EPH_Y];
 		*ca = b->c[EPH_A];
 	}
-	else if((EEL_classes)EEL_TYPE(arg) == EEL_CVECTOR_D)
+	else if(EEL_CLASS(arg) == EEL_CVECTOR_D)
 	{
 		EEL_vector *v = o2EEL_vector(arg->objref.v);
 		if(v->length < 3)
@@ -1973,9 +1973,9 @@ static EEL_xno eph_findnext(EEL_vm *vm)
 	EPH_body *b;
 	unsigned mask = -1;
 	unsigned testflags = -1;
-	if(EEL_TYPE(args) == eph_md.body_cid)
+	if(EEL_CLASS(args) == eph_md.body_cid)
 		b = o2EPH_body(args->objref.v)->next;
-	else if(EEL_TYPE(args) == eph_md.space_cid)
+	else if(EEL_CLASS(args) == eph_md.space_cid)
 		b = o2EPH_space(args->objref.v)->first;
 	else
 		return EEL_XWRONGTYPE;
@@ -1999,7 +1999,7 @@ static EEL_xno eph_findat(EEL_vm *vm)
 	unsigned mask = -1;
 	EPH_f x = eel_v2d(args + 1);
 	EPH_f y = eel_v2d(args + 2);
-	if(EEL_TYPE(args) != eph_md.space_cid)
+	if(EEL_CLASS(args) != eph_md.space_cid)
 		return EEL_XWRONGTYPE;
 	space = o2EPH_space(args->objref.v);
 	if(vm->argc >= 4)
@@ -2078,7 +2078,7 @@ static EEL_xno eph_rand(EEL_vm *vm)
 	else
 	{
 		EPH_space *space;
-		if(EEL_TYPE(args) != eph_md.space_cid)
+		if(EEL_CLASS(args) != eph_md.space_cid)
 			return EEL_XWRONGTYPE;
 		space = o2EPH_space(eel_v2o(args));
 		r = eph_Randomf(&space->rngstate, eel_v2d(args + 1));
@@ -2274,21 +2274,21 @@ EEL_xno eph_init(EEL_vm *vm)
 			NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, space_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, space_setindex);
-	eph_md.space_cid = eel_class_typeid(c);
+	eph_md.space_cid = eel_class_cid(c);
 
 	/* Register class 'body' */
 	c = eel_export_class(m, "physbody", -1, body_construct, body_destruct,
 			NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, body_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, body_setindex);
-	eph_md.body_cid = eel_class_typeid(c);
+	eph_md.body_cid = eel_class_cid(c);
 
 	/* Register class 'constraint' */
 	c = eel_export_class(m, "physconstraint", -1, constraint_construct,
 			constraint_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, constraint_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, constraint_setindex);
-	eph_md.constraint_cid = eel_class_typeid(c);
+	eph_md.constraint_cid = eel_class_cid(c);
 
 	/* Low level functions */
 	eel_export_cfunction(m, 0, "Advance", 1, 0, 0, eph_advance);

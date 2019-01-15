@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_object.c - EEL Object
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2010, 2012, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2010, 2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -67,7 +67,7 @@ static inline void eeld_o_unlink(EEL_vm *vm, EEL_object *o)
 #endif
 
 
-EEL_object *eel_o_alloc(EEL_vm *vm, int size, EEL_types type)
+EEL_object *eel_o_alloc(EEL_vm *vm, int size, EEL_classes cid)
 {
 #if DBGM(1) + 0 == 1
 	EEL_object *o = (EEL_object *)eel_malloc(vm,
@@ -80,14 +80,14 @@ EEL_object *eel_o_alloc(EEL_vm *vm, int size, EEL_types type)
 #if DBGM(1) + 0 == 1
 	o = (EEL_object *)(((EEL_object_dbg *)o) + 1);
 #endif
-	o->type = type;
+	o->classid = cid;
 	o->lnext = o->lprev = NULL;
 	o->vm = vm;
 	o->refcount = 1;
 	o->weakrefs = NULL;
 	DBGM(++VMP->owns);
 #if DBGK3(1) + 0 == 1
-	printf("*<%s> (refcount = %d)\n", eel_typename(vm, o->type),
+	printf("*<%s> (refcount = %d)\n", eel_typename(vm, o->classid),
 			o->refcount);
 #endif
 	DBGM(++VMP->created;)
@@ -95,9 +95,9 @@ EEL_object *eel_o_alloc(EEL_vm *vm, int size, EEL_types type)
 	eeld_o_link(vm, o);
 	DBGM2(o2dbg(o)->dname = NULL;)
 #endif
-	if((EEL_classes)o->type != EEL_CCLASS)
+	if(o->classid != EEL_CCLASS)
 	{
-		EEL_object *c = VMP->state->classes[o->type];
+		EEL_object *c = VMP->state->classes[o->classid];
 		eel_o_own(c);	/* o->type is a reference! */
 	}
 	return o;
@@ -157,7 +157,7 @@ void eel_o_free(EEL_object *o)
 	}
 #endif
 	vm = o->vm;
-	eel_o_disown_nz(VMP->state->classes[o->type]);
+	eel_o_disown_nz(VMP->state->classes[o->classid]);
 	o__dealloc(o);
 }
 
@@ -169,16 +169,16 @@ EEL_xno eel_o_metamethod(EEL_object *object,
 }
 
 
-EEL_xno eel_o_construct(EEL_vm *vm, EEL_types type,
+EEL_xno eel_o_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *inits, int initc, EEL_value *result)
 {
 #ifdef EEL_VM_CHECKING
 	EEL_xno x;
 	EEL_object *c;
 	EEL_classdef *cd;
-	if(type >= VMP->state->nclasses)
+	if(cid >= VMP->state->nclasses)
 		return EEL_XBADCLASS;
-	c = VMP->state->classes[type];
+	c = VMP->state->classes[cid];
 	if(!c)
 		return EEL_XBADCLASS;
 	cd = o2EEL_classdef(c);
@@ -190,29 +190,29 @@ EEL_xno eel_o_construct(EEL_vm *vm, EEL_types type,
 				"Someone tried to construct a '%s' "
 				"with %d initializers with a NULL\n"
 				"initializer list pointer!",
-				eel_typename(vm, type), initc);
+				eel_typename(vm, cid), initc);
 		return EEL_XARGUMENTS;
 	}
-	x = (cd->construct)(vm, type, inits, initc, result);
+	x = (cd->construct)(vm, cid, inits, initc, result);
 	if(x)
 	{
-		result->type = EEL_TILLEGAL;
+		result->classid = EEL_CILLEGAL;
 		result->integer.v = 1001;
 		return x;
 	}
-	if((EEL_classes)type == EEL_CVECTOR)	/* Does this all the time... */
+	if(cid == EEL_CVECTOR)	/* Does this all the time... */
 		return 0;
-	if(EEL_TYPE(result) != type)
+	if(EEL_CLASS(result) != cid)
 		eel_msg(VMP->state, EEL_EM_VMWARNING,
 				"'%s' constructor returned an instance "
 				"of type\n"
 				"'%s' instead of the requested type!\n"
 				"This could be intentional - or a bug.",
-				eel_typename(vm, type),
-				eel_typename(vm, EEL_TYPE(result)));
+				eel_typename(vm, cid),
+				eel_typename(vm, EEL_CLASS(result)));
 	return 0;
 #else
-	return eel_o__construct(vm, type, inits, initc, result);
+	return eel_o__construct(vm, cid, inits, initc, result);
 #endif
 }
 
@@ -224,10 +224,10 @@ EEL_xno eel_o__destruct(EEL_object *object)
 	EEL_classdef *cd;
 	EEL_vm *vm = object->vm;
 #ifdef EEL_VM_CHECKING
-	if(object->type >= VMP->state->nclasses)
+	if(object->classid >= VMP->state->nclasses)
 		return EEL_XBADCLASS;
 #endif
-	c = VMP->state->classes[object->type];
+	c = VMP->state->classes[object->classid];
 #ifdef EEL_VM_CHECKING
 	if(!c)
 		return EEL_XBADCLASS;
@@ -261,15 +261,15 @@ void eel_disown(EEL_object *o)
 
 void eel_v_disown(EEL_value *v)
 {
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TOBJREF:
+	  case EEL_COBJREF:
 		eel_disown(v->objref.v);
 #ifdef DEBUG
 		v->objref.v = NULL;
 #endif
 		break;
-	  case EEL_TWEAKREF:
+	  case EEL_CWEAKREF:
 #ifdef EEL_VM_CHECKING
 		if(v->objref.index == EEL_WEAKREF_UNWIRED)
 		{
@@ -404,5 +404,5 @@ EEL_xno eel_o_clone(EEL_vm *vm, EEL_object *orig, EEL_value *result)
 {
 	EEL_value from;
 	eel_o2v(&from, orig);
-	return eel_cast(vm, &from, result, EEL_TYPE(&from));
+	return eel_cast(vm, &from, result, EEL_CLASS(&from));
 }

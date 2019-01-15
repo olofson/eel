@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_operate.c - Operations on values and objects
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2011, 2014 David Olofson
+ * Copyright 2005-2006, 2009-2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -31,9 +31,9 @@ static inline EEL_xno eel_op_in(EEL_object *o, EEL_value *v, EEL_value *r)
 	EEL_xno x = eel_o__metamethod(o, EEL_MM_IN, v, r);
 	if(x)
 		return x;
-	if(r->type == EEL_TINTEGER)
+	if(r->classid == EEL_CINTEGER)
 	{
-		r->type = EEL_TBOOLEAN;
+		r->classid = EEL_CBOOLEAN;
 		r->integer.v = 1;
 	}
 	return 0;
@@ -76,51 +76,53 @@ EEL_xno eel_object_op(EEL_value *left, int binop, EEL_value *right,
 
 	  /* Boolean (any object == true) */
 	  case EEL_OP_AND:
-		result->type = EEL_TBOOLEAN;
-		switch(right->type)
+		result->classid = EEL_CBOOLEAN;
+		switch(right->classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			result->integer.v = 0;
 			break;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			result->integer.v = (right->real.v != 0.0f);
 			break;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
 			result->integer.v = (right->integer.v != 0);
 			break;
-		  case EEL_TTYPEID:
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_CCLASSID:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			result->integer.v = 1;
 			break;
+		  default:
+			return 0;
 		}
-		return 0;
 	  case EEL_OP_OR:
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = 1;
 		return 0;
 	  case EEL_OP_XOR:
-		result->type = EEL_TBOOLEAN;
-		switch(right->type)
+		result->classid = EEL_CBOOLEAN;
+		switch(right->classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			result->integer.v = 1;
 			break;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			result->integer.v = (right->real.v == 0.0f);
 			break;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
 			result->integer.v = (right->integer.v == 0);
 			break;
-		  case EEL_TTYPEID:
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_CCLASSID:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			result->integer.v = 0;
 			break;
+		  default:
+			return 0;
 		}
-		return 0;
 
 	  case EEL_OP_EQ:
 		if(inplace)
@@ -136,37 +138,37 @@ EEL_xno eel_object_op(EEL_value *left, int binop, EEL_value *right,
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, result);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = result->integer.v > 0;
 		return x;
 	  case EEL_OP_GE:
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, result);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = result->integer.v >= 0;
 		return x;
 	  case EEL_OP_LT:
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, result);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = result->integer.v < 0;
 		return x;
 	  case EEL_OP_LE:
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, result);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = result->integer.v <= 0;
 		return x;
 	  case EEL_OP_IN:
 		if(inplace)
 			return EEL_XCANTINPLACE;
-		if(!EEL_IS_OBJREF(right->type))
+		if(!EEL_IS_OBJREF(right->classid))
 		{
 			/* Not an indexable object, so "no"! */
-			result->type = EEL_TBOOLEAN;
+			result->classid = EEL_CBOOLEAN;
 			result->integer.v = 0;
 			return 0;
 		}
@@ -237,51 +239,53 @@ EEL_xno eel_object_rop(EEL_value *left, int binop, EEL_value *right,
 
 	  /* Boolean (any object == true) */
 	  case EEL_OP_AND:
-		result->type = EEL_TBOOLEAN;
-		switch(right->type)
+		result->classid = EEL_CBOOLEAN;
+		switch(right->classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			result->integer.v = 0;
 			break;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			result->integer.v = (right->real.v != 0.0f);
 			break;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
 			result->integer.v = (right->integer.v != 0);
 			break;
-		  case EEL_TTYPEID:
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_CCLASSID:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			result->integer.v = 1;
 			break;
+		  default:
+			return 0;
 		}
-		return 0;
 	  case EEL_OP_OR:
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = 1;
 		return 0;
 	  case EEL_OP_XOR:
-		result->type = EEL_TBOOLEAN;
-		switch(right->type)
+		result->classid = EEL_CBOOLEAN;
+		switch(right->classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			result->integer.v = 1;
 			break;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			result->integer.v = (right->real.v == 0.0f);
 			break;
-		  case EEL_TINTEGER:
-		  case EEL_TBOOLEAN:
+		  case EEL_CINTEGER:
+		  case EEL_CBOOLEAN:
 			result->integer.v = (right->integer.v == 0);
 			break;
-		  case EEL_TTYPEID:
-		  case EEL_TOBJREF:
-		  case EEL_TWEAKREF:
+		  case EEL_CCLASSID:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
 			result->integer.v = 0;
 			break;
+		  default:
+			return 0;
 		}
-		return 0;
 
 	  /* Commutative */
 	  case EEL_OP_EQ:
@@ -318,28 +322,28 @@ EEL_xno eel_object_rop(EEL_value *left, int binop, EEL_value *right,
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, &v);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = v.integer.v < 0;
 		break;
 	  case EEL_OP_GE:
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, &v);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = v.integer.v <= 0;
 		break;
 	  case EEL_OP_LT:
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, &v);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = v.integer.v > 0;
 		break;
 	  case EEL_OP_LE:
 		if(inplace)
 			return EEL_XCANTINPLACE;
 		x = eel_o__metamethod(o, EEL_MM_COMPARE, right, &v);
-		result->type = EEL_TBOOLEAN;
+		result->classid = EEL_CBOOLEAN;
 		result->integer.v = v.integer.v >= 0;
 		break;
 

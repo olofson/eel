@@ -335,7 +335,7 @@ static void forward_exports(EEL_object *from, EEL_object *to, int symcheck)
 				eel_v2s(k), eel_v_stringrep(vm, v));)
 
 		/* Key must be string! */
-		if((EEL_classes)EEL_TYPE(k) != EEL_CSTRING)
+		if(EEL_CLASS(k) != EEL_CSTRING)
 			eel_ierror(es, "forward_exports() got a table "
 					"item with a non-string name!");
 
@@ -527,10 +527,10 @@ static int declare_func(EEL_state *es, const char *name, EEL_mlist *al,
 		x = eel_o_construct(es->vm, EEL_CFUNCTION, NULL, 0, &fov);
 		if(x)
 			return -1;
-		if((EEL_classes)EEL_TYPE(&fov) != EEL_CFUNCTION)
+		if(EEL_CLASS(&fov) != EEL_CFUNCTION)
 			eel_ierror(es, "FUNCTION constructor returned %s "
 					"instance!", eel_typename(es->vm,
-					fov.type));
+					fov.classid));
 		fo = fov.objref.v;
 		f = o2EEL_function(fo);
 		f->common.module = es->context->module;
@@ -841,7 +841,7 @@ static void do_index(EEL_state *es, EEL_mlist *obj, EEL_mlist *ind,
  */
 static void v_set_string(EEL_state *es, const char *s, EEL_value *v)
 {
-	v->type = EEL_TOBJREF;
+	v->classid = EEL_COBJREF;
 	v->objref.v = eel_ps_new(es->vm, s);
 	if(!v->objref.v)
 		eel_serror(es, "Could not create string object!");
@@ -853,7 +853,7 @@ static void v_set_string(EEL_state *es, const char *s, EEL_value *v)
  */
 static void v_set_string_n(EEL_state *es, const char *s, int len, EEL_value *v)
 {
-	v->type = EEL_TOBJREF;
+	v->classid = EEL_COBJREF;
 	v->objref.v = eel_ps_nnew(es->vm, s, len);
 	if(!v->objref.v)
 		eel_serror(es, "Could not create string object "
@@ -1152,7 +1152,7 @@ static int call(EEL_state *es, EEL_mlist *al)
 	/* Get function */
 	s = es->lval.v.symbol;
 	fo = s->v.object;
-	if((EEL_classes)fo->type != EEL_CFUNCTION)
+	if(fo->classid != EEL_CFUNCTION)
 		eel_ierror(es, "Function symbol has an object that"
 				" is not a function!");
 	f = o2EEL_function(fo);
@@ -1165,7 +1165,7 @@ static int call(EEL_state *es, EEL_mlist *al)
 	printf("%d tuple arguments.\n", f->common.tupargs);
     })
 	/* Find/add a constant for that function */
-	fnref.type = EEL_TOBJREF;
+	fnref.classid = EEL_COBJREF;
 	fnref.objref.v = fo;
 	fnconst = eel_coder_add_constant(cdr, &fnref);
 	DBGG(printf("=== func const in C[%d]\n", fnconst);)
@@ -1383,7 +1383,7 @@ static void funcdef2(EEL_state *es, EEL_mlist *al, int is_func, int local)
 		fname = eel_o2s(f->common.name);
 		if(local)
 			break;	/* We don't care if the name is "taken"! */
-		if((EEL_classes)fo->type != EEL_CFUNCTION)
+		if(fo->classid != EEL_CFUNCTION)
 			eel_ierror(es, "Function symbol has an object that"
 					" is not a function!");
 		if(f->common.flags & EEL_FF_DECLARATION)
@@ -1524,7 +1524,7 @@ static int funcdef(EEL_state *es, EEL_mlist *al, int local)
 		 * This "hack" is needed because 'function' is
 		 * actually a type name, rather than a keyword.
 		 */
-		if((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object) !=
+		if(eel_class_cid(es->lval.v.symbol->v.object) !=
 				EEL_CFUNCTION)
 			return TK(WRONG);
 		is_func = 1;
@@ -1544,7 +1544,7 @@ static int funcdef(EEL_state *es, EEL_mlist *al, int local)
 	if(es->token == ')')
 	{
 		EEL_value v;
-		v.type = EEL_TTYPEID;
+		v.classid = EEL_CCLASSID;
 		v.integer.v = EEL_CFUNCTION;
 		eel_m_constant(al, &v);
 		return TK(SIMPLEXP);
@@ -1808,14 +1808,14 @@ TODO:		| qualifiers TYPENAME NAME
 static int vardecl(EEL_state *es, EEL_mlist *al)
 {
 	EEL_varkinds vk;
-/*	EEL_types t = EEL_TANYTYPE;*/
+/*	EEL_types t = EEL_CANYTYPE;*/
 
 	switch(es->token)
 	{
 	  case TK_NAME:
 		break;
 	  case TK_SYM_CLASS:
-		switch((EEL_classes)eel_class_typeid(es->lval.v.symbol->v.object))
+		switch(eel_class_cid(es->lval.v.symbol->v.object))
 		{
 			/*
 			 * These have special uses, so we need
@@ -2023,7 +2023,7 @@ static int ctor(EEL_state *es, EEL_mlist *al)
 	{
 	  case TK_SYM_CLASS:
 		/* Generic TYPENAME [ ... ] constructor syntax */
-		t = eel_class_typeid(es->lval.v.symbol->v.object);
+		t = eel_class_cid(es->lval.v.symbol->v.object);
 		eel_lex(es, 0);
 		if(es->token != '[')
 		{
@@ -2117,7 +2117,7 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 	{
 	  case TK_INUM:
 		no_qualifiers(es);
-		v.type = EEL_TINTEGER;
+		v.classid = EEL_CINTEGER;
 		v.integer.v = es->lval.v.i;
 		eel_m_constant(al, &v);
 		eel_lex(es, 0);
@@ -2125,7 +2125,7 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 
 	  case TK_RNUM:
 		no_qualifiers(es);
-		v.type = EEL_TREAL;
+		v.classid = EEL_CREAL;
 		v.real.v = es->lval.v.r;
 		eel_m_constant(al, &v);
 		eel_lex(es, 0);
@@ -2142,14 +2142,14 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 		{
 		  case TK_INUM:
 			no_qualifiers(es);
-			v.type = EEL_TINTEGER;
+			v.classid = EEL_CINTEGER;
 			v.integer.v = -es->lval.v.i;
 			eel_m_constant(al, &v);
 			eel_lex(es, 0);
 			return TK(SIMPLEXP);
 		  case TK_RNUM:
 			no_qualifiers(es);
-			v.type = EEL_TREAL;
+			v.classid = EEL_CREAL;
 			v.real.v = -es->lval.v.r;
 			eel_m_constant(al, &v);
 			eel_lex(es, 0);
@@ -2161,7 +2161,7 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 
 	  case TK_KW_TRUE:
 		no_qualifiers(es);
-		v.type = EEL_TBOOLEAN;
+		v.classid = EEL_CBOOLEAN;
 		v.integer.v = 1;
 		eel_m_constant(al, &v);
 		eel_lex(es, 0);
@@ -2169,7 +2169,7 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 
 	  case TK_KW_FALSE:
 		no_qualifiers(es);
-		v.type = EEL_TBOOLEAN;
+		v.classid = EEL_CBOOLEAN;
 		v.integer.v = 0;
 		eel_m_constant(al, &v);
 		eel_lex(es, 0);
@@ -2177,7 +2177,7 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 
 	  case TK_KW_NIL:
 		no_qualifiers(es);
-		v.type = EEL_TNIL;
+		v.classid = EEL_CNIL;
 		eel_m_constant(al, &v);
 		eel_lex(es, 0);
 		return TK(SIMPLEXP);
@@ -2261,11 +2261,11 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 		else
 			lastm = NULL;
 		if(lastm && (EEL_MCONSTANT == lastm->kind) &&
-				(EEL_TTYPEID == lastm->v.constant.v.type) &&
+				(lastm->v.constant.v.classid == EEL_CCLASSID) &&
 				(lastm->v.constant.v.integer.v != EEL_CFUNCTION))
 		{
 			int i;
-			EEL_types t = lastm->v.constant.v.integer.v;
+			EEL_classes cid = lastm->v.constant.v.integer.v;
 			EEL_mlist *src = eel_ml_open(cdr);
 			/* FIXME: Temporary operator precedence disabler! */
 			if(TK_WRONG == expression2(es,
@@ -2273,9 +2273,9 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 				eel_cerror(es, "Expected expression!");
 			if(!src->length)
 				eel_cerror(es, "Cast operator gets void operand!");
-			check_class(es, t);
+			check_class(es, cid);
 			for(i = 0; i < src->length; ++i)
-				eel_m_cast(al, eel_ml_get(src, i), t);
+				eel_m_cast(al, eel_ml_get(src, i), cid);
 			eel_ml_close(src);
 			eel_m_delete(lastm);	/* Replaced! */
 			return TK(SIMPLEXP);
@@ -2307,8 +2307,8 @@ static int simplexp2(EEL_state *es, EEL_mlist *al, int wantresult)
 	/* TYPENAME */
 	if(es->token == TK_SYM_CLASS)
 	{
-		v.type = EEL_TTYPEID;
-		v.integer.v = eel_class_typeid(es->lval.v.symbol->v.object);
+		v.classid = EEL_CCLASSID;
+		v.integer.v = eel_class_cid(es->lval.v.symbol->v.object);
 		eel_m_constant(al, &v);
 		eel_lex(es, 0);
 		return TK(SIMPLEXP);
@@ -2415,7 +2415,7 @@ static int simplexp(EEL_state *es, EEL_mlist *al, int wantresult)
 			EEL_value v;
 			eel_m_get_constant(m, &v);
 			eel_v_disown_nz(&v);
-			if(EEL_TYPE(&v) == (EEL_types)EEL_CSTRING)
+			if(EEL_CLASS(&v) == EEL_CSTRING)
 				return res;
 		}
 	}
@@ -4135,8 +4135,7 @@ static int statement2(EEL_state *es)
 
 	  /* Some nice error checking */
 	  case TK_SYM_CLASS:
-		if((EEL_classes)eel_class_typeid(
-				es->lval.v.symbol->v.object) != EEL_CMODULE)
+		if(eel_class_cid(es->lval.v.symbol->v.object) != EEL_CMODULE)
 			break;
 		eel_cerror(es, "Cannot declare a module within a module!");
 
@@ -4306,7 +4305,7 @@ static void init_exports(EEL_state *es, EEL_object *mo)
 	eel_finder_init(es, &ef, es->context->symtab, ESTF_TYPES);
 	ef.types = EEL_SMFUNCTION;
 	DBGX2(printf(".-------------------------------------------------------------\n");)
-	xv.type = EEL_TOBJREF;
+	xv.classid = EEL_COBJREF;
 	xv.objref.v = es->context->coder->f;
 	add_export(mo, &xv, "__init_module");
 	DBGX2(printf("| Added root function to module '%s' exports.\n",
@@ -4334,7 +4333,7 @@ static void check_declarations(EEL_state *es, EEL_object *mo)
 	{
 		EEL_object *o = a->array[i];
 		EEL_function *f;
-		if((EEL_classes)o->type != EEL_CFUNCTION)
+		if(o->classid != EEL_CFUNCTION)
 			continue;
 		f = o2EEL_function(o);
 		if(f->common.flags & EEL_FF_DECLARATION)
@@ -4381,7 +4380,7 @@ static void compile2(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 		eel_ierror(es, "Compiler failed to start the lexer!");
 
 	/* Named module? */
-	if((es->token == TK_SYM_CLASS) && ((EEL_classes)eel_class_typeid(
+	if((es->token == TK_SYM_CLASS) && (eel_class_cid(
 			es->lval.v.symbol->v.object) == EEL_CMODULE))
 	{
 		EEL_value v;
@@ -4479,7 +4478,7 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 	EEL_module *m;
 	int include_depth_save = es->include_depth;
 
-	if((EEL_classes)mo->type != EEL_CMODULE)
+	if(mo->classid != EEL_CMODULE)
 		eel_cerror(es, "Object is not a module!");
 	m = o2EEL_module(mo);
 
@@ -4493,11 +4492,11 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 					"Tried to compile module \"%s\", "
 					"which is already being compiled.",
 					eel_o2s(filename.objref.v));
-		v.type = EEL_TNIL;
+		v.classid = EEL_CNIL;
 		eel_table_set(es->modnames, &filename, &v);
 	}
 	else
-		filename.type = EEL_TNIL;
+		filename.classid = EEL_CNIL;
 
 	es->include_depth = 0;
 /* FIXME: 'x' might be clobbered by setjmp()/longjmp()... */
@@ -4508,7 +4507,7 @@ void eel_compile(EEL_state *es, EEL_object *mo, EEL_sflags sflags)
 		x = 1;
 
 	es->include_depth = include_depth_save;
-	if(filename.type != EEL_TNIL)
+	if(filename.classid != EEL_CNIL)
 		eel_table_delete(es->modnames, &filename);
 
 	/* Turn warnings into errors */

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_image.c - EEL SDL_image Binding
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2008-2010, 2014 David Olofson
+ * Copyright 2005-2006, 2008-2010, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -61,7 +61,7 @@ static EEL_xno img_SavePNG(EEL_vm *vm)
 		return EEL_XNEEDSTRING;
 
 	/* Surface */
-	if(EEL_TYPE(arg + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(arg + 1) != esdl_md.surface_cid)
 			return EEL_XWRONGTYPE;
 	from = o2ESDL_surface(arg[1].objref.v)->surface;
 

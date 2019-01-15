@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_io.c - EEL File and Memory File Classes
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009, 2012, 2014, 2016 David Olofson
+ * Copyright 2005-2006, 2009, 2012, 2014, 2016, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -46,12 +46,12 @@ typedef struct
 	file class
 ----------------------------------------------------------*/
 
-static EEL_xno f_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno f_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	const char *fn, *mode;
 	EEL_file *f;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_file), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_file), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	f = o2EEL_file(eo);
@@ -170,7 +170,7 @@ static EEL_xno f_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	if(res < 0)
 		return EEL_XFILEERROR;
 	fseek(f->handle, pos, SEEK_SET);
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	op2->integer.v = res;
 	return 0;
 }
@@ -180,11 +180,11 @@ static EEL_xno f_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	memfile class
 ----------------------------------------------------------*/
 
-static EEL_xno mf_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno mf_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EEL_memfile *mf;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_memfile), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_memfile), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	mf = o2EEL_memfile(eo);
@@ -199,7 +199,7 @@ static EEL_xno mf_construct(EEL_vm *vm, EEL_types type,
 	}
 	else
 	{
-		if((initc != 1) || ((EEL_classes)EEL_TYPE(initv) != EEL_CDSTRING))
+		if((initc != 1) || (EEL_CLASS(initv) != EEL_CDSTRING))
 		{
 			eel_o_free(eo);
 			return EEL_XARGUMENTS;
@@ -296,7 +296,7 @@ static EEL_xno mf_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	}
 	else if(strcmp(is, "buffer") == 0)
 	{
-		if((EEL_classes)EEL_TYPE(op2) != EEL_CDSTRING)
+		if(EEL_CLASS(op2) != EEL_CDSTRING)
 			return EEL_XNEEDDSTRING;
 		if(mf->buffer)
 			eel_disown(mf->buffer);
@@ -317,7 +317,7 @@ static EEL_xno mf_length(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	if(!mf->buffer)
 		return EEL_XFILECLOSED;
 	buf = o2EEL_dstring(mf->buffer);
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	op2->integer.v = buf->length;
 	return 0;
 }
@@ -377,14 +377,14 @@ static EEL_xno read_type(EEL_vm *vm)
 	int count;
 
 	/* Figure out how many bytes to read */
-	if(EEL_TYPE(args + 1) != EEL_TTYPEID)
+	if(EEL_CLASS(args + 1) != EEL_CCLASSID)
 		return EEL_XARGUMENTS;
 	switch(args[1].integer.v)
 	{
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		count = 8;
 		break;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		count = 4;
 		break;
 	  default:
@@ -392,7 +392,7 @@ static EEL_xno read_type(EEL_vm *vm)
 	}
 
 	/* Read! */
-	if(EEL_TYPE(args) == md->file_cid)
+	if(EEL_CLASS(args) == md->file_cid)
 	{
 		int res;
 		EEL_file *f = o2EEL_file(args->objref.v);
@@ -409,7 +409,7 @@ static EEL_xno read_type(EEL_vm *vm)
 				count = res;
 		}
 	}
-	else if(EEL_TYPE(args) == md->memfile_cid)
+	else if(EEL_CLASS(args) == md->memfile_cid)
 	{
 		EEL_memfile *mf = o2EEL_memfile(args->objref.v);
 		EEL_dstring *fb;
@@ -421,14 +421,14 @@ static EEL_xno read_type(EEL_vm *vm)
 		memcpy(buf, fb->buffer + mf->position, count);
 		mf->position += count;
 	}
-	else if((EEL_classes)EEL_TYPE(args) == EEL_CSTRING)
+	else if(EEL_CLASS(args) == EEL_CSTRING)
 	{
 		EEL_string *fb = o2EEL_string(args->objref.v);
 		if(count > fb->length)
 			return EEL_XEOF;
 		memcpy(buf, fb->buffer, count);
 	}
-	else if((EEL_classes)EEL_TYPE(args) == EEL_CDSTRING)
+	else if(EEL_CLASS(args) == EEL_CDSTRING)
 	{
 		EEL_dstring *fb = o2EEL_dstring(args->objref.v);
 		if(count > fb->length)
@@ -441,7 +441,7 @@ static EEL_xno read_type(EEL_vm *vm)
 	/* Decode! */
 	switch(args[1].integer.v)
 	{
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 	  {
 		union {
 			char		c[sizeof(EEL_real)];
@@ -455,10 +455,10 @@ static EEL_xno read_type(EEL_vm *vm)
 			cvt.c[sizeof(EEL_real) - 1 - n] = buf[n];
 #endif
 		r->real.v = cvt.r;
-		r->type = EEL_TREAL;
+		r->classid = EEL_CREAL;
 		return 0;
 	  }
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 	  {
 		union {
 			char		c[4];
@@ -473,7 +473,7 @@ static EEL_xno read_type(EEL_vm *vm)
 		cvt.c[0] = buf[3];
 #endif
 		r->integer.v = cvt.i;
-		r->type = EEL_TINTEGER;
+		r->classid = EEL_CINTEGER;
 		return 0;
 	  }
 	  default:
@@ -493,10 +493,10 @@ static EEL_xno io_read(EEL_vm *vm)
 	/* # of bytes to read */
 	if(vm->argc >= 2)
 	{
-		switch(EEL_TYPE(args + 1))
+		switch(EEL_CLASS(args + 1))
 		{
-		  case EEL_TINTEGER:
-		  case EEL_TREAL:
+		  case EEL_CINTEGER:
+		  case EEL_CREAL:
 			count = eel_v2l(args + 1);
 			if(count < 0)
 				return EEL_XLOWVALUE;
@@ -515,7 +515,7 @@ static EEL_xno io_read(EEL_vm *vm)
 	ds = o2EEL_dstring(so);
 
 	/* Read! */
-	if(EEL_TYPE(args) == md->file_cid)
+	if(EEL_CLASS(args) == md->file_cid)
 	{
 		int res;
 		EEL_file *f = o2EEL_file(args->objref.v);
@@ -545,7 +545,7 @@ static EEL_xno io_read(EEL_vm *vm)
 		}
 		ds->length = count;
 	}
-	else if(EEL_TYPE(args) == md->memfile_cid)
+	else if(EEL_CLASS(args) == md->memfile_cid)
 	{
 		EEL_memfile *mf = o2EEL_memfile(args->objref.v);
 		EEL_dstring *fb;
@@ -625,14 +625,14 @@ static EEL_xno io_write(EEL_vm *vm)
 	wrd.f = NULL;
 	wrd.mf = NULL;
 	wrd.count = 0;
-	if(EEL_TYPE(args) == md->file_cid)
+	if(EEL_CLASS(args) == md->file_cid)
 	{
 		wrd.f = o2EEL_file(args->objref.v);
 		if(!wrd.f->handle)
 			return EEL_XFILECLOSED;
 		wrd.write = io_write_file;
 	}
-	else if(EEL_TYPE(args) == md->memfile_cid)
+	else if(EEL_CLASS(args) == md->memfile_cid)
 	{
 		wrd.mf = o2EEL_memfile(args->objref.v);
 		if(!wrd.mf->buffer)
@@ -647,9 +647,9 @@ static EEL_xno io_write(EEL_vm *vm)
 	{
 		EEL_value *v = args + i;
 		EEL_xno x;
-		switch((EEL_classes)EEL_TYPE(v))
+		switch(EEL_CLASS(v))
 		{
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 		  {
 			union {
 				char		c[sizeof(EEL_real)];
@@ -670,7 +670,7 @@ static EEL_xno io_write(EEL_vm *vm)
 				return x;
 			break;
 		  }
-		  case EEL_TINTEGER:
+		  case EEL_CINTEGER:
 		  {
 			union {
 				char		c[4];
@@ -722,7 +722,7 @@ static EEL_xno io_flush(EEL_vm *vm)
 			return EEL_XFILEERROR;
 		return 0;
 	}
-	if(EEL_TYPE(arg) == md->file_cid)
+	if(EEL_CLASS(arg) == md->file_cid)
 	{
 		EEL_file *f = o2EEL_file(arg->objref.v);
 		if(!f->handle)
@@ -731,7 +731,7 @@ static EEL_xno io_flush(EEL_vm *vm)
 			return EEL_XFILEERROR;
 		return 0;
 	}
-	else if(EEL_TYPE(arg) == md->memfile_cid)
+	else if(EEL_CLASS(arg) == md->memfile_cid)
 		return 0;
 	else
 		return EEL_XWRONGTYPE;
@@ -743,7 +743,7 @@ static EEL_xno io_close(EEL_vm *vm)
 {
 	IO_moduledata *md = (IO_moduledata *)eel_get_current_moduledata(vm);
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) == md->file_cid)
+	if(EEL_CLASS(arg) == md->file_cid)
 	{
 		EEL_file *f = o2EEL_file(arg->objref.v);
 		if(!f->handle)
@@ -751,7 +751,7 @@ static EEL_xno io_close(EEL_vm *vm)
 		fclose(f->handle);
 		f->handle = NULL;
 	}
-	else if(EEL_TYPE(arg) == md->memfile_cid)
+	else if(EEL_CLASS(arg) == md->memfile_cid)
 	{
 		EEL_memfile *mf = o2EEL_memfile(arg->objref.v);
 		if(!mf->buffer)
@@ -822,14 +822,14 @@ EEL_xno eel_io_init(EEL_vm *vm)
 	eel_set_metamethod(c, EEL_MM_GETINDEX, f_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, f_setindex);
 	eel_set_metamethod(c, EEL_MM_LENGTH, f_length);
-	md->file_cid = eel_class_typeid(c);
+	md->file_cid = eel_class_cid(c);
 
 	c = eel_export_class(m, "memfile", -1, mf_construct, mf_destruct,
 			NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, mf_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, mf_setindex);
 	eel_set_metamethod(c, EEL_MM_LENGTH, mf_length);
-	md->memfile_cid = eel_class_typeid(c);
+	md->memfile_cid = eel_class_cid(c);
 
 	/* Functions */
 	eel_export_cfunction(m, 1, "stdin", 0, 0, 0, io_get_stdin);

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_manip.c - Argument Manipulator
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -150,7 +150,7 @@ void eel_m_tuparg(EEL_mlist *ml, EEL_symbol *s, int level)
 void eel_m_object(EEL_mlist *ml, EEL_object *o)
 {
 	EEL_value v;
-	v.type = EEL_TOBJREF;
+	v.classid = EEL_COBJREF;
 	v.objref.v = o;
 	eel_m_constant(ml, &v);
 }
@@ -195,18 +195,18 @@ void eel_m_op(EEL_mlist *ml, EEL_manipulator *left, EEL_operators op,
 }
 
 
-void eel_m_cast(EEL_mlist *ml, EEL_manipulator *object, EEL_types type)
+void eel_m_cast(EEL_mlist *ml, EEL_manipulator *object, EEL_classes cid)
 {
 	EEL_manipulator *m;
 #ifdef EEL_CONSTANT_FOLDING
 	if(eel_m_is_constant(object))
 	{
 		int op;
-		switch(type)
+		switch(cid)
 		{
-		  case EEL_TREAL:	op = EEL_OP_CASTR;	break;
-		  case EEL_TINTEGER:	op = EEL_OP_CASTI;	break;
-		  case EEL_TBOOLEAN:	op = EEL_OP_CASTB;	break;
+		  case EEL_CREAL:	op = EEL_OP_CASTR;	break;
+		  case EEL_CINTEGER:	op = EEL_OP_CASTI;	break;
+		  case EEL_CBOOLEAN:	op = EEL_OP_CASTB;	break;
 		  default:		op = 0;			break;
 		}
 		if(op)
@@ -227,7 +227,7 @@ void eel_m_cast(EEL_mlist *ml, EEL_manipulator *object, EEL_types type)
 #endif
 	m = m_open(ml, EEL_MCAST);
 	m->v.cast.object = object;
-	m->v.cast.type = type;
+	m->v.cast.classid = cid;
 	++object->refcount;
 }
 
@@ -449,7 +449,7 @@ int eel_m_direct_uint8(EEL_manipulator *m)
 	switch(m->kind)
 	{
 	  case EEL_MCONSTANT:
-		if(m->v.constant.v.type != EEL_TINTEGER)
+		if(m->v.constant.v.classid != EEL_CINTEGER)
 			return -1;
 		if(m->v.constant.v.integer.v < 0)
 			return -1;
@@ -480,7 +480,7 @@ int eel_m_direct_short(EEL_manipulator *m)
 	switch(m->kind)
 	{
 	  case EEL_MCONSTANT:
-		if(m->v.constant.v.type != EEL_TINTEGER)
+		if(m->v.constant.v.classid != EEL_CINTEGER)
 			return -100000;
 		if(m->v.constant.v.integer.v < -32768)
 			return -100000;
@@ -511,23 +511,25 @@ int eel_m_direct_bool(EEL_manipulator *m)
 	switch(m->kind)
 	{
 	  case EEL_MCONSTANT:
-		switch(m->v.constant.v.type)
+		switch(m->v.constant.v.classid)
 		{
-		  case EEL_TNIL:
+		  case EEL_CNIL:
 			return 0;
-		  case EEL_TREAL:
+		  case EEL_CREAL:
 			return m->v.constant.v.real.v != 0.0;
-		  case EEL_TINTEGER:
+		  case EEL_CINTEGER:
 			return m->v.constant.v.integer.v != 0;
-		  case EEL_TBOOLEAN:
+		  case EEL_CBOOLEAN:
 			return m->v.constant.v.integer.v;
-		  case EEL_TTYPEID:
+		  case EEL_CCLASSID:
 			return 1;
-		  case EEL_TOBJREF:	/* An object is "something". (nil is nothing.) */
-		  case EEL_TWEAKREF:
+		  case EEL_COBJREF:
+		  case EEL_CWEAKREF:
+		  	/* An object is "something". (nil is nothing.) */
 			return 1;
+		  default:
+			return -1;
 		}
-		return -1;
 	  case EEL_MVOID:
 	  case EEL_MRESULT:
 	  case EEL_MREGISTER:
@@ -799,22 +801,22 @@ static void do_cast(EEL_manipulator *m, int r)
 		dr = r;
 		eel_m_read(m->v.cast.object, dr);
 	}
-	switch((EEL_types)m->v.cast.type)
+	switch(m->v.cast.classid)
 	{
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		eel_codeAB(cdr, EEL_OCASTR_AB, r, dr);
 	  	break;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		eel_codeAB(cdr, EEL_OCASTI_AB, r, dr);
 	  	break;
-	  case EEL_TBOOLEAN:
+	  case EEL_CBOOLEAN:
 		eel_codeAB(cdr, EEL_OCASTB_AB, r, dr);
 	  	break;
 	  default:
 	  {
 		int cr = eel_r_alloc(cdr, 1, EEL_RUTEMPORARY);
 #if 0
-	  	if(m->v.cast.type <= 255)
+	  	if(m->v.cast.classid <= 255)
 		{
 			eel_codeAB(cdr, EEL_OLDTYPE_AB, cr, m->v.cast.type);
 			eel_codeABC(cdr, EEL_OCAST_ABC, r, dr, cr);
@@ -824,8 +826,8 @@ static void do_cast(EEL_manipulator *m, int r)
 		{
 			EEL_value v;
 			int c;
-			v.type = EEL_TTYPEID;
-			v.integer.v = m->v.cast.type;
+			v.classid = EEL_CCLASSID;
+			v.integer.v = m->v.cast.classid;
 			c = eel_coder_add_constant(cdr, &v);
 			eel_codeABx(cdr, EEL_OLDC_ABx, cr, c);
 			eel_codeABC(cdr, EEL_OCAST_ABC, r, dr, cr);
@@ -974,22 +976,24 @@ int eel_m_prepare_constant(EEL_manipulator *m)
 	ci = &m->v.constant.index;
 	if(*ci >= 0)
 		return *ci;
-	switch(cv->type)
+	switch(cv->classid)
 	{
-	  case EEL_TNIL:
-	  case EEL_TBOOLEAN:
+	  case EEL_CNIL:
+	  case EEL_CBOOLEAN:
 		return -1;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		if((cv->integer.v >= -32768) && (cv->integer.v <= 32767))
 			return -1;
 		return (*ci = eel_coder_add_constant(cdr, cv));
-	  case EEL_TTYPEID:
-	  case EEL_TREAL:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_CCLASSID:
+	  case EEL_CREAL:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 		return (*ci = eel_coder_add_constant(cdr, cv));
+	  default:
+		eel_ierror(cdr->state, "CONSTANT manipulator with illegal "
+				"type!");
 	}
-	eel_ierror(cdr->state, "CONSTANT manipulator with illegal type!");
 }
 
 
@@ -1012,27 +1016,24 @@ static void read_constant(EEL_manipulator *m, int r)
 	 * No constant in table! We're supposed to issue an instruction with
 	 * immediate data encoded.
 	 */
-	switch(cv->type)
+	switch(cv->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		eel_codeA(cdr, EEL_OLDNIL_A, r);
 		return;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		eel_codeAsBx(cdr, EEL_OLDI_AsBx, r, cv->integer.v);
 		return;
-	  case EEL_TBOOLEAN:
+	  case EEL_CBOOLEAN:
 		if(cv->integer.v)
 			eel_codeA(cdr, EEL_OLDTRUE_A, r);
 		else
 			eel_codeA(cdr, EEL_OLDFALSE_A, r);
 		return;
-	  case EEL_TTYPEID:
-	  case EEL_TREAL:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		break;
+	  default:
+		eel_ierror(cdr->state, "CONSTANT manipulator can't generate "
+				"value!");
 	}
-	eel_ierror(cdr->state, "CONSTANT manipulator can't generate value!");
 }
 
 
@@ -1059,38 +1060,35 @@ static void push_constant(EEL_manipulator *m)
 	 * Lets figure out some nice way to
 	 * generate this value or something.
 	 */
-	switch(cv->type)
+	switch(cv->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		eel_code0(cdr, EEL_OPUSHNIL_0);
 		return;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		if((cv->integer.v >= -32768) && (cv->integer.v <= 32767))
 		{
 			eel_codesAx(cdr, EEL_OPUSHI_sAx, cv->integer.v);
 			return;
 		}
-	  case EEL_TBOOLEAN:
+	  case EEL_CBOOLEAN:
 		if(cv->integer.v)
 			eel_code0(cdr, EEL_OPHTRUE_0);
 		else
 			eel_code0(cdr, EEL_OPHFALSE_0);
 		return;
 #if 0
-	  case EEL_TTYPEID:
+	  case EEL_CCLASSID:
 		if(cv->integer.v <= 255)
 		{
 			eel_codeAB(cdr, EEL_OLDTYPE_AB, r, cv->integer.v);
 			return;
 		}
 #endif
-	  case EEL_TTYPEID:
-	  case EEL_TREAL:
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		break;
+	  default:
+		eel_ierror(cdr->state, "CONSTANT manipulator failed to "
+				"generate value!");
 	}
-	eel_ierror(cdr->state, "CONSTANT manipulator failed to generate value!");
 }
 
 

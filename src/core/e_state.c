@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_state.c - EEL State (Compiler, VM, symbols etc)
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -56,7 +56,7 @@ static EEL_xno array_sadd(EEL_object *a, const char *s)
 	EEL_xno x;
 	EEL_value v;
 	eel_s2v(a->vm, &v, s);
-	if(v.type == EEL_TNIL)
+	if(v.classid == EEL_CNIL)
 		return EEL_XMEMORY;
 	x = eel_setlindex(a, eel_length(a), &v);
 	if(x)
@@ -179,19 +179,19 @@ EEL_vm *eel_open(int argc, const char *argv[])
 				NULL, NULL, NULL);
 
 		/* Register value "classes" */
-		eel_register_class(vm, EEL_TNIL, "\001nil", EEL_CVALUE,
+		eel_register_class(vm, EEL_CNIL, "\001nil", EEL_CVALUE,
 				NULL, NULL, NULL);
-		eel_register_class(vm, EEL_TREAL, "real", EEL_CVALUE,
+		eel_register_class(vm, EEL_CREAL, "real", EEL_CVALUE,
 				NULL, NULL, NULL);
-		eel_register_class(vm, EEL_TINTEGER, "integer", EEL_CVALUE,
+		eel_register_class(vm, EEL_CINTEGER, "integer", EEL_CVALUE,
 				NULL, NULL, NULL);
-		eel_register_class(vm, EEL_TBOOLEAN, "boolean", EEL_CVALUE,
+		eel_register_class(vm, EEL_CBOOLEAN, "boolean", EEL_CVALUE,
 				NULL, NULL, NULL);
-		eel_register_class(vm, EEL_TTYPEID, "typeid", EEL_CVALUE,
+		eel_register_class(vm, EEL_CCLASSID, "typeid", EEL_CVALUE,
 				NULL, NULL, NULL);
-		eel_register_class(vm, EEL_TOBJREF, "\001objref", EEL_CVALUE,
+		eel_register_class(vm, EEL_COBJREF, "\001objref", EEL_CVALUE,
 				NULL, NULL, NULL);
-		eel_register_class(vm, EEL_TWEAKREF, "\001weakref", EEL_CVALUE,
+		eel_register_class(vm, EEL_CWEAKREF, "\001weakref", EEL_CVALUE,
 				NULL, NULL, NULL);
 
 		/* Register the real classes */

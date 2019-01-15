@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_net.c - EEL SDL_net Binding
 ---------------------------------------------------------------------------
- * Copyright 2005, 2006, 2009, 2011, 2014 David Olofson
+ * Copyright 2005, 2006, 2009, 2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -38,11 +38,11 @@ static ENET_moduledata md = { 0, 0 };
 /*----------------------------------------------------------
 	IPaddress class
 ----------------------------------------------------------*/
-static EEL_xno ipa_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno ipa_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	IPaddress *ipa;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(IPaddress), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(IPaddress), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	ipa = o2IPaddress(eo);
@@ -53,7 +53,7 @@ static EEL_xno ipa_construct(EEL_vm *vm, EEL_types type,
 		ipa->port = 9999;
 		break;
 	  case 1:
-		if(EEL_TYPE(initv) == md.ipaddress_cid)
+		if(EEL_CLASS(initv) == md.ipaddress_cid)
 		{
 			IPaddress *src = o2IPaddress(initv->objref.v);
 			memcpy(ipa, src, sizeof(IPaddress));
@@ -71,7 +71,7 @@ static EEL_xno ipa_construct(EEL_vm *vm, EEL_types type,
 	  case 2:
 	  {
 		const char *s;
-		switch((EEL_classes)EEL_TYPE(initv))
+		switch(EEL_CLASS(initv))
 		{
 		  case EEL_CSTRING:
 		  case EEL_CDSTRING:
@@ -97,9 +97,9 @@ static EEL_xno ipa_construct(EEL_vm *vm, EEL_types type,
 
 
 static EEL_xno ipa_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
-	EEL_object *co = eel_o_alloc(vm, sizeof(IPaddress), t);
+	EEL_object *co = eel_o_alloc(vm, sizeof(IPaddress), cid);
 	if(!co)
 		return EEL_XMEMORY;
 	memcpy(o2IPaddress(co), o2IPaddress(src->objref.v), sizeof(IPaddress));
@@ -120,7 +120,7 @@ static EEL_xno ipa_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		op2->integer.v = ipa->port;
 	else
 		return EEL_XWRONGINDEX;
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	return 0;
 }
 
@@ -149,7 +149,7 @@ static EEL_xno ipa_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_object **eel_sockets;
 
 
-static EEL_xno n2s_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno n2s_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	REAL_ENET_socket *rs;
@@ -158,7 +158,7 @@ static EEL_xno n2s_construct(EEL_vm *vm, EEL_types type,
 	rs = malloc(sizeof(REAL_ENET_socket));
 	if(!rs)
 		return EEL_XMEMORY;
-	eo = eel_o_alloc(vm, sizeof(ENET_socket), type);
+	eo = eel_o_alloc(vm, sizeof(ENET_socket), cid);
 	if(!eo)
 	{
 		free(rs);
@@ -174,7 +174,7 @@ static EEL_xno n2s_construct(EEL_vm *vm, EEL_types type,
 	switch(initc)
 	{
 	  case 1:
-		if(initv->type == EEL_TINTEGER)
+		if(initv->classid == EEL_CINTEGER)
 		{
 			rs->n2socket = eel_v2l(initv);
 			if(rs->n2socket > NET2_MAX_SOCKETS)
@@ -186,7 +186,7 @@ static EEL_xno n2s_construct(EEL_vm *vm, EEL_types type,
 		else
 		{
 			IPaddress *ipa;
-			if(EEL_TYPE(initv) != md.ipaddress_cid)
+			if(EEL_CLASS(initv) != md.ipaddress_cid)
 			{
 				eel_o_free(eo);
 				return EEL_XWRONGTYPE;
@@ -280,7 +280,7 @@ static EEL_xno n2_tcp_setbuf(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	ENET_socket *ens;
 
-	if(EEL_TYPE(args) != md.net2_socket_cid)
+	if(EEL_CLASS(args) != md.net2_socket_cid)
 		return EEL_XWRONGTYPE;
 	ens = o2ENET_socket(args->objref.v);
 	if(!ens->rs)
@@ -337,7 +337,7 @@ static EEL_xno n2s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	}
 	else
 		return EEL_XWRONGINDEX;
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	return 0;
 }
 
@@ -376,7 +376,7 @@ static EEL_xno n2_tcp_accept_on(EEL_vm *vm)
 	EEL_value init;
 	EEL_value *args = vm->heap + vm->argv;
 	int s;
-	if(EEL_TYPE(args) == md.ipaddress_cid)
+	if(EEL_CLASS(args) == md.ipaddress_cid)
 		s = NET2_TCPAcceptOnIP(o2IPaddress(args->objref.v));
 	else
 		s = NET2_TCPAcceptOn(eel_v2l(args));
@@ -399,7 +399,7 @@ static EEL_xno n2_tcp_send(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	ENET_socket *ens;
 	int i, count = 0;
-	if(EEL_TYPE(args) != md.net2_socket_cid)
+	if(EEL_CLASS(args) != md.net2_socket_cid)
 		return EEL_XWRONGTYPE;
 	ens = o2ENET_socket(args->objref.v);
 	if(!ens->rs)
@@ -411,7 +411,7 @@ static EEL_xno n2_tcp_send(EEL_vm *vm)
 		void *buf;
 		int bsize;
 		EEL_value *v = args + i;
-		switch((EEL_classes)EEL_TYPE(v))
+		switch(EEL_CLASS(v))
 		{
 		  case EEL_CREAL:
 		  {
@@ -480,7 +480,7 @@ static EEL_xno n2_tcp_read(EEL_vm *vm)
 	EEL_object *so;
 	int count;
 	char buf[258];
-	if(EEL_TYPE(args) != md.net2_socket_cid)
+	if(EEL_CLASS(args) != md.net2_socket_cid)
 		return EEL_XWRONGTYPE;
 	ens = o2ENET_socket(args->objref.v);
 	if(!ens->rs)
@@ -504,7 +504,7 @@ static EEL_xno n2_tcp_close(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	ENET_socket *ens;
-	if(EEL_TYPE(args) != md.net2_socket_cid)
+	if(EEL_CLASS(args) != md.net2_socket_cid)
 		return EEL_XWRONGTYPE;
 	ens = o2ENET_socket(args->objref.v);
 	if(!ens->rs)
@@ -588,7 +588,7 @@ EEL_xno eel_net_init(EEL_vm *vm)
 	/* Types */
 	c = eel_export_class(m, "IPaddress", EEL_COBJECT,
 			ipa_construct, NULL, NULL);
-	md.ipaddress_cid = eel_class_typeid(c);
+	md.ipaddress_cid = eel_class_cid(c);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, ipa_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, ipa_setindex);
 	eel_set_casts(vm, md.ipaddress_cid, md.ipaddress_cid, ipa_clone);
@@ -596,7 +596,7 @@ EEL_xno eel_net_init(EEL_vm *vm)
 	c = eel_export_class(m, "Socket", EEL_COBJECT,
 			n2s_construct, n2s_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, n2s_getindex);
-	md.net2_socket_cid = eel_class_typeid(c);
+	md.net2_socket_cid = eel_class_cid(c);
 
 	/* TCP functions */
 	eel_export_cfunction(m, 1, "TCPAcceptOn", 1, 0, 0, n2_tcp_accept_on);

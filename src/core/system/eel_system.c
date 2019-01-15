@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_system.c - EEL system/platform information module
 ---------------------------------------------------------------------------
- * Copyright 2007, 2009, 2014 David Olofson
+ * Copyright 2007, 2009, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -121,7 +121,7 @@ static EEL_xno s_setenv(EEL_vm *vm)
 	const char *name = eel_v2s(arg);
 	int overwrite = vm->argc >= 3 ? eel_v2l(arg + 2) : 1;
 	int added = 1;
-	value = EEL_TYPE(arg + 1) == EEL_TNIL ? NULL : eel_v2s(arg + 1);
+	value = EEL_CLASS(arg + 1) == EEL_CNIL ? NULL : eel_v2s(arg + 1);
 	if(!value && !overwrite)
 		return EEL_XARGUMENTS;	/* Delete, but don't overwrite? o.O */
 #ifdef _WIN32

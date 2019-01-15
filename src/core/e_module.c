@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_module.c - EEL code module management
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009-2014 David Olofson
+ * Copyright 2002, 2004-2006, 2009-2014, 2019 David Olofson
  * Copyright 2002 Florian Schulze <fs@crowproductions.de>
  *
  * This software is provided 'as-is', without any express or implied warranty.
@@ -132,7 +132,7 @@ EEL_object *eel_get_loaded_module(EEL_vm *vm, const char *modname)
 		return NULL;
 	if(eel_table_gets(es->modules, modname, &v))
 		return NULL;
-	if(!EEL_IS_OBJREF(v.type))
+	if(!EEL_IS_OBJREF(v.classid))
 		return NULL;
 	m = v.objref.v;
 	if(!m->refcount)
@@ -154,7 +154,7 @@ EEL_object *eel_load(EEL_vm *vm, const char *modname, EEL_sflags flags)
 		return eel_get_loaded_module(vm, modname); /* Bootstrap! */
 	if(eel_callnf(vm, es->eellib, "load", "Rsi", &res, modname, flags))
 		return NULL;
-	if(!EEL_IS_OBJREF(vm->heap[res].type))
+	if(!EEL_IS_OBJREF(vm->heap[res].classid))
 		return NULL;
 	return vm->heap[res].objref.v;
 }
@@ -165,7 +165,7 @@ EEL_object *eel_load(EEL_vm *vm, const char *modname, EEL_sflags flags)
 ----------------------------------------------------------*/
 
 
-static EEL_xno m_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno m_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EEL_xno x;
@@ -175,7 +175,7 @@ static EEL_xno m_construct(EEL_vm *vm, EEL_types type,
 
 	eel_clean_modules(vm);
 
-	eo = eel_o_alloc(vm, sizeof(EEL_module), type);
+	eo = eel_o_alloc(vm, sizeof(EEL_module), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	m = o2EEL_module(eo);
@@ -278,7 +278,7 @@ static EEL_xno m_real_destruct(EEL_object *eo)
 	/* Release functions and other objects */
 	DBG1(printf("  Objects... (%d)\n", o->size);)
 	for(i = 0; i < o->size; ++i)
-		if((EEL_classes)o->array[i]->type == EEL_CFUNCTION)
+		if(o->array[i]->classid == EEL_CFUNCTION)
 			eel_function_detach(o2EEL_function(o->array[i]));
 	while(o->size)
 	{
@@ -461,7 +461,7 @@ int eel_clean_modules(EEL_vm *vm)
 		EEL_value *v;
 		ti = eel_table_get_item(es->modules, i);
 		v = eel_table_get_value(ti);
-		if(v->type == EEL_TNIL)
+		if(v->classid == EEL_CNIL)
 			eel_table_delete(es->modules, eel_table_get_key(ti));
 		else
 			++i;
@@ -489,7 +489,7 @@ const char *eel_module_modname(EEL_object *m)
 {
 	if(!m)
 		return "<nil module pointer>";
-	if((EEL_classes)m->type != EEL_CMODULE)
+	if(m->classid != EEL_CMODULE)
 		return "<not a module>";
 	return eel_table_getss(o2EEL_module(m)->exports, "__modname");
 }
@@ -499,7 +499,7 @@ const char *eel_module_filename(EEL_object *m)
 {
 	if(!m)
 		return "<nil module pointer>";
-	if((EEL_classes)m->type != EEL_CMODULE)
+	if(m->classid != EEL_CMODULE)
 		return "<not a module>";
 	return eel_table_getss(o2EEL_module(m)->exports, "__filename");
 }
@@ -514,7 +514,7 @@ void *eel_get_moduledata(EEL_object *mo)
 	EEL_module *m;
 	if(!mo)
 		return NULL;
-	if((EEL_classes)mo->type != EEL_CMODULE)
+	if(mo->classid != EEL_CMODULE)
 		return NULL;
 	m = o2EEL_module(mo);
 	return m->moduledata;

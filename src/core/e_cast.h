@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_cast.h - EEL Typecasting Utilities
 ---------------------------------------------------------------------------
- * Copyright 2006, 2009, 2011-2012 David Olofson
+ * Copyright 2006, 2009, 2011-2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -30,27 +30,29 @@
 #include "e_config.h"
 
 /*
- * Cast value 'src' to type 't' and put the result in 'dst'.
- * If 't' is a class, an object of that class is constructed,
- * using 'src' for the initializer operand to the constructor.
+ * Cast value 'src' to class 'cid' and put the result in 'dst'. If 't' is an
+ * object class, an object of that class is constructed, using 'src' for the
+ * initializer operand to the constructor.
+ *
  * Returns a VM exception code if the operation fails.
  */
 static inline EEL_xno eel_cast(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_state *st = VMP->state;
 	EEL_cast_cb *cbs = st->casters;
-	EEL_xno x = cbs[EEL_TYPE(src) * st->castersdim + t](vm, src, dst, t);
-	if(x && ((EEL_classes)t == EEL_CSTRING || (EEL_classes)t == EEL_CDSTRING))
+	EEL_xno x = cbs[EEL_CLASS(src) * st->castersdim + cid](vm, src, dst,
+			cid);
+	if(x && (cid == EEL_CSTRING || cid == EEL_CDSTRING))
 	{
 		const char *s = eel_v_stringrep(vm, src);
 		if(!s)
 			return EEL_XWRONGTYPE;	/* Giving up! */
-		if((EEL_classes)t == EEL_CSTRING)
+		if(cid == EEL_CSTRING)
 			dst->objref.v = eel_ps_new(vm, s);
-		else/* if(t == EEL_CDSTRING)*/
+		else/* if(cid == EEL_CDSTRING)*/
 			dst->objref.v = eel_ds_new(vm, s);
-		dst->type = EEL_TOBJREF;
+		dst->classid = EEL_COBJREF;
 		return dst->objref.v ? 0 : EEL_XMEMORY;
 	}
 	else

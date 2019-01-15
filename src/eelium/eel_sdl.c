@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_sdl.c - EEL SDL Binding
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2011, 2013-2014, 2016 David Olofson
+ * Copyright 2005-2007, 2009-2011, 2013-2014, 2016, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -106,7 +106,7 @@ static inline void clip_rect(SDL_Rect *r, SDL_Rect *to)
 static inline EEL_xno get_surface(EEL_value *arg, int *locked, SDL_Surface **s)
 {
 	*locked = 0;
-	if(EEL_TYPE(arg) == esdl_md.surfacelock_cid)
+	if(EEL_CLASS(arg) == esdl_md.surfacelock_cid)
 	{
 		EEL_object *so = o2ESDL_surfacelock(arg->objref.v)->surface;
 		if(!so)
@@ -115,7 +115,7 @@ static inline EEL_xno get_surface(EEL_value *arg, int *locked, SDL_Surface **s)
 		/* This one's locked by definition, so we're done! */
 		return 0;
 	}
-	else if(EEL_TYPE(arg) == esdl_md.surface_cid)
+	else if(EEL_CLASS(arg) == esdl_md.surface_cid)
 	{
 		*s = o2ESDL_surface(arg->objref.v)->surface;
 		if(SDL_MUSTLOCK((*s)))
@@ -209,11 +209,11 @@ static inline Uint32 rgba2c(int r, int g, int b, int a)
 /*----------------------------------------------------------
 	Rect class
 ----------------------------------------------------------*/
-static EEL_xno r_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno r_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	SDL_Rect *r;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(SDL_Rect), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(SDL_Rect), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	r = o2SDL_Rect(eo);
@@ -225,7 +225,7 @@ static EEL_xno r_construct(EEL_vm *vm, EEL_types type,
 	else if(initc == 1)
 	{
 		SDL_Rect *sr;
-		if(initv->objref.v->type != esdl_md.rect_cid)
+		if(initv->objref.v->classid != esdl_md.rect_cid)
 		{
 			eel_o_free(eo);
 			return EEL_XWRONGTYPE;
@@ -254,9 +254,9 @@ static EEL_xno r_construct(EEL_vm *vm, EEL_types type,
 
 
 static EEL_xno r_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
-	EEL_object *co = eel_o_alloc(vm, sizeof(SDL_Rect), t);
+	EEL_object *co = eel_o_alloc(vm, sizeof(SDL_Rect), cid);
 	if(!co)
 		return EEL_XMEMORY;
 	memcpy(o2SDL_Rect(co), o2SDL_Rect(src->objref.v), sizeof(SDL_Rect));
@@ -290,7 +290,7 @@ static EEL_xno r_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	  default:
 		return EEL_XWRONGINDEX;
 	}
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	return 0;
 }
 
@@ -334,7 +334,7 @@ static EEL_xno r_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 /*----------------------------------------------------------
 	Surface class
 ----------------------------------------------------------*/
-static EEL_xno s_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno s_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	ESDL_surface *s;
@@ -429,7 +429,7 @@ static EEL_xno s_construct(EEL_vm *vm, EEL_types type,
 	  }
 	  case 0:
 		// Create empty Surface object
-		eo = eel_o_alloc(vm, sizeof(ESDL_surface), type);
+		eo = eel_o_alloc(vm, sizeof(ESDL_surface), cid);
 		if(!eo)
 			return EEL_XMEMORY;
 		s = o2ESDL_surface(eo);
@@ -439,7 +439,7 @@ static EEL_xno s_construct(EEL_vm *vm, EEL_types type,
 	  default:
 		return EEL_XARGUMENTS;
 	}
-	eo = eel_o_alloc(vm, sizeof(ESDL_surface), type);
+	eo = eel_o_alloc(vm, sizeof(ESDL_surface), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	s = o2ESDL_surface(eo);
@@ -500,7 +500,7 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	else if(!strcmp(is, "palette"))
 	{
 		op2->integer.v = s->surface->format->palette ? 1 : 0;
-		op2->type = EEL_TBOOLEAN;
+		op2->classid = EEL_CBOOLEAN;
 		return 0;
 	}
 	else if(!strcmp(is, "BitsPerPixel"))
@@ -517,7 +517,7 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 		op2->integer.v = s->surface->format->Amask;
 	else
 		return EEL_XWRONGINDEX;
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	return 0;
 }
 
@@ -525,7 +525,7 @@ static EEL_xno s_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 /*----------------------------------------------------------
 	SurfaceLock class
 ----------------------------------------------------------*/
-static EEL_xno sl_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno sl_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	ESDL_surfacelock *sl;
@@ -533,9 +533,9 @@ static EEL_xno sl_construct(EEL_vm *vm, EEL_types type,
 	EEL_object *eo;
 	if(initc != 1)
 		return EEL_XARGUMENTS;
-	if(EEL_TYPE(initv) != esdl_md.surface_cid)
+	if(EEL_CLASS(initv) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
-	eo = eel_o_alloc(vm, sizeof(ESDL_surfacelock), type);
+	eo = eel_o_alloc(vm, sizeof(ESDL_surfacelock), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	sl = o2ESDL_surfacelock(eo);
@@ -589,7 +589,7 @@ static EEL_xno sl_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 static EEL_xno esdl_LockSurface(EEL_vm *vm)
 {
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) != esdl_md.surface_cid)
+	if(EEL_CLASS(arg) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	return eel_o_construct(vm, esdl_md.surfacelock_cid, arg, 1,
 			vm->heap + vm->resv);
@@ -601,7 +601,7 @@ static EEL_xno esdl_UnlockSurface(EEL_vm *vm)
 	EEL_value *arg = vm->heap + vm->argv;
 	ESDL_surfacelock *sl;
 	ESDL_surface *s;
-	if(EEL_TYPE(arg) != esdl_md.surfacelock_cid)
+	if(EEL_CLASS(arg) != esdl_md.surfacelock_cid)
 		return EEL_XWRONGTYPE;
 	sl = o2ESDL_surfacelock(arg->objref.v);
 	if(!sl->surface)
@@ -661,7 +661,7 @@ static EEL_xno esdl_JoystickName(EEL_vm *vm)
 }
 
 
-static EEL_xno j_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno j_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	ESDL_joystick *j;
@@ -682,7 +682,7 @@ static EEL_xno j_construct(EEL_vm *vm, EEL_types type,
 	}
 	if(SDL_JoystickOpened(ind))
 		return EEL_XDEVICEOPENED;
-	eo = eel_o_alloc(vm, sizeof(ESDL_joystick), type);
+	eo = eel_o_alloc(vm, sizeof(ESDL_joystick), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	j = o2ESDL_joystick(eo);
@@ -792,7 +792,7 @@ static EEL_xno esdl_SetVideoMode(EEL_vm *vm)
 		int v = eel_v2l(arg);
 		if(v)
 			width = v;
-		else if(arg->type == EEL_TBOOLEAN)
+		else if(arg->classid == EEL_CBOOLEAN)
 		{
 			SDL_QuitSubSystem(SDL_INIT_VIDEO);
 			SDL_InitSubSystem(SDL_INIT_VIDEO);
@@ -947,16 +947,16 @@ static EEL_xno esdl_SetClipRect(EEL_vm *vm)
 	switch(vm->argc)
 	{
 	  case 2:	/* Rect */
-		if(EEL_TYPE(arg + 1) != EEL_TNIL)
+		if(EEL_CLASS(arg + 1) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg + 1) != esdl_md.rect_cid)
+			if(EEL_CLASS(arg + 1) != esdl_md.rect_cid)
 				return EEL_XWRONGTYPE;
 			r = o2SDL_Rect(arg[1].objref.v);
 		}
 	  case 1:	/* Surface */
-		if(EEL_TYPE(arg) != EEL_TNIL)
+		if(EEL_CLASS(arg) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg) != esdl_md.surface_cid)
+			if(EEL_CLASS(arg) != esdl_md.surface_cid)
 				return EEL_XWRONGTYPE;
 			s = o2ESDL_surface(arg->objref.v)->surface;
 		}
@@ -991,13 +991,13 @@ static EEL_xno esdl_Update(EEL_vm *vm)
 		cr.y = 0;
 		cr.w = s->w;
 		cr.h = s->h;
-		if(EEL_TYPE(arg) == esdl_md.rect_cid)
+		if(EEL_CLASS(arg) == esdl_md.rect_cid)
 		{
 			SDL_Rect r = *o2SDL_Rect(arg->objref.v);
 			clip_rect(&r, &cr);
 			SDL_UpdateRects(s, 1, &r);
 		}
-		else if((EEL_classes)EEL_TYPE(arg) == EEL_CARRAY)
+		else if(EEL_CLASS(arg) == EEL_CARRAY)
 		{
 			int i, len;
 			EEL_value v;
@@ -1017,7 +1017,7 @@ static EEL_xno esdl_Update(EEL_vm *vm)
 					eel_free(vm, ra);
 					return x;
 				}
-				if(EEL_TYPE(&v) != esdl_md.rect_cid)
+				if(EEL_CLASS(&v) != esdl_md.rect_cid)
 				{
 					eel_v_disown(&v);
 					continue;	/* Ignore... */
@@ -1050,30 +1050,30 @@ static EEL_xno esdl_BlitSurface(EEL_vm *vm)
 	switch(vm->argc)
 	{
 	  case 4:	/* Destination rect */
-		if(EEL_TYPE(arg + 3) != EEL_TNIL)
+		if(EEL_CLASS(arg + 3) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg + 3) != esdl_md.rect_cid)
+			if(EEL_CLASS(arg + 3) != esdl_md.rect_cid)
 				return EEL_XWRONGTYPE;
 			tor = o2SDL_Rect(arg[3].objref.v);
 		}
 	  case 3:	/* Destination surface */
-		if(EEL_TYPE(arg + 2) != EEL_TNIL)
+		if(EEL_CLASS(arg + 2) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg + 2) != esdl_md.surface_cid)
+			if(EEL_CLASS(arg + 2) != esdl_md.surface_cid)
 				return EEL_XWRONGTYPE;
 			to = o2ESDL_surface(arg[2].objref.v)->surface;
 		}
 	  case 2:	/* Source rect */
-		if(EEL_TYPE(arg + 1) != EEL_TNIL)
+		if(EEL_CLASS(arg + 1) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg + 1) != esdl_md.rect_cid)
+			if(EEL_CLASS(arg + 1) != esdl_md.rect_cid)
 				return EEL_XWRONGTYPE;
 			fromr = o2SDL_Rect(arg[1].objref.v);
 		}
 	  case 1:	/* Source surface (required) */
-		if(EEL_TYPE(arg) != EEL_TNIL)
+		if(EEL_CLASS(arg) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg) != esdl_md.surface_cid)
+			if(EEL_CLASS(arg) != esdl_md.surface_cid)
 				return EEL_XWRONGTYPE;
 			from = o2ESDL_surface(arg->objref.v)->surface;
 		}
@@ -1112,16 +1112,16 @@ static EEL_xno esdl_FillRect(EEL_vm *vm)
 	  case 3:	/* Color */
 		color = eel_v2l(arg + 2);
 	  case 2:	/* Rect */
-		if(EEL_TYPE(arg + 1) != EEL_TNIL)
+		if(EEL_CLASS(arg + 1) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg + 1) != esdl_md.rect_cid)
+			if(EEL_CLASS(arg + 1) != esdl_md.rect_cid)
 				return EEL_XWRONGTYPE;
 			tor = o2SDL_Rect(arg[1].objref.v);
 		}
 	  case 1:	/* Surface */
-		if(EEL_TYPE(arg) != EEL_TNIL)
+		if(EEL_CLASS(arg) != EEL_CNIL)
 		{
-			if(EEL_TYPE(arg) != esdl_md.surface_cid)
+			if(EEL_CLASS(arg) != esdl_md.surface_cid)
 				return EEL_XWRONGTYPE;
 			to = o2ESDL_surface(arg->objref.v)->surface;
 		}
@@ -1143,7 +1143,7 @@ static EEL_xno esdl_DisplayFormat(EEL_vm *vm)
 	EEL_xno x;
 	SDL_Surface *from, *to;
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) != esdl_md.surface_cid)
+	if(EEL_CLASS(arg) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2ESDL_surface(arg->objref.v)->surface;
 	to = SDL_DisplayFormat(from);
@@ -1165,7 +1165,7 @@ static EEL_xno esdl_DisplayFormatAlpha(EEL_vm *vm)
 	EEL_xno x;
 	SDL_Surface *from, *to;
 	EEL_value *arg = vm->heap + vm->argv;
-	if(EEL_TYPE(arg) != esdl_md.surface_cid)
+	if(EEL_CLASS(arg) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2ESDL_surface(arg->objref.v)->surface;
 	to = SDL_DisplayFormatAlpha(from);
@@ -1188,7 +1188,7 @@ static EEL_xno esdl_SetAlpha(EEL_vm *vm)
 	Uint32 flag;
 	SDL_Surface *s;
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != esdl_md.surface_cid)
+	if(EEL_CLASS(args) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2ESDL_surface(args->objref.v)->surface;
 	if(vm->argc >= 2)
@@ -1210,7 +1210,7 @@ static EEL_xno esdl_SetColorKey(EEL_vm *vm)
 	Uint32 flag, key;
 	SDL_Surface *s;
 	EEL_value *args = vm->heap + vm->argv;
-	if(EEL_TYPE(args) != esdl_md.surface_cid)
+	if(EEL_CLASS(args) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2ESDL_surface(args->objref.v)->surface;
 	if(vm->argc >= 2)
@@ -1243,16 +1243,16 @@ static EEL_xno esdl_SetColors(EEL_vm *vm)
 	Uint32 first;
 	EEL_value *args = vm->heap + vm->argv;
 	EEL_value *res = vm->heap + vm->resv;
-	if(EEL_TYPE(args) != esdl_md.surface_cid)
+	if(EEL_CLASS(args) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2ESDL_surface(args->objref.v)->surface;
 	if(vm->argc >= 3)
 		first = eel_v2l(args + 2);
 	else
 		first = 0;
-	switch((EEL_classes)EEL_TYPE(args + 1))
+	switch(EEL_CLASS(args + 1))
 	{
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 	  {
 		/* Single color value */
 		SDL_Color c;
@@ -1296,9 +1296,9 @@ static EEL_xno esdl_MapColor(EEL_vm *vm)
 	Uint32 color;
 	int r, g, b;
 	int a = -1;
-	if(EEL_TYPE(arg) != esdl_md.surface_cid)
+	if(EEL_CLASS(arg) != esdl_md.surface_cid)
 	{
-		if(EEL_TYPE(arg) != EEL_TNIL)
+		if(EEL_CLASS(arg) != EEL_CNIL)
 			return EEL_XWRONGTYPE;
 		s = SDL_GetVideoSurface();
 		if(!s)
@@ -1349,7 +1349,7 @@ static EEL_xno esdl_MapColor(EEL_vm *vm)
 		color = SDL_MapRGBA(s->format, r, g, b, a);
 	else
 		color = SDL_MapRGB(s->format, r, g, b);
-	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].classid = EEL_CINTEGER;
 	vm->heap[vm->resv].integer.v = color;
 	return 0;
 }
@@ -1360,9 +1360,9 @@ static EEL_xno esdl_GetColor(EEL_vm *vm)
 	EEL_value *arg = vm->heap + vm->argv;
 	SDL_Surface *s;
 	Uint8 r, g, b, a;
-	if(EEL_TYPE(arg) != esdl_md.surface_cid)
+	if(EEL_CLASS(arg) != esdl_md.surface_cid)
 	{
-		if(EEL_TYPE(arg) != EEL_TNIL)
+		if(EEL_CLASS(arg) != EEL_CNIL)
 			return EEL_XWRONGTYPE;
 		s = SDL_GetVideoSurface();
 		if(!s)
@@ -1371,7 +1371,7 @@ static EEL_xno esdl_GetColor(EEL_vm *vm)
 	else
 		s = o2ESDL_surface(arg->objref.v)->surface;
 	SDL_GetRGBA(eel_v2l(arg + 1), s->format, &r, &g, &b, &a);
-	vm->heap[vm->resv].type = EEL_TINTEGER;
+	vm->heap[vm->resv].classid = EEL_CINTEGER;
 	vm->heap[vm->resv].integer.v = rgba2c(r, g, b, a);
 	return 0;
 }
@@ -1662,7 +1662,7 @@ static EEL_xno esdl_FilterPixel(EEL_vm *vm)
 	EEL_value *arg = vm->heap + vm->argv;
 	x0 = eel_v2l(arg + 1);
 	y0 = eel_v2l(arg + 2);
-	if(EEL_TYPE(arg + 3) == (EEL_types)EEL_CVECTOR_S32)
+	if(EEL_CLASS(arg + 3) == EEL_CVECTOR_S32)
 	{
 		EEL_object *o = eel_v2o(arg + 3);
 		int len = eel_length(o);
@@ -1967,7 +1967,7 @@ static EEL_xno esdl_CloseAudio(EEL_vm *vm)
 
 static inline Sint16 get_sample(EEL_value *v)
 {
-	if(v->type == EEL_TINTEGER)
+	if(v->classid == EEL_CINTEGER)
 		return v->integer.v >> 16;
 	else
 	{
@@ -1989,7 +1989,7 @@ static EEL_xno esdl_PlayAudio(EEL_vm *vm)
 		return EEL_XDEVICECLOSED;
 	if(sfifo_space(&esdl_md.audiofifo) < sizeof(s))
 		return EEL_XDEVICEWRITE;
-	if(EEL_IS_OBJREF(args[0].type))
+	if(EEL_IS_OBJREF(args[0].classid))
 	{
 		EEL_value iv;
 		EEL_object *o0 = args[0].objref.v;
@@ -1998,7 +1998,7 @@ static EEL_xno esdl_PlayAudio(EEL_vm *vm)
 		eel_l2v(&iv, 0);
 		if(vm->argc >= 2)
 		{
-			if(!EEL_IS_OBJREF(args[1].type))
+			if(!EEL_IS_OBJREF(args[1].classid))
 				return EEL_XNEEDOBJECT;
 			o1 = args[1].objref.v;
 			if(eel_length(o1) < 0)
@@ -2449,7 +2449,7 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 
 	/* Types */
 	c = eel_export_class(m, "Rect", EEL_COBJECT, r_construct, NULL, NULL);
-	esdl_md.rect_cid = eel_class_typeid(c);
+	esdl_md.rect_cid = eel_class_cid(c);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, r_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, r_setindex);
 	eel_set_casts(vm, esdl_md.rect_cid, esdl_md.rect_cid, r_clone);
@@ -2457,17 +2457,17 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	c = eel_export_class(m, "Surface", EEL_COBJECT,
 			s_construct, s_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, s_getindex);
-	esdl_md.surface_cid = eel_class_typeid(c);
+	esdl_md.surface_cid = eel_class_cid(c);
 
 	c = eel_export_class(m, "SurfaceLock", esdl_md.surface_cid,
 			sl_construct, sl_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, sl_getindex);
-	esdl_md.surfacelock_cid = eel_class_typeid(c);
+	esdl_md.surfacelock_cid = eel_class_cid(c);
 
 	c = eel_export_class(m, "Joystick", EEL_COBJECT,
 			j_construct, j_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, j_getindex);
-	esdl_md.joystick_cid = eel_class_typeid(c);
+	esdl_md.joystick_cid = eel_class_cid(c);
 
 	/* Display and surface handling */
 	eel_export_cfunction(m, 1, "GetVideoInfo", 0, 0, 0, esdl_GetVideoInfo);

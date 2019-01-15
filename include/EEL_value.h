@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL_value.h - EEL Data Element (For VM stack, symbol values etc.)
 ---------------------------------------------------------------------------
- * Copyright 2000, 2002, 2004-2007, 2009-2012 David Olofson
+ * Copyright 2000, 2002, 2004-2007, 2009-2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -33,58 +33,36 @@ extern "C" {
 #endif
 
 /*
- * Native value types, aka "simple types"
+ * Built-in types and classes
  */
 typedef enum
 {
-	/* Primitive types */
-	EEL_TNIL = 0,	/* No object - no type */
-	EEL_TREAL,	/* Real		real.v = value */
-	EEL_TINTEGER,	/* Integer	integer.v = value */
-	EEL_TBOOLEAN,	/* Boolean	integer.v = value (0 or 1) */
-	EEL_TTYPEID,	/* Type	ID	integer.v = object type ID */
+	/* Special (non-)type class IDs */
+	EEL_CINDEXABLE = -3,	/* "Any indexable class" wildcard */
+	EEL_CANY =	-2,	/* "Any class" wildcard */
+	EEL_CILLEGAL =	-1,	/* "Illegal type" marker (debug) */
+
+	/* Value types */
+	EEL_CNIL =	0,	/* No object, implicit value */
+	EEL_CREAL,		/* Real		real.v = value */
+	EEL_CINTEGER,		/* Integer	integer.v = value */
+	EEL_CBOOLEAN,		/* Boolean	integer.v = value (0 or 1) */
+	EEL_CCLASSID,		/* Class ID	integer.v = object class ID */
+
+	/*
+	 * Last value type.
+	 *
+	 * MAKE SURE TO UPDATE THIS AS NEEDED, IF VALUE TYPES ARE CHANGED!
+	 */
+	EEL_CLASTVALUE = EEL_CCLASSID,
 
 	/* Object reference types (detect with EEL_IS_OBJREF()) */
-	EEL_TOBJREF,	/* Object ref.	object.v -> EEL_object */
-	EEL_TWEAKREF	/* Weak ref.	object.v -> EEL_object */
-			/*		object.index = backref index */
-	/**************************************
-	              IMPORTANT!
-
-	 Make sure to update the defines below
-	 as needed after changing this enum!
-	**************************************/
-} EEL_types;
-
-/*
- * Special (non-)type IDs
- */
-typedef enum
-{
-	EEL_TILLEGAL = -1,		/* "Illegal type" marker (debug) */
-	EEL_TANYTYPE = -2,		/* "Any type" wildcard */
-	EEL_TANYINDEXABLE = -3,		/* "Any indexable type" wildcard */
-
-	EEL_TLASTTYPE = EEL_TWEAKREF,	/* Last valid value type */
-	EEL__CFIRST			/* First class type ID */
-} EEL_nontypes;
-
-/*
- * Built-in classes
- */
-typedef enum
-{
-	/* Class IDs for value types (to avoid C type checking issues) */
-	EEL_CNIL =	EEL_TNIL,
-	EEL_CREAL =	EEL_TREAL,
-	EEL_CINTEGER =	EEL_TINTEGER,
-	EEL_CBOOLEAN =	EEL_TBOOLEAN,
-	EEL_CTYPEID =	EEL_TTYPEID,
-	EEL_COBJREF =	EEL_TOBJREF,
-	EEL_CWEAKREF =	EEL_TWEAKREF,
+	EEL_COBJREF,		/* Object ref.	object.v -> EEL_object */
+	EEL_CWEAKREF,		/* Weak ref.	object.v -> EEL_object */
+				/*		object.index = backref index */
 
 	/* Built-in classes */
-	EEL_CVALUE = EEL__CFIRST,/* Base class of all value types */
+	EEL_CVALUE,		/* Base class of all value types */
 	EEL_COBJECT,		/* Base class of all objects */
 
 	EEL_CCLASS,		/* Class definition */
@@ -113,27 +91,28 @@ typedef enum
 /* Data element */
 union EEL_value
 {
-	EEL_types	type;
+	EEL_classes	classid;
+
 	/*
 	 * Primitive types
 	 */
-	struct	/* EEL_TREAL */
+	struct	/* EEL_CREAL */
 	{
-		EEL_types	type;
+		EEL_classes	classid;
 		EEL_real	v;
 	} real;
-	struct	/* EEL_TINTEGER, EEL_TBOOLEAN, EEL_TTYPEID */
+	struct	/* EEL_CINTEGER, EEL_CBOOLEAN, EEL_CCLASSID */
 	{
-		EEL_types	type;
+		EEL_classes	classid;
 		EEL_integer	v;
 	} integer;
 
 	/*
 	 * Object reference types
 	 */
-	struct	/* EEL_TOBJREF, EEL_TWEAKREF */
+	struct	/* EEL_COBJREF, EEL_CWEAKREF */
 	{
-		EEL_types	type;
+		EEL_classes	classid;
 		EEL_index	index;	/* Index into weakref vector */
 		EEL_object	*v;	/* NULL is illegal! */
 	} objref;
@@ -147,10 +126,10 @@ EEL_COMPILE_TIME_ASSERT(eel_data, sizeof(EEL_value) == EEL_VALUE_SIZE);
 
 
 /*
- * This is "true" for any type that has an object reference.
- * (Currently, that means EEL_TOBJREF and EEL_TWEAKREF.)
+ * This is "true" for any class that has an object reference.
+ * (Currently, that means EEL_COBJREF and EEL_CWEAKREF.)
  */
-#define	EEL_IS_OBJREF(x)	((x) >= EEL_TOBJREF)
+#define	EEL_IS_OBJREF(x)	((x) >= EEL_COBJREF)
 
 static inline EEL_object *eel_v2o(EEL_value *v)
 {
@@ -178,19 +157,19 @@ EELAPI(long int)eel__v2l(EEL_value *v);
 EELAPI(double)eel__v2d(EEL_value *v);
 static inline long int eel_v2l(EEL_value *v)
 {
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return 0;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 #ifdef __cplusplus
 		return (long int)floor(v->real.v);
 #else
 		return floor(v->real.v);
 #endif
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
 		return v->integer.v;
 	  default:
 		return eel__v2l(v);
@@ -198,15 +177,15 @@ static inline long int eel_v2l(EEL_value *v)
 }
 static inline double eel_v2d(EEL_value *v)
 {
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return 0.0f;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		return v->real.v;
-	  case EEL_TINTEGER:
-	  case EEL_TBOOLEAN:
-	  case EEL_TTYPEID:
+	  case EEL_CINTEGER:
+	  case EEL_CBOOLEAN:
+	  case EEL_CCLASSID:
 		return v->integer.v;
 	  default:
 		return eel__v2d(v);
@@ -220,30 +199,30 @@ static inline double eel_v2d(EEL_value *v)
 
 static inline void eel_nil2v(EEL_value *v)
 {
-	v->type = EEL_TNIL;
+	v->classid = EEL_CNIL;
 }
 
 static inline void eel_b2v(EEL_value *v, int b)
 {
-	v->type = EEL_TBOOLEAN;
+	v->classid = EEL_CBOOLEAN;
 	v->integer.v = b ? 1 : 0;
 }
 
 static inline void eel_l2v(EEL_value *v, long l)
 {
-	v->type = EEL_TINTEGER;
+	v->classid = EEL_CINTEGER;
 	v->integer.v = l;
 }
 
 static inline void eel_d2v(EEL_value *v, double d)
 {
-	v->type = EEL_TREAL;
+	v->classid = EEL_CREAL;
 	v->real.v = d;
 }
 
 static inline void eel_o2v(EEL_value *v, EEL_object *o)
 {
-	v->type = EEL_TOBJREF;
+	v->classid = EEL_COBJREF;
 	v->objref.v = o;
 }
 
@@ -254,7 +233,7 @@ static inline void eel_o2v(EEL_value *v, EEL_object *o)
  */
 static inline void eel_o2wr(EEL_value *v, EEL_object *o)
 {
-	v->type = EEL_TWEAKREF;
+	v->classid = EEL_CWEAKREF;
 	v->objref.index = EEL_WEAKREF_UNWIRED;
 	v->objref.v = o;
 }

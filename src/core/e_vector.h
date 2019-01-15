@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_vector.h - EEL Vector Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2009-2010 David Olofson
+ * Copyright 2005-2006, 2009-2010, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -59,10 +59,10 @@ void eel_cvector_register(EEL_vm *vm);
  */
 
 /*
- * Create an uninitialized vector of 'type' (must be one of the vector types),
- * of 'size' items. The buffer will be allocated and internal fields set
- * accordingly, but the buffer contents is undefined!
+ * Create an uninitialized vector of class 'cid' (must be one of the vector
+ * types), of 'size' items. The buffer will be allocated and internal fields
+ * set accordingly, but the buffer contents is undefined!
  */
-EEL_object *eel_cv_new_noinit(EEL_vm *vm, EEL_types type, unsigned size);
+EEL_object *eel_cv_new_noinit(EEL_vm *vm, EEL_classes cid, unsigned size);
 
 #endif	/* EEL_E_VECTOR_H */

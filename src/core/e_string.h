@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_string.h - EEL String Class + string pool
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2008, 2009, 2011-2012 David Olofson
+ * Copyright 2005-2006, 2008, 2009, 2011-2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -52,7 +52,7 @@ void eel_ps_close(EEL_vm *vm);
 static inline const char *eel_o2s(EEL_object *o)
 {
 #ifdef EEL_VM_CHECKING
-	if((EEL_classes)o->type != EEL_CSTRING)
+	if(o->classid != EEL_CSTRING)
 		o = NULL;
 #endif
 	return o2EEL_string(o)->buffer;
@@ -83,12 +83,12 @@ static inline EEL_xno eel_s_char_in(char *str, unsigned len, int c,
 	char *f = memchr(str, c, len);
 	if(f)
 	{
-		op2->type = EEL_TINTEGER;
+		op2->classid = EEL_CINTEGER;
 		op2->integer.v = f - str;
 	}
 	else
 	{
-		op2->type = EEL_TBOOLEAN;
+		op2->classid = EEL_CBOOLEAN;
 		op2->integer.v = 0;
 	}
 	return 0;
@@ -109,13 +109,13 @@ static inline EEL_xno eel_s_str_in(char *str, unsigned len,
 					break;
 			if(j == len2)
 			{
-				op2->type = EEL_TINTEGER;
+				op2->classid = EEL_CINTEGER;
 				op2->integer.v = i;
 				return 0;
 			}
 		}
 	}
-	op2->type = EEL_TBOOLEAN;
+	op2->classid = EEL_CBOOLEAN;
 	op2->integer.v = 0;
 	return 0;
 }

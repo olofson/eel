@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_register.h - EEL compiler registry
 ---------------------------------------------------------------------------
- * Copyright 2002, 2004-2006, 2009, 2011, 2014 David Olofson
+ * Copyright 2002, 2004-2006, 2009, 2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -32,7 +32,7 @@
 /*----------------------------------------------------------
 	ESS file support
 ----------------------------------------------------------*/
-void eel_register_essx(EEL_vm *vm, EEL_types t, EEL_symbol *s);
+void eel_register_essx(EEL_vm *vm, EEL_classes cid, EEL_symbol *s);
 void eel_register_essxop(EEL_vm *vm, int op, EEL_symbol *s);
 
 /*----------------------------------------------------------

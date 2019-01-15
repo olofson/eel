@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_util.c - EEL engine utilities
 ---------------------------------------------------------------------------
- * Copyright 2002-2007, 2009-2014 David Olofson
+ * Copyright 2002-2007, 2009-2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -207,7 +207,7 @@ const char *eel_mm_name(EEL_mmindex mm)
 long int eel__v2l(EEL_value *v)
 {
 /*
-TODO: Try to cast to EEL_TINTEGER or something.
+TODO: Try to cast to EEL_CINTEGER or something.
 */
 	return 0;
 }
@@ -216,7 +216,7 @@ TODO: Try to cast to EEL_TINTEGER or something.
 double eel__v2d(EEL_value *v)
 {
 /*
-TODO: Try to cast to EEL_TREAL or something.
+TODO: Try to cast to EEL_CREAL or something.
 */
 	return 0.0f;
 }
@@ -224,17 +224,17 @@ TODO: Try to cast to EEL_TREAL or something.
 
 const char *eel_v2s(EEL_value *v)
 {
-	switch(v->type)
+	switch(v->classid)
 	{
-	  case EEL_TNIL:
-	  case EEL_TBOOLEAN:
-	  case EEL_TREAL:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CNIL:
+	  case EEL_CBOOLEAN:
+	  case EEL_CREAL:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		return NULL;
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
-		switch((EEL_classes)v->objref.v->type)
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
+		switch(v->objref.v->classid)
 		{
 		  case EEL_CSTRING:
 			return eel_o2s(v->objref.v);
@@ -243,8 +243,9 @@ const char *eel_v2s(EEL_value *v)
 		  default:
 			return NULL;
 		}
+	  default:
+		return "<BROKEN VALUE>";
 	}
-	return "<BROKEN VALUE>";
 }
 
 
@@ -252,11 +253,11 @@ const char *eel_v2s(EEL_value *v)
 	Indexable Object API
 ----------------------------------------------------------*/
 
-EEL_object *eel_new_indexable(EEL_vm *vm, EEL_types itype, int length)
+EEL_object *eel_new_indexable(EEL_vm *vm, EEL_classes itype, int length)
 {
 	EEL_value v, iv;
 	EEL_object *o;
-	switch((EEL_classes)itype)
+	switch(itype)
 	{
 	  case EEL_CVECTOR:
 	  case EEL_CVECTOR_U8:
@@ -391,7 +392,7 @@ static const char *o_stringrep(EEL_object *o,
 		pos += snprintf(buf + pos, EEL_SBUFSIZE - pos, " %s", name);
 	if(pos >= EEL_SBUFSIZE)
 		return buf;
-	if((EEL_classes)o->type == EEL_CSTRING)
+	if(o->classid == EEL_CSTRING)
 		pos += snprintf(buf + pos, EEL_SBUFSIZE - pos,
 				", hash: 0x%x", o2EEL_string(o)->hash);
 	if(pos >= EEL_SBUFSIZE)
@@ -412,13 +413,13 @@ const char *eel_o_stringrep(EEL_object *o)
 	EEL_vm *vm = o->vm;
 	EEL_state *es = VMP->state;
 	EEL_object *n;
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CVALUE:
 	  case EEL_COBJECT:
 	  case EEL_CVECTOR:
 		return o_stringrep(o, "virtual base class",
-				eel_typename(vm, o->type), -1);
+				eel_typename(vm, o->classid), -1);
 	  case EEL_CCLASS:
 		n = o2EEL_classdef(o)->name;
 		return o_stringrep(o, "class", n ? eel_o2s(n) : "<unnamed>",
@@ -473,7 +474,7 @@ const char *eel_o_stringrep(EEL_object *o)
 	  case EEL_CVECTOR_S32:
 	  case EEL_CVECTOR_F:
 	  case EEL_CVECTOR_D:
-		return o_stringrep(o, eel_typename(vm, o->type), NULL,
+		return o_stringrep(o, eel_typename(vm, o->classid), NULL,
 				o2EEL_vector(o)->length);
 	  case EEL_CARRAY:
 		return o_stringrep(o, "array", NULL, o2EEL_array(o)->length);
@@ -485,13 +486,13 @@ const char *eel_o_stringrep(EEL_object *o)
 	}
 	if(es->classes)
 		return o_stringrep(o, eel_o2s(
-				o2EEL_classdef(es->classes[o->type])->name),
+				o2EEL_classdef(es->classes[o->classid])->name),
 				NULL, -1);
 	else
 	{
 	  	const char *res;
 		char *s = eel_salloc(es);
-		snprintf(s, EEL_SBUFSIZE, "object of class #%d", o->type);
+		snprintf(s, EEL_SBUFSIZE, "object of class #%d", o->classid);
 		res = o_stringrep(o, s, NULL, -1);
 		eel_sfree(es, s);
 		return res;
@@ -503,35 +504,36 @@ const char *eel_o_stringrep(EEL_object *o)
 const char *eel_v_stringrep(EEL_vm *vm, const EEL_value *value)
 {
 	char *buf;
-	switch(value->type)
+	switch(value->classid)
 	{
-	  case EEL_TNIL:
+	  case EEL_CNIL:
 		return "<nil>";
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		buf = eel_salloc(VMP->state);
 		snprintf(buf, EEL_SBUFSIZE, "%.10g", value->real.v);
 		return buf;
-	  case EEL_TINTEGER:
+	  case EEL_CINTEGER:
 		buf = eel_salloc(VMP->state);
 		snprintf(buf, EEL_SBUFSIZE, "%d (0x%x)",
 				value->integer.v, value->integer.v);
 		return buf;
-	  case EEL_TBOOLEAN:
+	  case EEL_CBOOLEAN:
 		if(value->integer.v)
 			return "true";
 		else
 			return "false";
-	  case EEL_TTYPEID:
+	  case EEL_CCLASSID:
 		buf = eel_salloc(VMP->state);
-		snprintf(buf, EEL_SBUFSIZE, "<typeid %s>",
+		snprintf(buf, EEL_SBUFSIZE, "<classid %s>",
 				eel_o2s(o2EEL_classdef(
 				VMP->state->classes[value->integer.v])->name));
 		return buf;
-	  case EEL_TOBJREF:
-	  case EEL_TWEAKREF:
+	  case EEL_COBJREF:
+	  case EEL_CWEAKREF:
 		return eel_o_stringrep(value->objref.v);
+	  default:
+		return "<internal error: undef value type>";
 	}
-	return "<internal error: undef value type>";
 }
 
 
@@ -583,20 +585,22 @@ const char *eel_symbol_is(EEL_symbol *s)
  * can't do much about user classes for which
  * classdefs or name strings are not available.
  */
-const char *eel_typename(EEL_vm *vm, EEL_types type)
+const char *eel_typename(EEL_vm *vm, EEL_classes cid)
 {
-	switch(type)
+	switch(cid)
 	{
-	  case EEL_TNIL:	return "nil";
-	  case EEL_TREAL:	return "real";
-	  case EEL_TINTEGER:	return "integer";
-	  case EEL_TBOOLEAN:	return "boolean";
-	  case EEL_TTYPEID:	return "typeid";
-	  case EEL_TOBJREF:	return "objref";
-	  case EEL_TWEAKREF:	return "weakref";
-	}
-	switch((EEL_classes)type)
-	{
+	  case EEL_CINDEXABLE:
+	  case EEL_CANY:
+	  case EEL_CILLEGAL:
+	  case EEL__CUSER:
+	  	break;
+	  case EEL_CNIL:	return "nil";
+	  case EEL_CREAL:	return "real";
+	  case EEL_CINTEGER:	return "integer";
+	  case EEL_CBOOLEAN:	return "boolean";
+	  case EEL_CCLASSID:	return "classid";
+	  case EEL_COBJREF:	return "objref";
+	  case EEL_CWEAKREF:	return "weakref";
 	  case EEL_CVALUE:	return "value";
 	  case EEL_COBJECT:	return "object";
 	  case EEL_CCLASS:	return "class";
@@ -615,17 +619,14 @@ const char *eel_typename(EEL_vm *vm, EEL_types type)
 	  case EEL_CVECTOR_S32:	return "vector_s32";
 	  case EEL_CVECTOR_F:	return "vector_f";
 	  case EEL_CVECTOR_D:	return "vector_d";
-	  case EEL__CUSER:
-	  default:
-		break;
 	}
-  	if((type < 0) || (type >= VMP->state->nclasses))
+  	if((cid < 0) || (cid >= VMP->state->nclasses))
 		return "<ILLEGAL TYPE>";
-	if(!VMP->state->classes[type])
+	if(!VMP->state->classes[cid])
 		return "<UNDEFINED TYPE>";
-	if(!o2EEL_classdef(VMP->state->classes[type])->name)
+	if(!o2EEL_classdef(VMP->state->classes[cid])->name)
 		return "<UNNAMED TYPE>";
-	return eel_o2s(o2EEL_classdef(VMP->state->classes[type])->name);
+	return eel_o2s(o2EEL_classdef(VMP->state->classes[cid])->name);
 }
 
 
@@ -943,7 +944,7 @@ EEL_uint32 eel_lib_version(void)
 
 void *eel_rawdata(EEL_object *o)
 {
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CSTRING:
 		return o2EEL_string(o)->buffer;

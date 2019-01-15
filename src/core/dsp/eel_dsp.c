@@ -1,7 +1,7 @@
 /*
  * DSP Module - KISS FFT library binding + other DSP tools
  *
- * Copyright 2006-2007, 2010, 2012, 2014 David Olofson
+ * Copyright 2006-2007, 2010, 2012, 2014, 2019 David Olofson
  */
 
 #include <math.h>
@@ -28,7 +28,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 {
 	double vvals[2];
 	EEL_vector *vec = NULL;
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -49,7 +49,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 	}
 	if(op != OP_SET)
 	{
-		switch((EEL_classes)o->type)
+		switch(o->classid)
 		{
 		  case EEL_CVECTOR_U8:
 			vvals[0] = vec->buffer.u8[ind];
@@ -126,7 +126,7 @@ static EEL_xno do_op2(EEL_object *o, int ind, double *avals, OPS op)
 		vvals[1] *= avals[1];
 		break;
 	}
-	switch((EEL_classes)o->type)
+	switch(o->classid)
 	{
 	  case EEL_CVECTOR_U8:
 		vec->buffer.u8[ind] = vvals[0];
@@ -190,7 +190,7 @@ static EEL_xno do_sum(EEL_vm *vm, int *count)
 	double sum = 0.0f;
 	*count = 0;
 
-	switch((EEL_classes)EEL_TYPE(args))
+	switch(EEL_CLASS(args))
 	{
 	  case EEL_CVECTOR_U8:
 	  case EEL_CVECTOR_S8:
@@ -241,7 +241,7 @@ static EEL_xno do_sum(EEL_vm *vm, int *count)
 	if(last < first)
 		return EEL_XWRONGINDEX;
 
-	switch((EEL_classes)EEL_TYPE(args))
+	switch(EEL_CLASS(args))
 	{
 	  case EEL_CVECTOR_U8:
 		for(i = first; i <= last; i += stride)
@@ -371,7 +371,7 @@ static EEL_xno do_polynomial(EEL_vm *vm, int add, int inclusive)
 		dfx = 1.0f / (double)count;
 	vec = o2EEL_vector(o);
 	if(add)
-		switch((EEL_classes)o->type)
+		switch(o->classid)
 		{
 		  case EEL_CVECTOR_U8:	path = 1; break;
 		  case EEL_CVECTOR_S8:	path = 2; break;
@@ -506,7 +506,7 @@ static EEL_xno dsp_fft_real(EEL_vm *vm)
 	int i;
 	double scale;
 /*TODO: Use an intermediate buffer for other types! */
-	if((EEL_classes)EEL_TYPE(arg) != EEL_CVECTOR_D)
+	if(EEL_CLASS(arg) != EEL_CVECTOR_D)
 		return EEL_XWRONGTYPE;
 	to = eel_v2o(arg);
 	tv = o2EEL_vector(to);
@@ -541,7 +541,7 @@ static EEL_xno dsp_ifft_real(EEL_vm *vm)
 	int i;
 	double save[3];
 /*TODO: Use an intermediate buffer for other types! */
-	if((EEL_classes)EEL_TYPE(arg) != EEL_CVECTOR_D)
+	if(EEL_CLASS(arg) != EEL_CVECTOR_D)
 		return EEL_XWRONGTYPE;
 	fo = eel_v2o(arg);
 	fv = o2EEL_vector(fo);
@@ -585,7 +585,7 @@ static EEL_xno dsp_c_abs(EEL_vm *vm)
 	EEL_xno x;
 	EEL_value *args = vm->heap + vm->argv;
 	double v[2];
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	x = do_op2(eel_v2o(args), eel_v2l(args + 1) * 2, v, OP_GET);
 	if(x)
@@ -600,7 +600,7 @@ static EEL_xno dsp_c_arg(EEL_vm *vm)
 	EEL_xno x;
 	EEL_value *args = vm->heap + vm->argv;
 	double v[2];
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	x = do_op2(eel_v2o(args), eel_v2l(args + 1) * 2, v, OP_GET);
 	if(x)
@@ -614,7 +614,7 @@ static EEL_xno dsp_c_set(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	double v[2];
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	v[0] = eel_v2d(args + 2);
 	v[1] = eel_v2d(args + 3);
@@ -628,7 +628,7 @@ static EEL_xno dsp_c_add(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	double v[2];
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	v[0] = eel_v2d(args + 2);
 	v[1] = eel_v2d(args + 3);
@@ -642,7 +642,7 @@ static EEL_xno dsp_c_set_polar(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	double m, v[2];
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	m = eel_v2d(args + 2);
 	v[1] = eel_v2d(args + 3);
@@ -658,7 +658,7 @@ static EEL_xno dsp_c_add_polar(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	double m, v[2];
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	m = eel_v2d(args + 2);
 	v[1] = eel_v2d(args + 3);
@@ -676,7 +676,7 @@ static EEL_xno dsp_c_add_i(EEL_vm *vm)
 	double re, im, frac, v[2];
 	int i;
 	OPS op;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	re = eel_v2d(args + 2);
 	im = eel_v2d(args + 3);
@@ -703,7 +703,7 @@ static EEL_xno dsp_c_add_polar_i(EEL_vm *vm)
 	double re, im, frac, v[2];
 	int i;
 	OPS op;
-	if(!EEL_IS_OBJREF(args->type))
+	if(!EEL_IS_OBJREF(args->classid))
 		return EEL_XNEEDOBJECT;
 	v[0] = eel_v2d(args + 2);
 	v[1] = eel_v2d(args + 3);

@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_zeespace.c - EEL ZeeSpace binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2011, 2014 David Olofson
+ * Copyright 2010-2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -50,18 +50,18 @@ EZS_moduledata	zsmd;
 /*----------------------------------------------------------
 	Pixel class
 ----------------------------------------------------------*/
-static EEL_xno zsp_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno zsp_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	ZS_Pixel *p;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(ZS_Pixel), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(ZS_Pixel), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	p = o2ZS_Pixel(eo);
 	if(initc == 1)
 	{
 		ZS_Pixel *sp;
-		if(initv->objref.v->type != zsmd.pixel_cid)
+		if(initv->objref.v->classid != zsmd.pixel_cid)
 		{
 			eel_o_free(eo);
 			return EEL_XWRONGTYPE;
@@ -97,9 +97,9 @@ static EEL_xno zsp_construct(EEL_vm *vm, EEL_types type,
 
 
 static EEL_xno zsp_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
-	EEL_object *co = eel_o_alloc(vm, sizeof(ZS_Pixel), t);
+	EEL_object *co = eel_o_alloc(vm, sizeof(ZS_Pixel), cid);
 	if(!co)
 		return EEL_XMEMORY;
 	memcpy(o2ZS_Pixel(co), o2ZS_Pixel(src->objref.v), sizeof(ZS_Pixel));
@@ -181,11 +181,11 @@ static EEL_xno zsp_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 /*----------------------------------------------------------
 	Rect class
 ----------------------------------------------------------*/
-static EEL_xno zsr_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno zsr_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	ZS_Rect *r;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(ZS_Rect), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(ZS_Rect), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	r = o2ZS_Rect(eo);
@@ -197,7 +197,7 @@ static EEL_xno zsr_construct(EEL_vm *vm, EEL_types type,
 	else if(initc == 1)
 	{
 		ZS_Rect *sr;
-		if(initv->objref.v->type != zsmd.rect_cid)
+		if(initv->objref.v->classid != zsmd.rect_cid)
 		{
 			eel_o_free(eo);
 			return EEL_XWRONGTYPE;
@@ -226,9 +226,9 @@ static EEL_xno zsr_construct(EEL_vm *vm, EEL_types type,
 
 
 static EEL_xno zsr_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
-	EEL_object *co = eel_o_alloc(vm, sizeof(ZS_Rect), t);
+	EEL_object *co = eel_o_alloc(vm, sizeof(ZS_Rect), cid);
 	if(!co)
 		return EEL_XMEMORY;
 	memcpy(o2ZS_Rect(co), o2ZS_Rect(src->objref.v), sizeof(ZS_Rect));
@@ -262,7 +262,7 @@ static EEL_xno zsr_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	  default:
 		return EEL_XWRONGINDEX;
 	}
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	return 0;
 }
 
@@ -306,7 +306,7 @@ static EEL_xno zsr_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 /*----------------------------------------------------------
 	Surface class
 ----------------------------------------------------------*/
-static EEL_xno zss_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno zss_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EZS_surface *s;
@@ -318,15 +318,15 @@ static EEL_xno zss_construct(EEL_vm *vm, EEL_types type,
 		break;
 	  case 3:
 		// Window or region
-		if(EEL_TYPE(initv) != zsmd.surface_cid)
+		if(EEL_CLASS(initv) != zsmd.surface_cid)
 			return EEL_XWRONGTYPE;
-		if(EEL_TYPE(initv + 1) != zsmd.rect_cid)
+		if(EEL_CLASS(initv + 1) != zsmd.rect_cid)
 			return EEL_XWRONGTYPE;
 		break;
 	  default:
 		return EEL_XARGUMENTS;
 	}
-	eo = eel_o_alloc(vm, sizeof(EZS_surface), type);
+	eo = eel_o_alloc(vm, sizeof(EZS_surface), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	s = o2EZS_surface(eo);
@@ -394,7 +394,7 @@ static EEL_xno zss_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	  default:
 		return EEL_XWRONGINDEX;
 	}
-	op2->type = EEL_TINTEGER;
+	op2->classid = EEL_CINTEGER;
 	return 0;
 }
 
@@ -402,14 +402,14 @@ static EEL_xno zss_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 /*----------------------------------------------------------
 	Region class
 ----------------------------------------------------------*/
-static EEL_xno zsrg_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno zsrg_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EZS_region *rg;
 	EEL_object *eo;
 	if(initc != 0)
 		return EEL_XARGUMENTS;
-	eo = eel_o_alloc(vm, sizeof(EZS_region), type);
+	eo = eel_o_alloc(vm, sizeof(EZS_region), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	rg = o2EZS_region(eo);
@@ -436,14 +436,14 @@ static EEL_xno zsrg_destruct(EEL_object *eo)
 /*----------------------------------------------------------
 	Pipe class
 ----------------------------------------------------------*/
-static EEL_xno zspp_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno zspp_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	EZS_pipe *pp;
 	EEL_object *eo;
 	if(initc != 0)
 		return EEL_XARGUMENTS;
-	eo = eel_o_alloc(vm, sizeof(EZS_pipe), type);
+	eo = eel_o_alloc(vm, sizeof(EZS_pipe), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	pp = o2EZS_pipe(eo);
@@ -476,7 +476,7 @@ static EEL_xno ezs_pipez(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_pipe *pp;
 	float z;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	pp = o2EZS_pipe(args->objref.v);
 	if(vm->argc >= 3)
@@ -492,7 +492,7 @@ static EEL_xno ezs_pipecolor(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_pipe *pp;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	pp = o2EZS_pipe(args->objref.v);
 	if(zs_PipeColor(pp->pipe, eel_v2l(args + 1)) < 0)
@@ -505,7 +505,7 @@ static EEL_xno ezs_pipealpha(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_pipe *pp;
 	float alpha;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	if(vm->argc >= 3)
 		alpha = eel_v2d(args + 2);
@@ -522,7 +522,7 @@ static EEL_xno ezs_pipeintensity(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_pipe *pp;
 	float intensity;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	if(vm->argc >= 3)
 		intensity = eel_v2d(args + 2);
@@ -538,7 +538,7 @@ static EEL_xno ezs_pipewrite(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_pipe *pp;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	pp = o2EZS_pipe(args->objref.v);
 	if(zs_PipeWrite(pp->pipe, eel_v2l(args + 1)) < 0)
@@ -558,12 +558,12 @@ static EEL_xno ezs_getpixel(EEL_vm *vm)
 	ZS_Pixel *p, *sp;
 	int x = eel_v2l(args + 1);
 	int y = eel_v2l(args + 2);
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args->objref.v);
 	if(vm->argc >= 4)
 	{
-		if(EEL_TYPE(args + 3) != zsmd.pixel_cid)
+		if(EEL_CLASS(args + 3) != zsmd.pixel_cid)
 			return EEL_XWRONGTYPE;
 		p = o2ZS_Pixel(eel_v2o(args + 3));
 		sp = zs_PixelClip(s->surface, x, y);
@@ -599,12 +599,12 @@ static EEL_xno ezs_getpixelclamp(EEL_vm *vm)
 	ZS_Pixel *p, *sp;
 	int x = eel_v2l(args + 1);
 	int y = eel_v2l(args + 2);
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args->objref.v);
 	if(vm->argc >= 4)
 	{
-		if(EEL_TYPE(args + 3) != zsmd.pixel_cid)
+		if(EEL_CLASS(args + 3) != zsmd.pixel_cid)
 			return EEL_XWRONGTYPE;
 		p = o2ZS_Pixel(eel_v2o(args + 3));
 	}
@@ -631,10 +631,10 @@ static EEL_xno ezs_setpixel(EEL_vm *vm)
 	ZS_Pixel *p, *dp;
 	int x = eel_v2l(args + 1);
 	int y = eel_v2l(args + 2);
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args->objref.v);
-	if(EEL_TYPE(args + 3) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 3) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	p = o2ZS_Pixel(eel_v2o(args + 3));
 	dp = zs_PixelClip(s->surface, x, y);
@@ -670,10 +670,10 @@ static EEL_xno ezs_window(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EEL_value initv[3];
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	eel_o2v(initv, args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.rect_cid)
+	if(EEL_CLASS(args + 1) != zsmd.rect_cid)
 		return EEL_XWRONGTYPE;
 	eel_o2v(initv + 1, args[1].objref.v);
 	eel_l2v(initv + 2, EZS_WINDOW);
@@ -685,10 +685,10 @@ static EEL_xno ezs_view(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EEL_value initv[3];
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	eel_o2v(initv, args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.rect_cid)
+	if(EEL_CLASS(args + 1) != zsmd.rect_cid)
 		return EEL_XWRONGTYPE;
 	eel_o2v(initv + 1, args[1].objref.v);
 	eel_l2v(initv + 2, EZS_VIEW);
@@ -708,20 +708,20 @@ static EEL_xno ezs_rawfill(EEL_vm *vm)
 	ZS_Rect *r;
 	ZS_Pixel *p;
 
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
 	
-	if(EEL_TYPE(args + 2) == EEL_TNIL)
+	if(EEL_CLASS(args + 2) == EEL_CNIL)
 		r = NULL;
 	else
 	{
-		if(EEL_TYPE(args + 2) != zsmd.rect_cid)
+		if(EEL_CLASS(args + 2) != zsmd.rect_cid)
 			return EEL_XWRONGTYPE;
 		r = o2ZS_Rect(args[2].objref.v);
 	}
 
-	if(EEL_TYPE(args + 3) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 3) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	p = o2ZS_Pixel(args[3].objref.v);
 
@@ -736,20 +736,20 @@ static EEL_xno ezs_rawcopy(EEL_vm *vm)
 	EZS_surface *dst;
 	ZS_Rect *srcr;
 
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	src = o2EZS_surface(args[1].objref.v);
 
-	if(EEL_TYPE(args + 2) == EEL_TNIL)
+	if(EEL_CLASS(args + 2) == EEL_CNIL)
 		srcr = NULL;
 	else
 	{
-		if(EEL_TYPE(args + 2) != zsmd.rect_cid)
+		if(EEL_CLASS(args + 2) != zsmd.rect_cid)
 			return EEL_XWRONGTYPE;
 		srcr = o2ZS_Rect(args[2].objref.v);
 	}
 
-	if(EEL_TYPE(args + 3) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 3) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	dst = o2EZS_surface(args[3].objref.v);
 
@@ -769,7 +769,7 @@ static EEL_xno ezs_regionrect(EEL_vm *vm)
 	EZS_region *r;
 	ZS_Errors res;
 	ZS_Operations op = ZS_UNION;
-	if(EEL_TYPE(args) != zsmd.region_cid)
+	if(EEL_CLASS(args) != zsmd.region_cid)
 		return EEL_XWRONGTYPE;
 	r = o2EZS_region(args[0].objref.v);
 	if(vm->argc >= 6)
@@ -804,16 +804,16 @@ static EEL_xno ezs_fill(EEL_vm *vm)
 	EZS_region *r;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.region_cid)
+	if(EEL_CLASS(args + 1) != zsmd.region_cid)
 		return EEL_XWRONGTYPE;
 	r = o2EZS_region(args[1].objref.v);
-	if(EEL_TYPE(args + 2) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 2) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[2].objref.v);
-	if(EEL_TYPE(args + 3) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 3) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[3].objref.v);
 	zs_Fill(p->pipe, r->region, s->surface, px);
@@ -830,13 +830,13 @@ static EEL_xno ezs_block(EEL_vm *vm)
 	EZS_pipe *p;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 6) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 6) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[6].objref.v);
 	zs_Block(p->pipe, s->surface, eel_v2d(args + 2), eel_v2d(args + 3),
@@ -851,21 +851,21 @@ static EEL_xno ezs_blit(EEL_vm *vm)
 	EZS_surface *src;
 	EZS_surface *dst;
 	ZS_Rect *r;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	src = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 2) == EEL_TNIL)
+	if(EEL_CLASS(args + 2) == EEL_CNIL)
 		r = NULL;
 	else
 	{
-		if(EEL_TYPE(args + 2) != zsmd.rect_cid)
+		if(EEL_CLASS(args + 2) != zsmd.rect_cid)
 			return EEL_XWRONGTYPE;
 		r = o2ZS_Rect(args[2].objref.v);
 	}
-	if(EEL_TYPE(args + 3) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 3) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	dst = o2EZS_surface(args[3].objref.v);
 	zs_Blit(p->pipe, src->surface, r, dst->surface,
@@ -879,13 +879,13 @@ static EEL_xno ezs_cylinder(EEL_vm *vm)
 	EZS_pipe *p;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 5) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 5) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[5].objref.v);
 	zs_Cylinder(p->pipe, s->surface, eel_v2d(args + 2), eel_v2d(args + 3),
@@ -899,13 +899,13 @@ static EEL_xno ezs_cone(EEL_vm *vm)
 	EZS_pipe *p;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 6) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 6) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[6].objref.v);
 	zs_Cone(p->pipe, s->surface, eel_v2d(args + 2), eel_v2d(args + 3),
@@ -919,13 +919,13 @@ static EEL_xno ezs_beehive(EEL_vm *vm)
 	EZS_pipe *p;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 6) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 6) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[6].objref.v);
 	zs_Beehive(p->pipe, s->surface, eel_v2d(args + 2), eel_v2d(args + 3),
@@ -939,13 +939,13 @@ static EEL_xno ezs_dome(EEL_vm *vm)
 	EZS_pipe *p;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 6) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 6) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[6].objref.v);
 	zs_Dome(p->pipe, s->surface, eel_v2d(args + 2), eel_v2d(args + 3),
@@ -960,13 +960,13 @@ static EEL_xno ezs_domerect(EEL_vm *vm)
 	EZS_pipe *p;
 	EZS_surface *s;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.pipe_cid)
+	if(EEL_CLASS(args) != zsmd.pipe_cid)
 		return EEL_XWRONGTYPE;
 	p = o2EZS_pipe(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != zsmd.surface_cid)
+	if(EEL_CLASS(args + 1) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[1].objref.v);
-	if(EEL_TYPE(args + 6) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 6) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[6].objref.v);
 	zs_DomeRect(p->pipe, s->surface, eel_v2d(args + 2), eel_v2d(args + 3),
@@ -985,7 +985,7 @@ static EEL_xno ezs_applyintensity(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *s;
 	float rm, gm, bm;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[0].objref.v);
 	rm = gm = bm = 1.0f;
@@ -1012,10 +1012,10 @@ static EEL_xno ezs_blit2sdl(EEL_vm *vm)
 	EZS_surface *from;
 	ESDL_surface *to;
 	int blend = 0;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(args + 1) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	to = o2ESDL_surface(args[1].objref.v);
 	if(vm->argc >= 3)
@@ -1029,10 +1029,10 @@ static EEL_xno ezs_render3d2sdl(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *from;
 	ESDL_surface *to;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(args + 1) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	to = o2ESDL_surface(args[1].objref.v);
 	zs_3D2SDL(from->surface, to->surface, eel_v2d(args + 2));
@@ -1044,10 +1044,10 @@ static EEL_xno ezs_graph2sdl(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *from;
 	ESDL_surface *to;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(args + 1) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	to = o2ESDL_surface(args[1].objref.v);
 	zs_Graph2SDL(from->surface, to->surface, eel_v2l(args + 2));
@@ -1059,10 +1059,10 @@ static EEL_xno ezs_z2sdl(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *from;
 	ESDL_surface *to;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(args + 1) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	to = o2ESDL_surface(args[1].objref.v);
 	zs_Z2SDL(from->surface, to->surface, eel_v2l(args + 2));
@@ -1074,10 +1074,10 @@ static EEL_xno ezs_i2sdl(EEL_vm *vm)
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *from;
 	ESDL_surface *to;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	from = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(args + 1) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	to = o2ESDL_surface(args[1].objref.v);
 	zs_I2SDL(from->surface, to->surface);
@@ -1093,7 +1093,7 @@ static EEL_xno ezs_simpleshadow(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *s;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[0].objref.v);
 	zs_SimpleShadow(s->surface, eel_v2d(args + 1), eel_v2d(args + 2),
@@ -1105,7 +1105,7 @@ static EEL_xno ezs_bumpmap(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	EZS_surface *s;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[0].objref.v);
 	zs_BumpMap(s->surface, eel_v2d(args + 1), eel_v2d(args + 2),
@@ -1123,10 +1123,10 @@ static EEL_xno ezs_perlinterrainz(EEL_vm *vm)
 	EZS_surface *s;
 	long namplitudes;
 	float *amplitudes;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 6) == EEL_TNIL)
+	if(EEL_CLASS(args + 6) == EEL_CNIL)
 	{
 		namplitudes = 0;
 		amplitudes = NULL;
@@ -1134,7 +1134,7 @@ static EEL_xno ezs_perlinterrainz(EEL_vm *vm)
 	else
 	{
 		EEL_object *o;
-		if(!EEL_IS_OBJREF(args[6].type))
+		if(!EEL_IS_OBJREF(args[6].classid))
 			return EEL_XWRONGTYPE;
 		o = args[6].objref.v;
 		namplitudes = eel_length(o);
@@ -1176,18 +1176,18 @@ static EEL_xno ezs_waterz(EEL_vm *vm)
 	EZS_surface *s;
 	ZS_Rect *r;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) == EEL_TNIL)
+	if(EEL_CLASS(args + 1) == EEL_CNIL)
 		r = NULL;
 	else
 	{
-		if(EEL_TYPE(args + 1) != zsmd.rect_cid)
+		if(EEL_CLASS(args + 1) != zsmd.rect_cid)
 			return EEL_XWRONGTYPE;
 		r = o2ZS_Rect(args[1].objref.v);
 	}
-	if(EEL_TYPE(args + 2) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 2) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[2].objref.v);
 	zs_WaterZ(s->surface, r, px, eel_v2l(args + 3));
@@ -1200,18 +1200,18 @@ static EEL_xno ezs_fog(EEL_vm *vm)
 	EZS_surface *s;
 	ZS_Rect *r;
 	ZS_Pixel *px;
-	if(EEL_TYPE(args) != zsmd.surface_cid)
+	if(EEL_CLASS(args) != zsmd.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2EZS_surface(args[0].objref.v);
-	if(EEL_TYPE(args + 1) == EEL_TNIL)
+	if(EEL_CLASS(args + 1) == EEL_CNIL)
 		r = NULL;
 	else
 	{
-		if(EEL_TYPE(args + 1) != zsmd.rect_cid)
+		if(EEL_CLASS(args + 1) != zsmd.rect_cid)
 			return EEL_XWRONGTYPE;
 		r = o2ZS_Rect(args[1].objref.v);
 	}
-	if(EEL_TYPE(args + 2) != zsmd.pixel_cid)
+	if(EEL_CLASS(args + 2) != zsmd.pixel_cid)
 		return EEL_XWRONGTYPE;
 	px = o2ZS_Pixel(args[2].objref.v);
 	zs_Fog(s->surface, r, px, eel_v2l(args + 3));
@@ -1350,13 +1350,13 @@ EEL_xno eel_zeespace_init(EEL_vm *vm)
 		return EEL_XMODULEINIT;
 
 	c = eel_export_class(m, "ZS_Pixel", EEL_COBJECT, zsp_construct, NULL, NULL);
-	zsmd.pixel_cid = eel_class_typeid(c);
+	zsmd.pixel_cid = eel_class_cid(c);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, zsp_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, zsp_setindex);
 	eel_set_casts(vm, zsmd.pixel_cid, zsmd.pixel_cid, zsp_clone);
 
 	c = eel_export_class(m, "ZS_Rect", EEL_COBJECT, zsr_construct, NULL, NULL);
-	zsmd.rect_cid = eel_class_typeid(c);
+	zsmd.rect_cid = eel_class_cid(c);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, zsr_getindex);
 	eel_set_metamethod(c, EEL_MM_SETINDEX, zsr_setindex);
 	eel_set_casts(vm, zsmd.rect_cid, zsmd.rect_cid, zsr_clone);
@@ -1364,15 +1364,15 @@ EEL_xno eel_zeespace_init(EEL_vm *vm)
 	c = eel_export_class(m, "ZS_Surface", EEL_COBJECT,
 			zss_construct, zss_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, zss_getindex);
-	zsmd.surface_cid = eel_class_typeid(c);
+	zsmd.surface_cid = eel_class_cid(c);
 
 	c = eel_export_class(m, "ZS_Region", EEL_COBJECT,
 			zsrg_construct, zsrg_destruct, NULL);
-	zsmd.region_cid = eel_class_typeid(c);
+	zsmd.region_cid = eel_class_cid(c);
 	
 	c = eel_export_class(m, "ZS_Pipe", EEL_COBJECT,
 			zspp_construct, zspp_destruct, NULL);
-	zsmd.pipe_cid = eel_class_typeid(c);
+	zsmd.pipe_cid = eel_class_cid(c);
 
 	/* Region functions */
 	eel_export_cfunction(m, 0, "RegionRect", 5, 1, 0, ezs_regionrect);

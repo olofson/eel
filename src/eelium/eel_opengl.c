@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_opengl.c - EEL OpenGL Binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2012, 2014 David Olofson
+ * Copyright 2010-2012, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -382,7 +382,7 @@ static EEL_xno gl_uploadtexture(EEL_vm *vm)
 	SDL_Surface *s, *tmp = NULL;
 
 	/* Get the source SDL surface */
-	if(EEL_TYPE(args) != esdl_md.surface_cid)
+	if(EEL_CLASS(args) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	s = o2ESDL_surface(args->objref.v)->surface;
 	/* Any flags? */
@@ -555,13 +555,13 @@ static EEL_xno gl_readpixels(EEL_vm *vm)
 	SDL_Surface *dst;
 	int vw = o2ESDL_surface(esdl_md.video_surface)->surface->w;
 	int vh = o2ESDL_surface(esdl_md.video_surface)->surface->h;
-	if(EEL_TYPE(args) == EEL_TNIL)
+	if(EEL_CLASS(args) == EEL_CNIL)
 	{
 		sx = sy = 0;
 		w = vw;
 		h = vh;
 	}
-	else if(EEL_TYPE(args) == esdl_md.rect_cid)
+	else if(EEL_CLASS(args) == esdl_md.rect_cid)
 	{
 		SDL_Rect *r = o2SDL_Rect(args->objref.v);
 		sx = r->x;
@@ -576,13 +576,13 @@ static EEL_xno gl_readpixels(EEL_vm *vm)
 	else
 		return EEL_XWRONGTYPE;
 
-	if(EEL_TYPE(args + 1) != esdl_md.surface_cid)
+	if(EEL_CLASS(args + 1) != esdl_md.surface_cid)
 		return EEL_XWRONGTYPE;
 	dst = o2ESDL_surface(args[1].objref.v)->surface;
 
-	if((vm->argc < 3) || (EEL_TYPE(args + 2) == EEL_TNIL))
+	if((vm->argc < 3) || (EEL_CLASS(args + 2) == EEL_CNIL))
 		dx = dy = 0;
-	else if(EEL_TYPE(args + 2) == esdl_md.rect_cid)
+	else if(EEL_CLASS(args + 2) == esdl_md.rect_cid)
 	{
 		SDL_Rect *r = o2SDL_Rect(args[2].objref.v);
 		dx = r->x;
@@ -760,7 +760,7 @@ static EEL_xno gl_texparameter(EEL_vm *vm)
 	GLenum pn = eel_v2l(args + 1);
 	if(vm->argc == 3)
 	{
-		if(EEL_TYPE(args + 2) == EEL_TREAL)
+		if(EEL_CLASS(args + 2) == EEL_CREAL)
 			eelgl_md.TexParameterf(t, pn, eel_v2d(args + 2));
 		else
 			eelgl_md.TexParameteri(t, pn, eel_v2l(args + 2));
@@ -913,7 +913,7 @@ static EEL_xno gl_drawrect(EEL_vm *vm)
 	vertices[5] = vertices[7] = y2;
 #endif
 	/* 'true' or 'nil' keeps the current texture, if any */
-	if(EEL_TYPE(args) == EEL_TBOOLEAN)
+	if(EEL_CLASS(args) == EEL_CBOOLEAN)
 	{
 		if(args[0].integer.v == 0)
 		{
@@ -935,7 +935,7 @@ static EEL_xno gl_drawrect(EEL_vm *vm)
 			return 0;
 		}
 	}
-	else if(EEL_TYPE(args) != EEL_TNIL)
+	else if(EEL_CLASS(args) != EEL_CNIL)
 	{
 		gl_Enable(GL_TEXTURE_2D);
 		gl_BindTexture(GL_TEXTURE_2D, eel_v2l(args));

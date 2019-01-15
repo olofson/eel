@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_manip.h - Argument Manipulator
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009, 2011-2012 David Olofson
+ * Copyright 2004-2006, 2009, 2011-2012, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -85,7 +85,7 @@ struct EEL_manipulator
 		struct
 		{
 			EEL_manipulator	*object;
-			EEL_classes	type;
+			EEL_classes	classid;
 		} cast;
 		struct
 		{
@@ -149,7 +149,7 @@ void eel_m_op(EEL_mlist *ml, EEL_manipulator *left, EEL_operators op,
 		EEL_manipulator *right);
 
 /* Add 'object' cast to 'type' to 'ml'. */
-void eel_m_cast(EEL_mlist *ml, EEL_manipulator *object, EEL_types type);
+void eel_m_cast(EEL_mlist *ml, EEL_manipulator *object, EEL_classes cid);
 
 /*
  * Add 'object' indexed by 'i' to 'ml'.

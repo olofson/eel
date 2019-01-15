@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_array.c - EEL Array Class implementation
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2011, 2014 David Olofson
+ * Copyright 2004-2006, 2009-2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -53,7 +53,7 @@ static inline int a_setsize(EEL_object *eo, int newsize)
 		int i;
 		int min = a->length < n ? a->length : n;
 		for(i = 0; i < min; ++i)
-			if(nv[i].type == EEL_TWEAKREF)
+			if(nv[i].classid == EEL_CWEAKREF)
 				eel_weakref_relocate(&nv[i]);
 		a->values = nv;
 	}
@@ -62,12 +62,12 @@ static inline int a_setsize(EEL_object *eo, int newsize)
 }
 
 
-static EEL_xno a_construct(EEL_vm *vm, EEL_types type,
+static EEL_xno a_construct(EEL_vm *vm, EEL_classes cid,
 		EEL_value *initv, int initc, EEL_value *result)
 {
 	int i;
 	EEL_array *a;
-	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_array), type);
+	EEL_object *eo = eel_o_alloc(vm, sizeof(EEL_array), cid);
 	if(!eo)
 		return EEL_XMEMORY;
 	a = o2EEL_array(eo);
@@ -119,14 +119,14 @@ static EEL_xno a_getindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 	int i;
 
 	/* Cast index to int */
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -156,9 +156,6 @@ static inline EEL_xno a_set_index(EEL_object *eo, int i, EEL_value *op2)
 			return EEL_XMEMORY;
 		/* Clear any skipped (uninitialized) values */
 		if(i > a->length)
-/*
-FIXME: It might be faster to just set the type fields to EEL_TNIL...
-*/
 			memset(a->values + a->length, 0,
 					(i - a->length) * sizeof(EEL_value));
 		a->length = i + 1;
@@ -176,14 +173,14 @@ FIXME: It might be faster to just set the type fields to EEL_TNIL...
 static EEL_xno a_setindex(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	int i;
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -199,14 +196,14 @@ static EEL_xno a_insert(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_array *a = o2EEL_array(eo);
 	int i, mv;
-	switch(op1->type)
+	switch(op1->classid)
 	{
-	  case EEL_TBOOLEAN:
-	  case EEL_TINTEGER:
-	  case EEL_TTYPEID:
+	  case EEL_CBOOLEAN:
+	  case EEL_CINTEGER:
+	  case EEL_CCLASSID:
 		i = op1->integer.v;
 		break;
-	  case EEL_TREAL:
+	  case EEL_CREAL:
 		i = floor(op1->real.v);
 		break;
 	  default:
@@ -234,7 +231,7 @@ static EEL_xno a_delete(EEL_object *eo, EEL_value *op1, EEL_value *op2)
 {
 	EEL_array *a = o2EEL_array(eo);
 	int i0, i1, i;
-	if(op1 && EEL_IS_OBJREF(op1->type))
+	if(op1 && EEL_IS_OBJREF(op1->classid))
 	{
 		i0 = -1;
 		for(i = 0; i < a->length; ++i)
@@ -268,7 +265,7 @@ static inline EEL_object *a__clone(EEL_object *orig)
 	int i, len;
 	EEL_array *clonea;
 	EEL_array *origa = o2EEL_array(orig);
-	EEL_object *clone = eel_o_alloc(vm, sizeof(EEL_array), orig->type);
+	EEL_object *clone = eel_o_alloc(vm, sizeof(EEL_array), orig->classid);
 	if(!clone)
 		return NULL;
 	clonea = o2EEL_array(clone);
@@ -287,7 +284,7 @@ static inline EEL_object *a__clone(EEL_object *orig)
 
 
 static EEL_xno a_clone(EEL_vm *vm,
-		const EEL_value *src, EEL_value *dst, EEL_types t)
+		const EEL_value *src, EEL_value *dst, EEL_classes cid)
 {
 	EEL_object *no = a__clone(src->objref.v);
 	if(!no)

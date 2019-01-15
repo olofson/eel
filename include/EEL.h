@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	EEL.h - The "Extensible Embeddable Language"
 ---------------------------------------------------------------------------
- * Copyright 2002-2004, 2006, 2009, 2011, 2014 David Olofson
+ * Copyright 2002-2004, 2006, 2009, 2011, 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -106,9 +106,9 @@ static inline void eel_s2v(EEL_vm *vm, EEL_value *v, const char *s)
 {
 	v->objref.v = eel_ps_new(vm, s);
 	if(v->objref.v)
-		v->type = EEL_TOBJREF;
+		v->classid = EEL_COBJREF;
 	else
-		v->type = EEL_TNIL;
+		v->classid = EEL_CNIL;
 }
 
 /*
@@ -130,14 +130,14 @@ EELAPI(const char *)eel_v2s(EEL_value *v);
 ----------------------------------------------------------*/
 
 /*
- * Create an indexable object with 'length' elements.
- * Elements will be initialized to the default "filler"
- * value used when writing to an index > length.
+ * Create an indexable object of class 'cid', with 'len' elements. Elements
+ * will be initialized to the default "filler" value used when writing to an
+ * index > len.
  *
  * SUCCESS:	Returns the new object.
  * FAILURE:	Returns NULL.
  */
-EELAPI(EEL_object *)eel_new_indexable(EEL_vm *vm, EEL_types itype, int length);
+EELAPI(EEL_object *)eel_new_indexable(EEL_vm *vm, EEL_classes cid, int len);
 
 #ifdef __cplusplus
 };
