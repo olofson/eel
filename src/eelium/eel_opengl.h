@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_opengl.h - EEL OpenGL Binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2012, 2014 David Olofson
+ * Copyright 2010-2012, 2014, 2017, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -60,10 +60,13 @@
  * Legacy OpenGL stuff
  */
 #ifndef	GL_GENERATE_MIPMAP
-#	define	GL_GENERATE_MIPMAP	0x8191
+#	define	GL_GENERATE_MIPMAP_HINT		0x8191
 #endif
 #ifndef	GL_GENERATE_MIPMAP_HINT
-#	define	GL_GENERATE_MIPMAP_HINT	0x8192
+#	define	GL_GENERATE_MIPMAP_HINT		0x8192
+#endif
+#ifndef GL_ALL_CLIENT_ATTRIB_BITS
+#	define GL_ALL_CLIENT_ATTRIB_BITS	GL_CLIENT_ALL_ATTRIB_BITS
 #endif
 
 
