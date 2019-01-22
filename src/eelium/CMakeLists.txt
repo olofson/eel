@@ -72,10 +72,6 @@ pkg_check_modules(AUDIALITY2 REQUIRED audiality2)
 include_directories(${AUDIALITY2_INCLUDE_DIRS})
 
 find_package(ALSA)
-if(ALSA_FOUND)
-	add_definitions(-DHAVE_ALSA)
-endif(ALSA_FOUND)
-
 
 add_library(libeelium ${sources})
 
@@ -86,6 +82,14 @@ if(WIN32)
 	# FIXME: Why do we have to pull all these in manually now...?
 	target_link_libraries(libeelium -lws2_32 -liphlpapi -ljpeg -lz)
 endif(WIN32)
+if(ALSA_FOUND)
+	add_definitions(-DHAVE_ALSA)
+	include_directories(${ALSA_INCLUDE_DIRS})
+	target_link_libraries(libeelium ${ALSA_LIBRARIES})
+endif(ALSA_FOUND)
+
+link_directories(${EEL_BINARY_DIR}/core)
+target_link_libraries(libeelium libeel)
 
 # Until 1.0, we assume there's no ABI compatibility across releases!
 set_target_properties(libeelium PROPERTIES VERSION ${VERSION_STRING}
