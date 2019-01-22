@@ -4,6 +4,7 @@ project(EEL)
 
 option(BUILD_EELIUM "Build Eelium SDL/OpenGL/Audiality2 binding" ON)
 set(EEL_HAVE_EELIUM ${BUILD_EELIUM})
+option(USE_ALSA "Use ALSA if present." ON)
 
 option(BUILD_SHARED_LIBS "Build shared libraries." ON)
 

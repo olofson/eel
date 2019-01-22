@@ -71,7 +71,9 @@ include_directories(${PNG_INCLUDE_DIR})
 pkg_check_modules(AUDIALITY2 REQUIRED audiality2)
 include_directories(${AUDIALITY2_INCLUDE_DIRS})
 
-find_package(ALSA)
+if(USE_ALSA)
+	find_package(ALSA)
+endif(USE_ALSA)
 
 add_library(libeelium ${sources})
 
