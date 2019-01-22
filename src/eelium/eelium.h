@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eelium.h - EEL binding to SDL, OpenGL, Audiality 2 etc
 ---------------------------------------------------------------------------
- * Copyright 2014 David Olofson
+ * Copyright 2014, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -26,8 +26,8 @@
 
 #include "EEL.h"
 
-EEL_xno eelium_init_bindings(EEL_vm *vm);
-int eelium_open_subsystems(void);
-void eelium_close_subsystems(void);
+EELAPI(EEL_xno)eelium_init_bindings(EEL_vm *vm);
+EELAPI(int)eelium_open_subsystems(void);
+EELAPI(void)eelium_close_subsystems(void);
 
 #endif /* EELIUM_H */

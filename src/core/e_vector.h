@@ -54,15 +54,4 @@ typedef struct
 EEL_MAKE_CAST(EEL_vector)
 void eel_cvector_register(EEL_vm *vm);
 
-/*
- * Extended API
- */
-
-/*
- * Create an uninitialized vector of class 'cid' (must be one of the vector
- * types), of 'size' items. The buffer will be allocated and internal fields
- * set accordingly, but the buffer contents is undefined!
- */
-EEL_object *eel_cv_new_noinit(EEL_vm *vm, EEL_classes cid, unsigned size);
-
 #endif	/* EEL_E_VECTOR_H */

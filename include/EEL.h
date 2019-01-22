@@ -139,6 +139,18 @@ EELAPI(const char *)eel_v2s(EEL_value *v);
  */
 EELAPI(EEL_object *)eel_new_indexable(EEL_vm *vm, EEL_classes cid, int length);
 
+
+/*----------------------------------------------------------
+	Extended Vector API
+----------------------------------------------------------*/
+
+/*
+ * Create an uninitialized vector of class 'cid' (must be one of the vector
+ * types), of 'size' items. The buffer will be allocated and internal fields
+ * set accordingly, but the buffer contents is undefined!
+ */
+EELAPI(EEL_object *)eel_cv_new_noinit(EEL_vm *vm, EEL_classes cid, unsigned size);
+
 #ifdef __cplusplus
 };
 #endif
