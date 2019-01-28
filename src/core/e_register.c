@@ -21,6 +21,7 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include "ec_symtab.h"
 #include "ec_lexer.h"
@@ -508,10 +509,20 @@ EEL_object *eel_export_class(EEL_object *module,
 {
 	EEL_vm *vm = module->vm;
 	EEL_state *es = VMP->state;
+	EEL_module *m = o2EEL_module(module);
 	eel_try(es)
 	{
-		EEL_object *c = eel__register_class(vm,
-				-1, name, ancestor,
+		/*
+		 * Exported classes get "bogus" names in the VM class registry,
+		 * as they're not supposed to be visible in the root namespace!
+		 */
+		EEL_object *c;
+		char sname[128];
+		snprintf(sname, sizeof(sname), "%s.%s",
+				eel_table_getss(m->exports, "__modname"),
+				name);
+		c = eel__register_class(vm,
+				-1, sname, ancestor,
 				construct, destruct, reconstruct, 0);
 		if(eel__export_object(module, name, c) < 0)
 		{
