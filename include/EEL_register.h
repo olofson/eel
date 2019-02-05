@@ -148,7 +148,7 @@ EELAPI(EEL_xno)eel_set_metamethod(EEL_object *c, EEL_mmindex mm, EEL_mm_cb cb);
  * SUCCESS: Returns 0.
  * FAILURE: Returns an EEL exception number.
  */
-EELAPI(EEL_xno)eel_set_casts(EEL_vm *vm, int from, int to, EEL_cast_cb cb);
+EELAPI(EEL_xno)eel_set_casts(EEL_vm *vm, EEL_classes from, EEL_classes to, EEL_cast_cb cb);
 
 /*
  * C callback for calls from the EEL VM. The callback should return 0 if all is
