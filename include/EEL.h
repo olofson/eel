@@ -137,7 +137,7 @@ EELAPI(const char *)eel_v2s(EEL_value *v);
  * SUCCESS:	Returns the new object.
  * FAILURE:	Returns NULL.
  */
-EELAPI(EEL_object *)eel_new_indexable(EEL_vm *vm, EEL_classes cid, int len);
+EELAPI(EEL_object *)eel_new_indexable(EEL_vm *vm, EEL_classes cid, int length);
 
 #ifdef __cplusplus
 };
