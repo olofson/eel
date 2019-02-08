@@ -183,7 +183,7 @@ static int already_registered(const EEL_xdef *xdefs, int min, int max,
 }
 
 
-int eel_x_register(EEL_vm *vm, const EEL_xdef *xdefs)
+int eel_x_register(EEL_vm *vm, const EEL_xdef *exceptions)
 {
 	EEL_xblock *xb;
 	EEL_xentry *xe;
@@ -193,10 +193,10 @@ int eel_x_register(EEL_vm *vm, const EEL_xdef *xdefs)
 	int max = 0x80000000;
 
 	/* Count and verify the entries */
-	while(xdefs[count].code || xdefs[count].name ||
-			xdefs[count].description)
+	while(exceptions[count].code || exceptions[count].name ||
+			exceptions[count].description)
 	{
-		const EEL_xdef *xd = &xdefs[count];
+		const EEL_xdef *xd = &exceptions[count];
 		if(!xd->name)
 		{
 			fprintf(stderr, "eel_x_register(): No name specified "
@@ -231,12 +231,12 @@ int eel_x_register(EEL_vm *vm, const EEL_xdef *xdefs)
 	{
 		fprintf(stderr, "eel_x_register(): Exception code range %d..%d"
 				" is too wide! (%s...)\n", min, max,
-				xdefs->name);
+				exceptions->name);
 		return -EEL_XWIDEXRANGE;
 	}
 
 	/* If an identical block is already registered, just return that! */
-	if((i = already_registered(xdefs, min, max, count)))
+	if((i = already_registered(exceptions, min, max, count)))
 		return e_x_registry[i]->base;
 
 	/* Create and fill in exception block! */
@@ -253,19 +253,19 @@ int eel_x_register(EEL_vm *vm, const EEL_xdef *xdefs)
 	}
 	for(i = 0; i < count; ++i)
 	{
-		int ei = xdefs[i].code - min;
-		if(xdefs[i].name)
+		int ei = exceptions[i].code - min;
+		if(exceptions[i].name)
 		{
-			xe[ei].name = strdup(xdefs[i].name);
+			xe[ei].name = strdup(exceptions[i].name);
 			if(!xe[ei].name)
 			{
 				destroy_xblock(xb);
 				return -EEL_XMEMORY;
 			}
 		}
-		if(xdefs[i].description)
+		if(exceptions[i].description)
 		{
-			xe[ei].description = strdup(xdefs[i].description);
+			xe[ei].description = strdup(exceptions[i].description);
 			if(!xe[ei].description)
 			{
 				destroy_xblock(xb);

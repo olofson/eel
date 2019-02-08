@@ -144,11 +144,11 @@ void eel_o__dealloc(EEL_object *o)
 
 
 /* Free object 'o' */
-void eel_o_free(EEL_object *o)
+void eel_o_free(EEL_object *object)
 {
 	EEL_vm *vm;
 #ifdef EEL_VM_CHECKING
-	if(!o)
+	if(!object)
 	{
 		fprintf(stderr, "INTERNAL ERROR: Someone tried to "
 				"eel_o_free() a NULL pointer!");
@@ -156,9 +156,9 @@ void eel_o_free(EEL_object *o)
 		return;
 	}
 #endif
-	vm = o->vm;
-	eel_o_disown_nz(VMP->state->classes[o->classid]);
-	o__dealloc(o);
+	vm = object->vm;
+	eel_o_disown_nz(VMP->state->classes[object->classid]);
+	o__dealloc(object);
 }
 
 

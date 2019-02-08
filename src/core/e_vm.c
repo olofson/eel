@@ -2680,10 +2680,10 @@ static inline EEL_xno call_do_run(EEL_vm *vm)
 	}
 }
 
-EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
+EEL_xno eel_call(EEL_vm *vm, EEL_object *f)
 {
 	EEL_xno x;
-	EEL_function *f;
+	EEL_function *func;
 	int result;
 /*FIXME:*/
 	int save_resv = vm->resv;
@@ -2691,15 +2691,15 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 	int save_argc = vm->argc;
 /*FIXME:*/
 	eel_clear_errors(VMP->state);
-	if(fo->classid != EEL_CFUNCTION)
+	if(f->classid != EEL_CFUNCTION)
 	{
-		call_msg(fo, EEL_EM_VMERROR, "  Object is not callable!");
+		call_msg(f, EEL_EM_VMERROR, "  Object is not callable!");
 		return EEL_XNEEDCALLABLE;
 	}
-	f = o2EEL_function(fo);
+	func = o2EEL_function(f);
 
-	DBG4C(printf("---------- eel_call(%s) ----------\n", eel_o2s(f->common.name));)
-	x = check_args(vm, fo);
+	DBG4C(printf("---------- eel_call(%s) ----------\n", eel_o2s(func->common.name));)
+	x = check_args(vm, f);
 	if(x)
 	{
 		const char *s;
@@ -2718,7 +2718,7 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 			s = "  Incorrect arguments!";
 			break;
 		}
-		call_msg(fo, EEL_EM_VMERROR, s);
+		call_msg(f, EEL_EM_VMERROR, s);
 		reset_args(vm);
 /*FIXME:*/
 		vm->resv = save_resv;
@@ -2733,21 +2733,21 @@ EEL_xno eel_call(EEL_vm *vm, EEL_object *fo)
 		result = vm->base;
 	else
 		result = -1;
-	x = call_f(vm, fo, result, 0);
+	x = call_f(vm, f, result, 0);
 	if(!x)
 	{
 		/* If it's an EEL function, we actually need to *run* it...! */
-		if(!(f->common.flags & EEL_FF_CFUNC))
+		if(!(func->common.flags & EEL_FF_CFUNC))
 		{
 			x = call_do_run(vm);
 			if(x)
-				call_msg(fo, EEL_EM_VMERROR, "  Function "
+				call_msg(f, EEL_EM_VMERROR, "  Function "
 						"aborted with exception %s",
 						eel_x_name(vm, x));
 		}
 	}
 	else
-		call_msg(fo, EEL_EM_VMERROR, "  Exception %s was thrown.",
+		call_msg(f, EEL_EM_VMERROR, "  Exception %s was thrown.",
 				eel_x_name(vm, x));
 /*FIXME:*/
 	vm->resv = save_resv;
