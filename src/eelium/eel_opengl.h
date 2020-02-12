@@ -32,21 +32,7 @@
  * interface to OpenGL textures.
  */
 #include "eel_sdl.h"
-
-#ifdef HAS_SDL_OPENGL_H
-# include "SDL_opengl.h"
-#else
-# ifdef WIN32
-#  include <windows.h>
-# endif /* WIN32 */
-# if defined(__APPLE__) && defined(__MACH__)
-#  include <OpenGL/gl.h>
-#  include <OpenGL/glu.h>
-# else
-#  include <GL/gl.h>
-#  include <GL/glu.h>
-# endif
-#endif /* HAS_SDL_OPENGL_H */
+#include "SDL_opengl.h"
 
 #if defined(_WIN32) && !defined(APIENTRY) && \
 		!defined(__CYGWIN__) && !defined(__SCITECH_SNAP__)
@@ -54,6 +40,15 @@
 #endif
 #ifndef APIENTRY
 #define APIENTRY
+#endif
+
+#if 0
+/* SDL2 GL context */
+typedef struct
+{
+	SDL_GLContext	*glcontext;
+} ESDL_glcontext;
+EEL_MAKE_CAST(ESDL_glcontext)
 #endif
 
 /*

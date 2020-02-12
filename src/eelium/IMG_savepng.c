@@ -30,6 +30,9 @@
 
   David Olofson <david@olofson.net> 2016:
 	* Simplified colorkey handling code.
+
+  David Olofson <david@olofson.net> 2017:
+	* Renamed symbols to avoid conflicts with SDL2_image.
 */
 
 /**
@@ -38,19 +41,18 @@
  * 20091122 - Fixed temp_alpha "uninitialized warning" - David Olofson
  */
 #include <stdlib.h>
-#include <SDL/SDL.h>
-#include <SDL/SDL_byteorder.h>
+#include "SDL.h"
 #include <zlib.h>
 #include <png.h>
 #include "IMG_savepng.h"
 
-int IMG_SavePNG(const char *file, SDL_Surface *surf, int flags)
+int EEL_SavePNG(const char *file, SDL_Surface *surf, int flags)
 {
 	int ret;
 	SDL_RWops *fp = SDL_RWFromFile(file, "wb");
 	if(!fp)
 		return -1;
-	ret = IMG_SavePNG_RW(fp, surf, flags);
+	ret = EEL_SavePNG_RW(fp, surf, flags);
 	SDL_RWclose(fp);
 	return ret;
 }
@@ -61,14 +63,14 @@ static void png_write_data(png_structp png_ptr,png_bytep data, png_size_t length
 	SDL_RWwrite(rp, data, 1, length);
 }
 
-int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
+int EEL_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 {
 	png_structp png_ptr;
 	png_infop info_ptr;
 	SDL_PixelFormat *fmt = NULL;
 	SDL_Surface *tempsurf = NULL;
-	int used_alpha;
-	unsigned int i, temp_alpha = 0;
+	unsigned int i;
+	Uint8 temp_alpha;
 	png_colorp palette;
 	int ret = -1;
 	int funky_format = 0;
@@ -125,6 +127,7 @@ int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 	if(fmt->BitsPerPixel == 8)
 	{
 		/* Paletted */
+		Uint32 ck;
 		png_set_IHDR(png_ptr, info_ptr,
 			surf->w, surf->h, 8, PNG_COLOR_TYPE_PALETTE,
 			PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
@@ -143,11 +146,11 @@ int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 			palette[i].blue = fmt->palette->colors[i].b;
 		}
 		png_set_PLTE(png_ptr, info_ptr, palette, fmt->palette->ncolors);
-		if(surf->flags & SDL_SRCCOLORKEY)
+		if(SDL_GetColorKey(surf, &ck) == 0)
 		{
 			Uint8 palette_alpha[256];
 			memset(palette_alpha, 255, sizeof(palette_alpha));
-			palette_alpha[fmt->colorkey] = 0;
+			palette_alpha[ck] = 0;
 			png_set_tRNS(png_ptr, info_ptr, palette_alpha,
 					sizeof(palette_alpha), NULL);
 		}
@@ -241,6 +244,7 @@ int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 			funky_format = 1;
 		if(funky_format)
 		{
+			SDL_BlendMode bm;
 			/* Allocate non-funky format, and copy pixeldata in*/
 			if(fmt->Amask)
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -271,23 +275,18 @@ int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf, int flags)
 				SDL_SetError("Couldn't allocate temp surface");
 				goto savedone;
 			}
-			if(surf->flags & SDL_SRCALPHA)
-			{
-				temp_alpha = fmt->alpha;
-				used_alpha = 1;
-				SDL_SetAlpha(surf, 0, 255); /* Set for an opaque blit */
-			}
-			else
-				used_alpha = 0;
+			SDL_GetSurfaceAlphaMod(surf, &temp_alpha);
+			SDL_GetSurfaceBlendMode(surf, &bm);
+			SDL_SetSurfaceAlphaMod(surf, 255);
+			SDL_SetSurfaceBlendMode(surf, SDL_BLENDMODE_NONE);
 			if(SDL_BlitSurface(surf, NULL, tempsurf, NULL) != 0)
 			{
 				SDL_SetError("Couldn't blit surface to temp surface");
 				SDL_FreeSurface(tempsurf);
 				goto savedone;
 			}
-			if(used_alpha)
-				SDL_SetAlpha(surf, SDL_SRCALPHA,
-					(Uint8)temp_alpha); /* Restore alpha settings*/
+			SDL_SetSurfaceAlphaMod(surf, temp_alpha);
+			SDL_SetSurfaceBlendMode(surf, bm);
 			for(i = 0; i < tempsurf->h; i++, rp += drp)
 				row_pointers[rp] = ((png_byte*)tempsurf->pixels)
 						+ i*tempsurf->pitch;

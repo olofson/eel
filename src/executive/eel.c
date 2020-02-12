@@ -86,9 +86,9 @@ static void usage(const char *exename)
 			EEL_GET_MINOR(v),
 			EEL_GET_MICRO(v));
 #ifdef EEL_HAVE_EELIUM
-	fprintf(stderr, "| With Eelium (SDL, OpenGL, Audiality 2)\n");
+	fprintf(stderr, "| With Eelium (SDL 2, OpenGL, Audiality 2)\n");
 #endif
-	fprintf(stderr, "| Copyright 2005-2014 David Olofson\n");
+	fprintf(stderr, "| Copyright 2005-2019 David Olofson\n");
 	fprintf(stderr,	"|------------------------------------------------\n");
 	fprintf(stderr, "| Usage: %s [switches] <file> [arguments]\n", 
 			exename);

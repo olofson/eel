@@ -1089,7 +1089,7 @@ int NET2_Init()
     return -1;
   }
 
-  processSockets = SDL_CreateThread(PumpNetworkEvents, NULL);
+  processSockets = SDL_CreateThread(PumpNetworkEvents, "NET2::PumpNetworkEvents", NULL);
   if (NULL == processSockets)
   {
     setError("NET2: can't start the network thread", -1);

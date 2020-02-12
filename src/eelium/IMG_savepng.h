@@ -23,9 +23,12 @@
 	* 'compression' argument renamed as 'flags'
 	* IMG_COMPRESS_DEFAULT constant is now 0xff instead of -1
 	* Added IMG_UPSIDEDOWN for saving OpenGL screenshots and the like
+
+  David Olofson <david@olofson.net> 2017:
+	* Renamed symbols to avoid conflicts with SDL2_image.
  */
-#ifndef __IMG_SAVETOPNG_H__
-#define __IMG_SAVETOPNG_H__
+#ifndef __EEL_SAVETOPNG_H__
+#define __EEL_SAVETOPNG_H__
 
 /* #include <SDL/begin_code.h> */
 
@@ -43,16 +46,16 @@ extern "C" {
  * Takes a filename, a surface to save, and a compression level.  The
  * compression level can be 0(min) through 9(max), or -1(default).
  */
-DECLSPEC int SDLCALL IMG_SavePNG(const char *file,
+DECLSPEC int SDLCALL EEL_SavePNG(const char *file,
 		SDL_Surface *surf, int flags);
 /**
  * Takes a SDL_RWops pointer, a surface to save, and a compression level.
  * compression can be 0(min) through 9(max), or -1(default).
  */
-DECLSPEC int SDLCALL IMG_SavePNG_RW(SDL_RWops *src,
+DECLSPEC int SDLCALL EEL_SavePNG_RW(SDL_RWops *src,
 		SDL_Surface *surf, int flags);
 #ifdef __cplusplus
 }
 #endif
 
-#endif/*__IMG_SAVETOPNG_H__*/
+#endif/*__EEL_SAVETOPNG_H__*/

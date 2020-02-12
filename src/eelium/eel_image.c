@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_image.c - EEL SDL_image Binding
 ---------------------------------------------------------------------------
- * Copyright 2005-2006, 2008-2010, 2014, 2019 David Olofson
+ * Copyright 2005-2006, 2008-2010, 2014, 2017, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -77,7 +77,7 @@ static EEL_xno img_SavePNG(EEL_vm *vm)
 #endif
 	}
 
-	res = IMG_SavePNG(fn, from, comp);
+	res = EEL_SavePNG(fn, from, comp);
 	if(res)
 		return EEL_XCANTWRITE;
 	return 0;

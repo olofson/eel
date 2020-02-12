@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_opengl.c - EEL OpenGL Binding
 ---------------------------------------------------------------------------
- * Copyright 2010-2012, 2014, 2019 David Olofson
+ * Copyright 2010-2012, 2014, 2017, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -168,7 +168,7 @@ static struct
 
 	/* 3.0+ mipmap generation */
 	{"glGenerateMipmap", (void *)&eelgl_md._GenerateMipmap },
-	
+
 	{NULL, NULL }
 };
 
@@ -338,17 +338,6 @@ static EEL_xno gl_exceptions(EEL_vm *vm)
 }
 
 
-static EEL_xno gl_setattribute(EEL_vm *vm)
-{
-	EEL_value *args = vm->heap + vm->argv;
-	int attr = eel_v2l(args);
-	if(attr == GL_DOUBLEBUFFER)
-		attr = SDL_GL_DOUBLEBUFFER;
-	SDL_GL_SetAttribute(attr, eel_v2l(args + 1));
-	return 0;
-}
-
-
 static EEL_xno gl_perspective(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
@@ -367,18 +356,12 @@ static EEL_xno gl_perspective(EEL_vm *vm)
 }
 
 
-static EEL_xno gl_swapbuffers(EEL_vm *vm)
-{
-	SDL_GL_SwapBuffers();
-	return 0;
-}
-
-
 static EEL_xno gl_uploadtexture(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
 	GLuint tex;
 	int flags = 0;
+	Uint32 ck;
 	SDL_Surface *s, *tmp = NULL;
 
 	/* Get the source SDL surface */
@@ -398,9 +381,9 @@ static EEL_xno gl_uploadtexture(EEL_vm *vm)
 	/* Convert */
 /* TODO: Optimization: Convert only when OpenGL can't handle it! */
 	tmp = SDL_ConvertSurface(s,
-			s->format->Amask || s->flags & SDL_SRCCOLORKEY ?
+			s->format->Amask || (SDL_GetColorKey(s, &ck) >= 0) ?
 					&eelgl_md.RGBAfmt : &eelgl_md.RGBfmt,
-			SDL_SWSURFACE);
+			0);
 
 	/* Setup... */
 	eelgl_md.BindTexture(GL_TEXTURE_2D, tex);
@@ -551,10 +534,13 @@ static EEL_xno gl_hint(EEL_vm *vm)
 static EEL_xno gl_readpixels(EEL_vm *vm)
 {
 	EEL_value *args = vm->heap + vm->argv;
-	int sx, sy, dx, dy, w, h;
+	int sx, sy, dx, dy, w, h, vw, vh;
 	SDL_Surface *dst;
-	int vw = o2ESDL_surface(esdl_md.video_surface)->surface->w;
-	int vh = o2ESDL_surface(esdl_md.video_surface)->surface->h;
+	SDL_Window *cw = SDL_GL_GetCurrentWindow();
+	if(!cw)
+		return EEL_XDEVICEERROR;
+	SDL_GL_GetDrawableSize(cw, &vw, &vh);
+
 	if(EEL_CLASS(args) == EEL_CNIL)
 	{
 		sx = sy = 0;
@@ -1055,11 +1041,10 @@ static const EEL_lconstexp eelgl_constants[] =
 	{"HVCLAMP",			EELGL_HCLAMP | EELGL_VCLAMP	},
 
 	/* SDL  OpenGL Attributes */
-	{"RED_SIZE",			SDL_GL_RED_SIZE			},
-	{"GREEN_SIZE",			SDL_GL_GREEN_SIZE		},
-	{"BLUE_SIZE",			SDL_GL_BLUE_SIZE		},
-/*	{"DOUBLEBUFFER",		SDL_GL_DOUBLEBUFFER		},*/
-	{"SWAP_CONTROL",		SDL_GL_SWAP_CONTROL		},
+	{"ATTR_RED_SIZE",		SDL_GL_RED_SIZE			},
+	{"ATTR_GREEN_SIZE",		SDL_GL_GREEN_SIZE		},
+	{"ATTR_BLUE_SIZE",		SDL_GL_BLUE_SIZE		},
+	{"ATTR_DOUBLEBUFFER",		SDL_GL_DOUBLEBUFFER		},
 
 	/* Error codes */
 	{"NO_ERROR",			GL_NO_ERROR			},
@@ -1670,9 +1655,7 @@ EEL_xno eel_gl_init(EEL_vm *vm)
 	/* Management and utilities */
 	eel_export_cfunction(m, 0, "Load", 0, 1, 0, gl_load);
 	eel_export_cfunction(m, 0, "Exceptions", 1, 0, 0, gl_exceptions);
-	eel_export_cfunction(m, 0, "SetAttribute", 2, 0, 0, gl_setattribute);
 	eel_export_cfunction(m, 0, "Perspective", 4, 0, 0, gl_perspective);
-	eel_export_cfunction(m, 0, "SwapBuffers", 0, 0, 0, gl_swapbuffers);
 	eel_export_cfunction(m, 1, "UploadTexture", 1, 2, 0, gl_uploadtexture);
 
 	/* Miscellaneous */

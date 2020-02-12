@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eelium.c - EEL binding to SDL, OpenGL, Audiality 2 etc
 ---------------------------------------------------------------------------
- * Copyright 2014 David Olofson
+ * Copyright 2014, 2017 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -140,7 +140,7 @@ int eelium_open_subsystems(void)
 {
 	if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO
 #ifndef _WIN32
-			| SDL_INIT_EVENTTHREAD
+			| SDL_INIT_EVENTS
 #endif
 #ifdef DEBUG
 			| SDL_INIT_NOPARACHUTE

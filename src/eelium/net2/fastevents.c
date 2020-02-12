@@ -169,7 +169,7 @@ int FE_Init()
   }
 
   eventTimer = SDL_AddTimer(10, timerCallback, NULL);
-  if (NULL == eventTimer)
+  if (!eventTimer)
   {
     setError("FE: can't add a timer");
     return -1;

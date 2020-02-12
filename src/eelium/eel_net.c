@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_net.c - EEL SDL_net Binding
 ---------------------------------------------------------------------------
- * Copyright 2005, 2006, 2009, 2011, 2014, 2019 David Olofson
+ * Copyright 2005, 2006, 2009, 2011, 2014, 2017, 2019 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -307,7 +307,8 @@ static EEL_xno n2_tcp_setbuf(EEL_vm *vm)
 
 	if(sfifo_init(&ens->rs->fifo, ens->rs->fifosize) != 0)
 		return EEL_XMEMORY;
-	ens->rs->sender = SDL_CreateThread(n2s_sender_thread, ens->rs);
+	ens->rs->sender = SDL_CreateThread(n2s_sender_thread, "net2-sender",
+			ens->rs);
 	if(!ens->rs->sender)
 	{
 		sfifo_close(&ens->rs->fifo);
