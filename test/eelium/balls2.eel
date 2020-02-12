@@ -1,39 +1,42 @@
-/////////////////////////////////////////////
-// balls2.eel - Smarter SDL 2D Balls
-// Copyright 2005, 2010, 2014 David Olofson
-/////////////////////////////////////////////
+//////////////////////////////////////////////////
+// balls2.eel - Software rendered SDL 2D Balls
+// Copyright 2005, 2010, 2014, 2017 David Olofson
+//////////////////////////////////////////////////
 
 import SDL, math, "ball" as ball;
 
+constant NBALLS = 200;
+
 export function main<args>
 {
-	local nballs = 200;
-	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
-	SetCaption("Balls II", args[0]);
+	local window = Window ["Balls II",
+			WINDOWPOS_CENTERED, WINDOWPOS_CENTERED,
+			640, 480, WINDOW_RESIZABLE];
+	local framebuffer = window.surface;
 	ShowCursor(0);
 
 	// Generate sprite graphics
 	local sprites = [];
 	for local z = 0, 32, 2
-	{
-		local s = ball.render(8 + z);
-		SetAlpha(s, SRCALPHA | RLEACCEL);
-		sprites.+ DisplayFormatAlpha(s);
-	}
+		sprites.+ ball.render(8 + z);
 
 	// Initialize dirtyrects
 	local olddrs = [];
 	local drs = [];
-	for local i = 0, nballs - 1
+	for local i = 1, NBALLS - 1
 	{
 		olddrs[i] = Rect[0, 0, 0, 0];
 		drs[i] = Rect[0, 0, 0, 0];
 	}
 
+	// Set up initial dirtyrects to clear window at startup
+	olddrs[0] = Rect[0, 0, window.(w, h)];
+	drs[0] = Rect[0, 0, window.(w, h)];
+
 	// Main loop
 	local start = GetTicks();
 	local maxsize = sprites[sizeof sprites - 1].w;
-	local xc, local yc = screen.(w, h) / 2;
+	local xc, local yc = framebuffer.(w, h) / 2;
 	local xa, local ya = (xc, yc) - (maxsize / 2);
 	while true
 	mainloop:
@@ -52,12 +55,23 @@ export function main<args>
 					break mainloop;
 			  case MOUSEBUTTONUP, QUIT
 				break mainloop;
+			  case WINDOWEVENT
+			  {
+				switch ev.event
+				  case WINDOWEVENT_RESIZED
+				  {
+					framebuffer = window.surface;
+					drs[0].(x, y, w, h) = 0, 0,
+							framebuffer.(w, h);
+					xc, yc = framebuffer.(w, h) / 2;
+					xa, ya = (xc, yc) - (maxsize / 2);
+				  }
+			  }
 		}
 
 		// Remove old sprites
-		local black = MapColor(screen, 0, 0, 0);
-		for local i = 0, nballs - 1
-			FillRect(screen, drs[i], black);
+		local black = MapColor(framebuffer, 0, 0, 0);
+		FillRect(framebuffer, drs, black);
 
 		// Swap dirtyrect sets
 		local tmp = olddrs;
@@ -67,18 +81,18 @@ export function main<args>
 		// Render sprites
 		local stx, local sty, local stz = t / (1000, 1400, 400);
 		local za = sizeof sprites / 2;
-		for local i = 0, nballs - 1
+		for local i = 0, NBALLS - 1
 		{
 			stx, sty, stz += .07, .09, .15;
 			local s = sprites[sin(stz) * za + za];
 			drs[i].x = cos(stx) * xa + xc - (s.w / 2);
 			drs[i].y = sin(sty) * ya + yc - (s.h / 2);
 			drs[i].(w, h) = s.(w, h);
-			BlitSurface(s, nil, nil, drs[i]);
+			BlitSurface(s, nil, framebuffer, drs[i]);
 		}
 
 		// Merge old and new dirtyrect sets
-		for local i = 0, nballs - 1
+		for local i = 0, NBALLS - 1
 		{
 			local r1, local r2 = olddrs[i], drs[i];
 			if not r1.w or not r1.h
@@ -94,7 +108,7 @@ export function main<args>
 		}
 
 		// Update screen
-		Update(olddrs);
+		UpdateWindowSurface(window, olddrs);
 
 		// Yield, so we don't look too much like CPU hog
 		Delay(0);

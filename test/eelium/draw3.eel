@@ -1,0 +1,153 @@
+/////////////////////////////////////////////
+// draw3.eel - Eelium Drawing Toy 3
+// Copyright 2005, 2011, 2017 David Olofson
+/////////////////////////////////////////////
+//
+// Portable but slow version, using an SDL
+// Surface with a software renderer for the
+// offscreen buffer.
+//
+// Bonus: This version can save the buffer!
+//
+// Of course, further optimizations could be
+// done here. For starters, the copying via
+// temporary texture from the canvas surface
+// is quite inefficient, and should only be
+// done once per window update; not once per
+// mouse move event!
+//
+/////////////////////////////////////////////
+
+import SDL as SDL, math, SDL_image as IMG;
+
+constant FILTERCOEFF = .1;
+
+function Pen(renderer, color)
+{
+	local o = {
+		// Private stuff
+		.lastx		0,
+		.lasty		0,
+		.drawing	false,
+		.wrenderer	renderer,
+
+		// Interface
+		.color		color,		// Pen color
+
+		// Pen down
+		procedure Down(self)
+		{
+			self.drawing = true;
+		}
+
+		// Move or draw
+		procedure To(self, x, y)
+		{
+			if self.drawing
+			{
+				local cr = self.crenderer;
+				local wr = self.wrenderer;
+
+				// Draw some on the canvas
+				SDL.SetRenderDrawColor(cr, self.color);
+				SDL.RenderDrawLine(cr,
+						self.(lastx, lasty), x, y);
+				SDL.RenderPresent(cr);
+
+				// Copy modified area to window
+				local dirty = SDL.Rect [
+					(x, y) |< self.(lastx, lasty),
+					(abs(x - self.lastx),
+					abs(y - self.lasty)) + 1
+				];
+				local tx = SDL.Texture [wr, self.canvas,
+						dirty];
+				tx.blendmode = SDL.BLENDMODE_NONE;
+				SDL.RenderCopy(wr, tx, nil, dirty);
+			}
+			self.(lastx, lasty) = x, y;
+		}
+
+		// Pen up
+		procedure Up(self)
+		{
+			self.drawing = false;
+		}
+	};
+	o.canvas = SDL.Surface [0, renderer.(w, h), 32];
+	o.canvas.blendmode = SDL.BLENDMODE_NONE;
+	o.crenderer = SDL.Renderer [o.canvas];
+	SDL.SetRenderDrawColor(o.crenderer, 0x000000);
+	SDL.RenderClear(o.crenderer);
+	SDL.RenderPresent(o.crenderer);
+	return o;
+}
+
+export function main<args>
+{
+	local window = SDL.Window ["Eelium Drawing Toy 3",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480];
+	local renderer = SDL.Renderer [window];
+
+	local pen = Pen(renderer, 0xffff00);
+
+	local fx, local fy = nil;
+	while true
+	mainloop:
+	{
+		local ev = SDL.PollEvent();
+		if not ev
+		{
+			SDL.RenderPresent(renderer);
+			ev = SDL.WaitEvent();
+		}
+		switch ev.type
+		  case SDL.KEYDOWN
+			if ev.sym == SDL.Ks
+			{
+				local cnv = SDL.Surface [0, pen.canvas.(w, h),
+						24];
+				cnv.blendmode = SDL.BLENDMODE_NONE;
+				SDL.BlitSurface(pen.canvas, nil, cnv);
+				IMG.SavePNG("draw3-out.png", cnv,
+						IMG.COMPRESS_MAX);
+			}
+		  case SDL.KEYUP
+			if ev.sym == SDL.KESCAPE
+				break mainloop;
+		  case SDL.QUIT
+			break mainloop;
+		  case SDL.WINDOWEVENT
+		  {
+			switch ev.event
+			  case SDL.WINDOWEVENT_EXPOSED
+			  {
+				local tx = SDL.Texture [renderer, pen.canvas];
+				tx.blendmode = SDL.BLENDMODE_NONE;
+				SDL.RenderCopy(renderer, tx);
+			  }
+		  }
+		  case SDL.MOUSEBUTTONDOWN
+		  {
+			fx, fy = ev.(x, y);
+			pen:To((integer)(fx, fy));
+			pen:Down();
+		  }
+		  case SDL.MOUSEMOTION
+		  {
+			if fx == nil
+				fx, fy = ev.(x, y);
+			else
+				fx, fy += (ev.(x, y) - (fx, fy)) * FILTERCOEFF;
+			pen:To((integer)(fx, fy));
+		  }
+		  case SDL.MOUSEBUTTONUP
+		  {
+			fx, fy = ev.(x, y);
+			pen:To((integer)(fx, fy));
+			pen:Up();
+		  }
+	}
+	return 0;
+}

@@ -1,9 +1,97 @@
-/////////////////////////////////////////////////////
-// chat2.eel - Graphical Chat Toy, version 2
-// Copyright 2005, 2009, 2014 David Olofson
-/////////////////////////////////////////////////////
+///////////////////////////////////////////////
+// chat2.eel - Graphical Chat Toy, Version 2
+// Copyright 2005, 2009, 2017 David Olofson
+///////////////////////////////////////////////
+//
+// This version adds an offscreen buffer, and
+// local and remote cursors.
+//
+// This is actually pretty tricky to do with
+// SDL2, since there's no universal, efficient
+// way of rendering into an offscreen buffer,
+// that is then copied to the window. There
+// are render targets (which we rely on here),
+// but they're not always supported. There are
+// surfaces, but there's no straightforward,
+// efficient way of rendering them to a window.
+//
+///////////////////////////////////////////////
 
-import SDL, NET2, "pen" as pen, io;
+eelversion 0.3.7;
+
+import SDL as SDL;
+import NET2 as NET2;
+import io, math;
+
+function Pen(renderer, canvas, color)
+{
+	local o = {
+		// Private stuff
+		.lastx		0,
+		.lasty		0,
+		.drawing	false,
+		.renderer	renderer,
+		.canvas		canvas,
+
+		// Interface
+		.color		color,		// Pen color
+
+		// Pen down
+		procedure Down(self)
+		{
+			self.drawing = true;
+		}
+
+		// Move or draw
+		procedure To(self, x, y)
+		{
+			local r = self.renderer;
+			local dirty = [];
+
+			// Remove cursor
+			dirty.+ SDL.Rect [self.(lastx, lasty) - 2, 8, 8];
+
+			// Draw some
+			if self.drawing
+			{
+				SDL.SetRenderTarget(r, self.canvas);
+				SDL.SetRenderDrawColor(r, self.color);
+				SDL.RenderDrawLine(r,
+						self.(lastx, lasty), x, y);
+				local ux, local uy = (x, y) |<
+						self.(lastx, lasty);
+				local uw = abs(x - self.lastx);
+				local uh = abs(y - self.lasty);
+				dirty.+ Rect [ux, uy, (uw, uh) + 1];
+				SDL.RenderPresent(r);
+				SDL.SetRenderTarget(r);
+			}
+
+			for local i = 0, sizeof dirty - 1
+				SDL.RenderCopy(r, self.canvas,
+						dirty[i], dirty[i]);
+
+			self.(lastx, lasty) = x, y;
+
+			// Plot cursor
+			SDL.SetRenderDrawColor(r, 0xffffff);
+			SDL.RenderDrawPoint(r,
+					(x - 2, y), (x - 1, y),
+					(x, y - 2), (x, y - 1),
+					(x + 1, y), (x + 2, y),
+					(x, y + 1), (x, y + 2));
+			SDL.SetRenderDrawColor(r, self.color);
+			SDL.RenderFillRect(r, Rect [(x, y) + 2, 4, 4]);
+		}
+
+		// Pen up
+		procedure Up(self)
+		{
+			self.drawing = false;
+		}
+	};
+	return o;
+}
 
 export function main<args>
 {
@@ -22,123 +110,143 @@ export function main<args>
 	// disconnects.
 	local peer, local server = nil;
 	try
-		peer = Socket [host, port];
+		peer = NET2.Socket [host, port];
 	try
-		server = TCPAcceptOn(port);
+		server = NET2.TCPAcceptOn(port);
 
-	local screen = SetVideoMode(640, 480);
-	SetCaption("Graphical Chat", args[0]);
-	ShowCursor(false);
+	local window = SDL.Window ["Graphical Chat 2",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480];
+	local renderer = SDL.Renderer [window];
 
-	local canvas = Surface [0, screen.w, screen.h];
+	if not SDL.RenderTargetSupported(renderer)
+	{
+		print("Render targets not supported!\n");
+		print("This example will not work without them.\n");
+		return 1;
+	}
 
-	local localpen = pen.create(screen, canvas);
-	localpen.color = MapColor(canvas, 255, 255, 0);
+	local canvas = SDL.Texture [renderer, SDL.PIXELFORMAT_RGB888,
+			SDL.TEXTUREACCESS_TARGET, renderer.(w, h)];
+	SDL.ShowCursor(false);
 
-	local remotepen = pen.create(screen, canvas);
-	remotepen.color = MapColor(canvas, 0, 255, 255);
+	local localpen = Pen(renderer, canvas, 0xffff00);
+	local remotepen = Pen(renderer, canvas, 0x00ffff);
 
-	local buf = dstring [];
+	// Clear the canvas texture
+	SDL.SetRenderTarget(renderer, canvas);
+	SDL.SetRenderDrawColor(renderer, 0x000000);
+	SDL.RenderClear(renderer);
+	SDL.RenderPresent(renderer);
+	SDL.SetRenderTarget(renderer);
+
+	local buf = memfile [];
 
 	procedure handle(data)
 	{
 		upvalue remotepen;
-		upvalue buf.+ data;
-		while sizeof buf
-		parseloop:
+		upvalue buf.position = sizeof buf;
+		write(buf, data);
+		buf.position = 0;
+		try while true
+		decodeloop:
 		{
-			switch buf[0]
+			switch read(buf, 1)[0]
 			  case 'D'
-			  {
 				remotepen:Down();
-				delete(buf, 0);
-			  }
 			  case 'U'
-			  {
 				remotepen:Up();
-				delete(buf, 0);
-			  }
 			  case 'T'
 			  {
 				if sizeof buf < (2 * 4 + 1)
-					break parseloop;
-				delete(buf, 0);
+				{
+					buf.position -= 1;
+					break decodeloop;
+				}
 				local x = read(buf, integer);
-				delete(buf, 0, 4);
 				local y = read(buf, integer);
-				delete(buf, 0, 4);
 				remotepen:To(x, y);
 			  }
 			  default
 				throw "Received corrupt data!";
 		}
+		delete(buf.buffer, 0, buf.position);
 	}
 
 	while true
 	mainloop:
 	{
-		local ev = WaitEvent();
+		local ev = SDL.PollEvent();
+		if not ev
+		{
+			SDL.RenderPresent(renderer);
+			ev = SDL.WaitEvent();
+		}
 		switch ev.type
-		  case MOUSEBUTTONDOWN
+		  case SDL.MOUSEBUTTONDOWN
 		  {
 			localpen:Down();
 			if peer
-				TCPSend(peer, "D");
+				NET2.TCPSend(peer, "D");
 		  }
-		  case MOUSEMOTION
+		  case SDL.MOUSEMOTION
 		  {
 			localpen:To(ev.(x, y));
 			if peer
 			{
 				local bb = memfile [];
 				write(bb, "T", (integer)ev.x, (integer)ev.y);
-				TCPSend(peer, bb.buffer);
+				NET2.TCPSend(peer, bb.buffer);
 			}
 		  }
-		  case MOUSEBUTTONUP
+		  case SDL.MOUSEBUTTONUP
 		  {
 			localpen:Up();
 			if peer
-				TCPSend(peer, "U");
+				NET2.TCPSend(peer, "U");
 		  }
-		  case TCPACCEPTEVENT
+		  case NET2.TCPACCEPTEVENT
 		  {
 			// We only want one client!
 			if peer
-				TCPClose(ev.socket);
+				NET2.TCPClose(ev.socket);
 			else
 				peer = ev.socket;
 		  }
-		  case TCPRECEIVEEVENT
+		  case NET2.TCPRECEIVEEVENT
 		  {
 			while true
 			{
-				local d = TCPRead(ev.socket);
+				local d = NET2.TCPRead(ev.socket);
 				if d == nil
 					break;
 				handle(d);
 			}
 		  }
-		  case TCPCLOSEEVENT
+		  case NET2.TCPCLOSEEVENT
 		  {
 			if ev.socket == peer
 				peer = nil;
-			TCPClose(ev.socket);
+			NET2.TCPClose(ev.socket);
 			// In case we were talking to a local server,
 			// try to become a server when we're left alone.
 			if not server
 				try
-					server = TCPAcceptOn(port);
+					server = NET2.TCPAcceptOn(port);
 		  }
-		  case ERROREVENT
+		  case NET2.ERROREVENT
 			print("NET2 error: ", ev.error, "\n");
-		  case KEYUP
-			if ev.sym == KESCAPE
+		  case SDL.WINDOWEVENT
+		  {
+			switch ev.event
+			  case SDL.WINDOWEVENT_EXPOSED
+				SDL.RenderCopy(renderer, canvas);
+		  }
+		  case SDL.KEYUP
+			if ev.sym == SDL.KESCAPE
 				break mainloop;
-		  case QUIT
+		  case SDL.QUIT
 			break mainloop;
-		  case VIDEOEXPOSE
-			BlitSurface(canvas, nil, screen);
 	}
 	return 0;
 }

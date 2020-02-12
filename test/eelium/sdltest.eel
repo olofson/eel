@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////
-// sdltest.eel - Basic SDL 2D graphics Test
-// Copyright 2005, 2007, 2010, 2014 David Olofson
-//////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+// sdltest.eel - SDL 2D window surface graphics Test
+// Copyright 2005, 2007, 2010, 2014, 2017 David Olofson
+////////////////////////////////////////////////////////
 
 import SDL;
 
@@ -40,9 +40,11 @@ procedure cq
 
 export function main<args>
 {
-	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
-	SetCaption("SDL 2D Test", args[0]);
-	ShowCursor(0);
+	local window = Window ["SDL 2D Test",
+			WINDOWPOS_CENTERED, WINDOWPOS_CENTERED,
+			640, 480];
+	local screen = window.surface;
+	ShowCursor(false);
 
 	// Tuning in...
 	local start = GetTicks();
@@ -57,7 +59,7 @@ export function main<args>
 		{
 			dr.y = y;
 			local c = MapColor(screen, i, i, i);
-			FillRect(nil, dr, c);
+			FillRect(screen, dr, c);
 			if rnd(3100) < t
 				continue;
 			if t > 2000
@@ -65,7 +67,7 @@ export function main<args>
 			else
 				i = rnd(255);
 		}
-		Flip();
+		UpdateWindowSurface(window);
 		Delay(0);	// In case we don't have retrace sync...
 		cq();
 	}
@@ -76,16 +78,15 @@ export function main<args>
 	dr.h = 1;
 	for local y = 0, screen.h - 1
 	{
-		local lock = LockSurface(screen);
 		for local x = 0, screen.w - 1
 		{
-			local c = MapColor(screen, rnd(255), rnd(255), rnd(255));
-			Plot(lock, c, x, y);
+			local c = MapColor(screen,
+					rnd(255), rnd(255), rnd(255));
+			Plot(screen, c, x, y);
 		}
-		UnlockSurface(lock);
 		dr.x = 0;
 		dr.y = y;
-		Update(dr);
+		UpdateWindowSurface(window, dr);
 		Delay(0);
 		cq();
 	}
@@ -100,15 +101,14 @@ export function main<args>
 		if t > 3000
 			break;
 		local z = 255 * t / 3000;
-		local lock = LockSurface(screen);
 		for local x = 0, screen.w - 1
 			for local y = 0, screen.h - 1
 			{
-				local c = MapColor(screen, x * x2c, y * y2c, z);
-				Plot(lock, c, x, y);
+				local c = MapColor(screen,
+						x * x2c, y * y2c, z);
+				Plot(screen, c, x, y);
 			}
-		UnlockSurface(lock);
-		Flip();
+		UpdateWindowSurface(window);
 		Delay(0);
 		cq();
 	}
@@ -118,8 +118,8 @@ export function main<args>
 	for local z = 0, (screen.w |< screen.h) / 2
 	{
 		dr.x, dr.y = z;
-		BlitSurface(nil, sr, nil, dr);
-		Update(dr);
+		BlitSurface(screen, sr, screen, dr);
+		UpdateWindowSurface(window, dr);
 		Delay(0);
 		cq();
 	}
@@ -136,10 +136,11 @@ export function main<args>
 			dr.h = rnd(screen.h / 5);
 			dr.x = rnd(screen.w - dr.w + 1);
 			dr.y = rnd(screen.h - dr.h + 1);
-			local c = MapColor(screen, rnd(255), rnd(255), rnd(255));
-			FillRect(nil, dr, c);
+			local c = MapColor(screen,
+					rnd(255), rnd(255), rnd(255));
+			FillRect(screen, dr, c);
 		}
-		Flip();
+		UpdateWindowSurface(window);
 		Delay(0);
 		cq();
 	}

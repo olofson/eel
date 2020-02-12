@@ -2,7 +2,7 @@
 -----------------------------------------------------------------
 	zstest.eel - ZeeSpace test
 -----------------------------------------------------------------
- * David Olofson, 2005, 2006, 2010-2012, 2014, 2020
+ * David Olofson, 2005, 2006, 2010-2012, 2014, 2017, 2020
  *
  * This code is in the Public Domain. No warranty!
  */
@@ -21,11 +21,13 @@ static mt = 0;		// Current morph time (s)
 static intro = false;	// Intro sequence running
 
 // Display
+static window;
 static screen;
-static flags = SDL.SWSURFACE | SDL.RESIZABLE;	// SDL screen flags
+static renderer;
+static flags = SDL.WINDOW_RESIZABLE;	// SDL screen flags
 static screenw = 640;
 static screenh = 480;
-static ks = vector_u8 [];	// State of keys
+static keystates = {};			// State of keys
 static font;
 
 // ZeeSpace objects
@@ -68,6 +70,15 @@ static t_scale = 256;
 static t_p0 = 70;
 static t_p1 = 40;
 static t_p2 = 10;
+
+
+function ks(k)
+{
+	if k in keystates
+		return keystates[k];
+	else
+		return false;
+}
 
 
 function roundstr(v, decimals)
@@ -213,7 +224,12 @@ procedure run_intro(dt)
 // Open or resize window
 procedure open_screen
 {
-	screen = SDL.SetVideoMode(screenw, screenh, 24, flags);
+	if not window
+		window = SDL.Window ["ZeeSpace Test",
+				SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+				screenw, screenh, flags];
+	screen = window.surface;
+	renderer = SDL.Renderer [screen];
 
 	// Create map (landscape + objects) and work (lighting) surfaces
 	map = zs.ZS_Surface [screenw + 1, screenh + 1];
@@ -290,20 +306,24 @@ procedure check_input(dt)
 					t_extendmode = zs.STOP;
 			  }
 			  default
-				ks[ev.sym] = 1;
+				keystates[ev.sym] = 1;
 		  }
 		  case SDL.KEYUP
 		  {
-			ks[ev.sym] = 0;
+			keystates[ev.sym] = 0;
 			switch ev.sym
 			  case SDL.KESCAPE
 				running = false;
 		  }
-		  case SDL.VIDEORESIZE
+		  case SDL.WINDOWEVENT
 		  {
-			screenw = 10 >| ev.w;
-			screenh = 10 >| ev.h;
-			open_screen();
+			switch ev.event
+			  case SDL.WINDOWEVENT_RESIZED
+			  {
+				screenw = ev.w;
+				screenh = ev.h;
+				open_screen();
+			  }
 		  }
 		  case SDL.QUIT
 			running = false;
@@ -311,15 +331,15 @@ procedure check_input(dt)
 
 	// Control/state keys
 
-	local shift = ks[SDL.KLSHIFT] or ks[SDL.KRSHIFT];
-	local ctrl = ks[SDL.KLCTRL] or ks[SDL.KRCTRL];
+	local shift = ks(SDL.KLSHIFT) or ks(SDL.KRSHIFT);
+	local ctrl = ks(SDL.KLCTRL) or ks(SDL.KRCTRL);
 
 	// Terrain scale (fundamental period size in pixels)
 	if shift
 		local ss = .5;
 	else
 		ss = .1;
-	if ks[SDL.KEND]
+	if ks(SDL.KEND)
 	{
 		if dt < .1
 			t_scale *= 1 - (dt * ss);
@@ -329,7 +349,7 @@ procedure check_input(dt)
 			t_scale = .5;
 		rebuild = true;
 	}
-	else if ks[SDL.KHOME]
+	else if ks(SDL.KHOME)
 	{
 		if dt < .1
 			t_scale *= dt * ss + 1;
@@ -343,14 +363,14 @@ procedure check_input(dt)
 	if ctrl
 	{
 		// Terrain fine detail
-		if ks[SDL.KPLUS] or ks[SDL.KKP_PLUS]
+		if ks(SDL.KPLUS) or ks(SDL.KKP_PLUS)
 		{
 			t_p2 += SPEED256 * dt;
 			if t_p2 > 255
 				t_p2 = 255;
 			rebuild = true;
 		}
-		else if ks[SDL.KMINUS] or ks[SDL.KKP_MINUS]
+		else if ks(SDL.KMINUS) or ks(SDL.KKP_MINUS)
 		{
 			t_p2 -= SPEED256 * dt;
 			if t_p2 < 0
@@ -359,13 +379,13 @@ procedure check_input(dt)
 		}
 
 		// 3D rendering camera pitch
-		if ks[SDL.KUP]
+		if ks(SDL.KUP)
 		{
 			pitch += SPEED90 * dt;
 			if pitch > 90
 				pitch = 90;
 		}
-		else if ks[SDL.KDOWN]
+		else if ks(SDL.KDOWN)
 		{
 			pitch -= SPEED90 * dt;
 			if pitch < 0
@@ -373,14 +393,14 @@ procedure check_input(dt)
 		}
 
 		// Sun altitude
-		if ks[SDL.KLEFT]
+		if ks(SDL.KLEFT)
 		{
 			altitude -= SPEED90 * dt;
 			if altitude < 0
 				altitude = 0;
 			relight = true;
 		}
-		else if ks[SDL.KRIGHT]
+		else if ks(SDL.KRIGHT)
 		{
 			altitude += SPEED90 * dt;
 			if altitude > 90
@@ -391,14 +411,14 @@ procedure check_input(dt)
 	else if shift
 	{
 		// Terrain base level
-		if ks[SDL.KPAGEDOWN]
+		if ks(SDL.KPAGEDOWN)
 		{
 			t_base -= SPEED256 * dt;
 			if t_base < 0
 				t_base = 0;
 			rebuild = true;
 		}
-		else if ks[SDL.KPAGEUP]
+		else if ks(SDL.KPAGEUP)
 		{
 			t_base += SPEED256 * dt;
 			if t_base > 256
@@ -407,14 +427,14 @@ procedure check_input(dt)
 		}
 
 		// Terrain medium detail
-		if ks[SDL.KPLUS] or ks[SDL.KKP_PLUS]
+		if ks(SDL.KPLUS) or ks(SDL.KKP_PLUS)
 		{
 			t_p1 += SPEED256 * dt;
 			if t_p1 > 255
 				t_p1 = 255;
 			rebuild = true;
 		}
-		else if ks[SDL.KMINUS] or ks[SDL.KKP_MINUS]
+		else if ks(SDL.KMINUS) or ks(SDL.KKP_MINUS)
 		{
 			t_p1 -= SPEED256 * dt;
 			if t_p1 < 0
@@ -423,14 +443,14 @@ procedure check_input(dt)
 		}
 
 		// Fog level
-		if ks[SDL.KDELETE]
+		if ks(SDL.KDELETE)
 		{
 			fog -= SPEED256 * dt;
 			if fog < 0
 				fog = 0;
 			rebuild = true;
 		}
-		else if ks[SDL.KINSERT]
+		else if ks(SDL.KINSERT)
 		{
 			fog += SPEED256 * dt;
 			if fog > 256
@@ -439,12 +459,12 @@ procedure check_input(dt)
 		}
 
 		// Terrain rotation
-		if ks[SDL.KLEFT]
+		if ks(SDL.KLEFT)
 		{
 			t_r -= .1 * PI * dt;
 			rebuild = true;
 		}
-		else if ks[SDL.KRIGHT]
+		else if ks(SDL.KRIGHT)
 		{
 			t_r += .1 * PI * dt;
 			rebuild = true;
@@ -453,14 +473,14 @@ procedure check_input(dt)
 	else
 	{
 		// Terrain height (amplitude)
-		if ks[SDL.KPAGEDOWN]
+		if ks(SDL.KPAGEDOWN)
 		{
 			t_height -= SPEED256 * dt;
 			if t_height < 0
 				t_height = 0;
 			rebuild = true;
 		}
-		else if ks[SDL.KPAGEUP]
+		else if ks(SDL.KPAGEUP)
 		{
 			t_height += SPEED256 * dt;
 			if t_height > 256
@@ -469,14 +489,14 @@ procedure check_input(dt)
 		}
 
 		// Terrain coarse detail
-		if ks[SDL.KPLUS] or ks[SDL.KKP_PLUS]
+		if ks(SDL.KPLUS) or ks(SDL.KKP_PLUS)
 		{
 			t_p0 += SPEED256 * dt;
 			if t_p0 > 255
 				t_p0 = 255;
 			rebuild = true;
 		}
-		else if ks[SDL.KMINUS] or ks[SDL.KKP_MINUS]
+		else if ks(SDL.KMINUS) or ks(SDL.KKP_MINUS)
 		{
 			t_p0 -= SPEED256 * dt;
 			if t_p0 < 0
@@ -485,14 +505,14 @@ procedure check_input(dt)
 		}
 
 		// Sealevel
-		if ks[SDL.KDELETE]
+		if ks(SDL.KDELETE)
 		{
 			sealevel -= SPEED256 * dt;
 			if sealevel < 0
 				sealevel = 0;
 			rebuild = true;
 		}
-		else if ks[SDL.KINSERT]
+		else if ks(SDL.KINSERT)
 		{
 			sealevel += SPEED256 * dt;
 			if sealevel > 255
@@ -501,28 +521,28 @@ procedure check_input(dt)
 		}
 
 		// Move around in the terrain
-		if ks[SDL.KUP]
+		if ks(SDL.KUP)
 		{
 			local td = 100 * dt / t_scale;
 			t_x += td * sin(t_r);
 			t_y -= td * cos(t_r);
 			rebuild = true;
 		}
-		else if ks[SDL.KDOWN]
+		else if ks(SDL.KDOWN)
 		{
 			local td = -100 * dt / t_scale;
 			t_x += td * sin(t_r);
 			t_y -= td * cos(t_r);
 			rebuild = true;
 		}
-		if ks[SDL.KLEFT]
+		if ks(SDL.KLEFT)
 		{
 			local td = -100 * dt / t_scale;
 			t_x += td * cos(t_r);
 			t_y += td * sin(t_r);
 			rebuild = true;
 		}
-		else if ks[SDL.KRIGHT]
+		else if ks(SDL.KRIGHT)
 		{
 			local td = 100 * dt / t_scale;
 			t_x += td * cos(t_r);
@@ -535,24 +555,12 @@ procedure check_input(dt)
 
 export function main<args>
 {
-	ks[SDL.KLAST] = 0;
 	for local i = 1, arguments - 1
 		switch args[i]
-		  case "-d"
-		  {
-			flags |= SDL.DOUBLEBUF;
-			print("Requesting double buffered display.\n");
-		  }
 		  case "-f"
 		  {
-			flags |= SDL.FULLSCREEN;
+			flags |= SDL.WINDOW_FULLSCREEN;
 			print("Requesting fullscreen display.\n");
-		  }
-		  case "-hw"
-		  {
-			flags &= ~SDL.SWSURFACE;
-			flags |= SDL.HWSURFACE;
-			print("Requesting hardware display surface.\n");
 		  }
 		  case "-w"
 		  {
@@ -571,9 +579,7 @@ export function main<args>
 
 	open_screen();
 
-	SDL.SetCaption("ZeeSpace Test - 2006-2011 David Olofson", "ZeeSpace");
-
-	font = text.Open();
+	font = text.Open(renderer);
 
 	// Set up
 	drawpipe = zs.ZS_Pipe [];
@@ -721,7 +727,7 @@ export function main<args>
 			font:PutString("DIV4 [x]", 0, 30);
 
 		// Display and timing
-		SDL.Flip();
+		SDL.UpdateWindowSurface(window);
 		t += dt;
 		t1 = t2;
 		t2 = SDL.GetTicks();

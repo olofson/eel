@@ -1,7 +1,7 @@
-/////////////////////////////////////////////////
+///////////////////////////////////////////////////////
 // Temporary Eelium Test Suite
-// Copyright 2002-2005, 2010, 2014 David Olofson
-/////////////////////////////////////////////////
+// Copyright 2002-2005, 2010, 2014, 2020 David Olofson
+///////////////////////////////////////////////////////
 
 import SDL;
 
@@ -10,14 +10,9 @@ static results = [];
 procedure run(filename)
 {
 	local r = [filename];
+	ShowCursor(true);
 	try
 	{
-		try
-		{
-			FillRect();
-			Flip();
-		}
-		ShowCursor(1);
 		load(filename).main(filename);
 		r[1] = nil;
 	}
@@ -40,9 +35,12 @@ export function main<args>
 {
 	run("sdltest.eel");
 	run("draw.eel");
+	run("draw2.eel");
+	run("draw3.eel");
 	run("bars.eel");
 	run("balls.eel");
 	run("balls2.eel");
+	run("balls3.eel");
 	run("pigs.eel");
 	run("pigs2.eel");
 	run("pigs3.eel");
@@ -55,10 +53,9 @@ export function main<args>
 	run("gltest.eel");
 	run("glballs.eel");
 	run("zstest.eel");
+	run("zsgl.eel");
+	run("zsgl2.eel");
 	run("audiality/audiality.eel");
-
-	// This last one is supposed to work without a window!
-	SetVideoMode(false);
 	run("audiality/minimal.eel");
 
 	print("==============================================\n");

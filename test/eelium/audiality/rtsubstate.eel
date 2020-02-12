@@ -96,7 +96,7 @@ export function main<args>
 		path = "";
 
 	// Load wave player program
-	local h = state:Load(path + "k2intro.a2s");
+	local h = state:Load(path + "krdtitle.a2s");
 	local songh = state:Get(h, "Song");
 
 	// Start playing!

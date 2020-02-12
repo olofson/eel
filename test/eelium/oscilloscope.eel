@@ -1,0 +1,80 @@
+////////////////////////////////
+// oscilloscope.eel
+// Copyright 2017 David Olofson
+////////////////////////////////
+
+module oscilloscope;
+
+eelversion 0.3.7;
+
+import SDL as SDL;
+
+export function Open(title)[x, y, w, h]
+{
+	local no = {
+		.title		title,
+		.x		SDL.WINDOWPOS_CENTERED,
+		.y		SDL.WINDOWPOS_CENTERED,
+		.w		512,
+		.h		512,
+		.buffer		vector_d [],
+		procedure Update(self)
+		{
+			SDL.SetRenderDrawColor(self.renderer, 0, 0, 0);
+			SDL.RenderClear(self.renderer);
+			local b = self.buffer;
+			if sizeof b >= self.w
+			{
+				// Try to find a zero crossing trig point
+				local px = 0;
+				local to = 0;
+				local maxt = sizeof b - self.w;
+				while (to + 1) < maxt
+				{
+					if (b[to] < 0) and (b[to + 1] >= 0)
+						break;
+					to += 1;
+				}
+
+				// Render!
+				SDL.SetRenderDrawColor(self.renderer,
+						0, 255, 0);
+				local scale = self.h * .5;
+				local offset = self.h * .5;
+				local py = b[to] * scale + offset;
+				for local i = 1, self.w - 1
+				{
+					local ny = b[i + to] * scale + offset;
+					SDL.RenderDrawLine(self.renderer,
+							i - 1, py, i, ny);
+					py = ny;
+				}
+			}
+			SDL.RenderPresent(self.renderer);
+		}
+		procedure Feed(self, data)
+		{
+			if sizeof self.buffer > (2 * self.w)
+			{
+				self:Update();
+				delete(self.buffer);
+			}
+			self.buffer.+ data;
+		}
+	};
+
+	if specified x
+		no.x = x;
+	if specified y
+		no.y = y;
+	if specified w
+		no.w = w;
+	if specified h
+		no.h = h;
+
+	no.window = SDL.Window [no.(title, x, y, w, h)];
+	no.renderer = SDL.Renderer [no.window];
+	no:Update();
+
+	return no;
+}

@@ -89,6 +89,7 @@ export function main<args>
 
 	// Record some audio from a CaptureVoice
 	print("Capturing ", length, " sample frames...\n");
+	state:TimestampReset();
 	h = state:Start(state:RootVoice(), captureprogram);
 	local streamh = state:OpenSink(h, 0,
 			params.samplerate * STREAMBUFFER / 1000);
@@ -117,6 +118,7 @@ export function main<args>
 
 	// Play back through a StreamVoice
 	print("Playing...\n");
+	state:TimestampReset();
 	position = 0;
 	h = state:Start(state:RootVoice(), streamprogram);
 	streamh = state:OpenSource(h, 0,

@@ -1,11 +1,11 @@
-/////////////////////////////////////////////
+//////////////////////////////////////////////////
 // fmsynth.eel - Simple FM Synth
-// Copyright 2006, 2010, 2014 David Olofson
-/////////////////////////////////////////////
+// Copyright 2006, 2010, 2014, 2017 David Olofson
+//////////////////////////////////////////////////
 
 eelversion 0.3.7;
 
-import SDL, math;
+import SDL, math, oscilloscope as oscilloscope;
 
 constant FS = 44100;	// Output sample rate (Hz)
 constant BUF = 512;	// Output buffer size (sample frames)
@@ -16,8 +16,7 @@ constant OCTAVES = 8;	// Number of octaves accross the window
 
 export function main<args>
 {
-	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
-	SetCaption("FMSynth", args[0]);
+	local osc = oscilloscope.Open("FMSynth");
 
 	OpenAudio(FS, BUF, FIFO);
 
@@ -40,13 +39,26 @@ export function main<args>
 			  case KEYDOWN
 			  {
 				switch ev.sym
-				  case K0, KKP0
+				  case K0, KKP_0
 					lfm = 10;
-				  case K1, K2, K3, K4, K5, K6, K7, K8, K9
-					lfm = ev.sym - K0;
-				  case KKP1, KKP2, KKP3, KKP4,
-				  		KKP5, KKP6, KKP7, KKP8, KKP9
-					lfm = ev.sym - KKP0;
+				  case K1, KKP_1
+					lfm = 1;
+				  case K2, KKP_2
+					lfm = 2;
+				  case K3, KKP_3
+					lfm = 3;
+				  case K4, KKP_4
+					lfm = 4;
+				  case K5, KKP_5
+					lfm = 5;
+				  case K6, KKP_6
+					lfm = 6;
+				  case K7, KKP_7
+					lfm = 7;
+				  case K8, KKP_8
+					lfm = 8;
+				  case K9, KKP_9
+					lfm = 9;
 			  }
 			  case KEYUP
 				if ev.sym == KESCAPE
@@ -69,8 +81,8 @@ export function main<args>
 			  case MOUSEMOTION
 			  {
 				// Change pitch and FM depth
-				tf = 2 ** (OCTAVES * ev.x / screen.w) * F0;
-				tfm = ev.y - screen.h / screen.h * PI * 7;
+				tf = 2 ** (OCTAVES * ev.x / osc.w) * F0;
+				tfm = ev.y - osc.h / osc.h * PI * 7;
 			  }
 			  case QUIT
 				break mainloop;
@@ -86,6 +98,7 @@ export function main<args>
 			ph += 2. * PI * f / FS;
 			a *= d;
 			PlayAudio(s, s);
+			osc:Feed(s);
 		}
 		Delay(10);
 	}

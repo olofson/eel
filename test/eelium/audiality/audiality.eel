@@ -1,10 +1,11 @@
-///////////////////////////////////////////
+/////////////////////////////////////////////////
 // audiality.eel - Audiality 2 Test
-// Copyright 2011-2012, 2014 David Olofson
-///////////////////////////////////////////
+// Copyright 2011-2012, 2014, 2017 David Olofson
+/////////////////////////////////////////////////
 
 import SDL as SDL;
 import Audiality2 as A2;
+import "../oscilloscope.eel" as oscilloscope;
 
 function hchk(h)
 {
@@ -15,8 +16,7 @@ function hchk(h)
 
 export function main<args>
 {
-	local screen = SDL.SetVideoMode(320, 240, 0, SDL.SWSURFACE);
-	SDL.SetCaption("Audiality 2 Test", args[0]);
+	local osc = oscilloscope.Open("Audiality 2 Test");
 
 	// Create an audio engine state
 	local a2 = A2.a2state [ 44100, 1024, 2, A2.REALTIME ];
@@ -27,14 +27,30 @@ export function main<args>
 		path += "/";
 	else
 		path = "";
-	local bank = hchk(a2:Load(path + "k2intro.a2s"));
+	local bank = hchk(a2:Load(path + "krdtitle.a2s"));
 	print("Song title: ", a2:String(a2:Get(bank, "title")), "\n");
+
+	// Set up oscilloscope stream, tapping the root voice; 100 ms buffer
+	local osch = a2:OpenSink(a2:RootVoice(), 0, 44100 / 10);
 
 	// Find song entry point
 	local song = hchk(a2:Get(bank, "Song"));
 
 	// Start song as child of the root voice
 	local voice = hchk(a2:Start(a2:RootVoice(), song));
+
+	procedure run_osc
+	{
+		// Oscilloscope
+		local n = upvalue a2:Available(upvalue osch);
+		if not n
+			return;
+
+		// HAX: a2_Read() currently only supports A2_I24!
+		local buf = a2:Read(osch, n, vector_s32);
+		for local i = 0, sizeof buf - 1
+			upvalue osc:Feed(buf[i] / 8388608.0);
+	}
 
 	while true
 	mainloop:
@@ -51,13 +67,18 @@ export function main<args>
 			  case SDL.MOUSEBUTTONUP, SDL.QUIT
 				break mainloop;
 		}
+		run_osc();
 		SDL.Delay(10);
 	}
 
-	// Stop song and pause for fade-out...
+	// Stop song and run oscilloscope while fading out...
 	a2:Send(voice, 1);
 	a2:Release(voice);
-	SDL.Delay(1500);
+	for local i = 1, 150
+	{
+		run_osc();
+		SDL.Delay(10);
+	}
 
 	// NOTE: The audio engine will close as a2 is deleted.
 	return 0;

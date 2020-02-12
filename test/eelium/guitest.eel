@@ -1,13 +1,12 @@
-////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 // guitest.eel - Test of eelium.gui
-// Copyright 2005, 2007, 2009, 2011, 2014 David Olofson
-////////////////////////////////////////////////////////
+// Copyright 2005, 2007, 2009, 2011, 2014, 2020 David Olofson
+//////////////////////////////////////////////////////////////
 
 import math, SDL as SDL, eelium.gui as gui;
 
 static do_exit = false;
 static askexit_up = false;
-static screen;
 static bcnt, static tcnt = 0;
 static work, static container;
 static ls = [];
@@ -18,7 +17,7 @@ procedure ask_exit
 	if askexit_up
 		return;
 	local r = SDL.Rect [0, 0, 200, 100];
-	r.(x, y) = (screen.(w, h) - r.(w,h)) / 2;
+	r.(x, y) = (gui.GetTarget().(w, h) - r.(w,h)) / 2;
 	local win = gui.Window(r);
 	win:SetAlign("grid", 1, 2, nil, vector [3, 1]);
 	gui.Label(win, "Really quit?");
@@ -184,12 +183,11 @@ procedure spawn(what)
 
 export function main<args>
 {
-	local bpp = 0;
-	local flags = SDL.SWSURFACE | SDL.RESIZABLE;
-	screen = SDL.SetVideoMode(640, 480, bpp, flags);
-	SDL.EnableKeyRepeat(250, 30);
-	SDL.SetCaption("Eelium GUI Test", args[0]);
-	gui.Open(screen);
+	local window = SDL.Window ["Eelium GUI Test",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480, SDL.WINDOW_RESIZABLE];
+	local renderer = SDL.Renderer [window];
+	gui.Open(window, renderer);
 
 	local g = gui.Root();
 	g.colrowratio = 0;
@@ -239,14 +237,6 @@ export function main<args>
 				  default
 					gui.Dispatch(ev);
 			  }
-			  case SDL.VIDEOEXPOSE
-				gui.Invalidate();
-			  case SDL.VIDEORESIZE
-			  {
-				screen = SDL.SetVideoMode(ev.w, ev.h, bpp, flags);
-				g:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
-				gui.Invalidate();
-			  }
 			  case SDL.QUIT
 				ask_exit();
 			  default
@@ -271,8 +261,9 @@ export function main<args>
 
 		local dr = [];
 		gui.Refresh(dr);
-		if sizeof dr
-			SDL.Update(dr);
+//		if sizeof dr
+//			SDL.Update(dr);
+		SDL.RenderPresent(renderer);
 		SDL.Delay(10);
 	}
 

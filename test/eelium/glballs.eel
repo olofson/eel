@@ -1,56 +1,61 @@
 ///////////////////////////////////////////////
 // glballs.eel - Eelium Balls - OpenGL version
-// Copyright 2010, 2014 David Olofson
+// Copyright 2010, 2014, 2017 David Olofson
 ///////////////////////////////////////////////
 
 import SDL as SDL;
-import OpenGL;
+import OpenGL as gl;
 import math;
 import ball as ball;
 
 
 procedure resize(w, h)
 {
-	Viewport(0, 0, w, h);
+	gl.Viewport(0, 0, w, h);
 
-	MatrixMode(PROJECTION);
-	LoadIdentity();
-//	Perspective(45, w / h, .1, 100);
+	gl.MatrixMode(gl.PROJECTION);
+	gl.LoadIdentity();
 	if w > h
 		local ow, local oh = w / h, 1;
 	else
 		ow, oh = 1, h / w;
-	Frustum(-ow, ow, -oh, oh, 1, 10);
+	gl.Frustum(-ow, ow, -oh, oh, 1, 10);
 
-	MatrixMode(MODELVIEW);
-	LoadIdentity();
+	gl.MatrixMode(gl.MODELVIEW);
+	gl.LoadIdentity();
 }
 
 
 export function main<args>
 {
 	local nballs = 200;
-	local bpp = 0;
-	local flags = SDL.OPENGL | SDL.RESIZABLE;
-	Load();
-	Exceptions(true);
-	SetAttribute(DOUBLEBUFFER, true);
-	SetAttribute(SWAP_CONTROL, false);
-	local screen = SDL.SetVideoMode(640, 480, bpp, flags);
-	SDL.SetCaption("Eelium OpenGL Balls", args[0]);
+	local flags = SDL.WINDOW_OPENGL | SDL.WINDOW_RESIZABLE;
+
+	gl.Load();
+	gl.Exceptions(true);
+
+	local window = SDL.Window ["Eelium OpenGL Balls",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480,
+			flags];
+
+	local glcontext = SDL.GLContext [window];
+
+	SDL.GL_SetAttribute(gl.DOUBLEBUFFER, true);
+	SDL.GL_SetSwapInterval(1);
 
 	// Generate sprite graphics
-	local tex = UploadTexture(ball.render(64));
-	TexParameter(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR);
-	TexParameter(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR);
+	local tex = gl.UploadTexture(ball.render(64));
+	gl.TexParameter(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.TexParameter(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
-	ShadeModel(SMOOTH);
-	ClearColor(0, 0, 0, 0);
-	Disable(DEPTH_TEST);
-	Disable(CULL_FACE);
-	Hint(PERSPECTIVE_CORRECTION_HINT, NICEST);
+	gl.ShadeModel(gl.SMOOTH);
+	gl.ClearColor(0, 0, 0, 0);
+	gl.Disable(gl.DEPTH_TEST);
+	gl.Disable(gl.CULL_FACE);
+	gl.Hint(gl.PERSPECTIVE_CORRECTION_HINT, gl.NICEST);
 
-	resize(screen.(w, h));
+	resize(window.(w, h));
 
 	// Main loop
 	local start, local lt, local t0 = SDL.GetTicks();
@@ -72,31 +77,31 @@ export function main<args>
 					break mainloop;
 			  case SDL.MOUSEBUTTONUP, SDL.QUIT
 				break mainloop;
-			  case SDL.VIDEORESIZE
+			  case SDL.WINDOWEVENT
 			  {
-				screen = SDL.SetVideoMode(10 >| ev.w,
-						10 >| ev.h, bpp, flags);
-				resize(screen.(w, h));
+				switch ev.event
+				  case SDL.WINDOWEVENT_RESIZED
+					resize(window.(w, h));
 			  }
 		}
 
 		// Clear screen
-		Clear(COLOR_BUFFER_BIT);
+		gl.Clear(gl.COLOR_BUFFER_BIT);
 
 		// Render sprites
 		local stx, local sty, local stz = t / (1000, 1400, 400);
-		if screen.w > screen.h
-			local sx, local sy = screen.w / screen.h, 1;
+		if window.w > window.h
+			local sx, local sy = window.w / window.h, 1;
 		else
-			sx, sy = 1, screen.h / screen.w;
-		LoadIdentity();
-		Translate(0, 0, -3.1);
-		Scale(1, 1, 2);
-		BlendFunc(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
-		Enable(BLEND);
-		Enable(TEXTURE_2D);
-		BindTexture(TEXTURE_2D, tex);
-		Begin(QUADS);
+			sx, sy = 1, window.h / window.w;
+		gl.LoadIdentity();
+		gl.Translate(0, 0, -3.1);
+		gl.Scale(1, 1, 2);
+		gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+		gl.Enable(gl.BLEND);
+		gl.Enable(gl.TEXTURE_2D);
+		gl.BindTexture(gl.TEXTURE_2D, tex);
+		gl.Begin(gl.QUADS);
 		for local i = 0, nballs - 1
 		{
 			stx, sty, stz += .07, .09, .15;
@@ -104,20 +109,20 @@ export function main<args>
 			local y = sy * sin(sty);
 			local z = sin(stz);
 			local c = .45 * z + .55;
-			Color(c, c, c);
-			TexCoord(0, 1);
-			Vertex(x - .1, y - .1,  z);
-			TexCoord(1, 1);
-			Vertex(x + .1, y - .1,  z);
-			TexCoord(1, 0);
-			Vertex(x + .1, y + .1,  z);
-			TexCoord(0, 0);
-			Vertex(x - .1, y + .1,  z);
+			gl.Color(c, c, c);
+			gl.TexCoord(0, 1);
+			gl.Vertex(x - .1, y - .1,  z);
+			gl.TexCoord(1, 1);
+			gl.Vertex(x + .1, y - .1,  z);
+			gl.TexCoord(1, 0);
+			gl.Vertex(x + .1, y + .1,  z);
+			gl.TexCoord(0, 0);
+			gl.Vertex(x - .1, y + .1,  z);
 		}
-		End();
+		gl.End();
 
 		// Make changes visible
-		SwapBuffers();
+		SDL.GL_SwapWindow(window);
 
 		// Frame rate calculation
 		frames += 1;

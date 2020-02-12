@@ -1,9 +1,9 @@
 /////////////////////////////////////////////
 // beep.eel - Simple Audio Test
-// Copyright 2006 David Olofson
+// Copyright 2006, 2017, 2019 David Olofson
 /////////////////////////////////////////////
 
-import SDL, math;
+import SDL, math, oscilloscope as oscilloscope;
 
 constant FS = 44100;	// Output sample rate (Hz)
 constant BUF = 2048;	// Output buffer size (sample frames)
@@ -11,8 +11,7 @@ constant FIFO = 8192;	// PlayAudio() FIFO buffer size (sample frames)
 
 export function main<args>
 {
-	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
-	SetCaption("SDL Audio Test", args[0]);
+	local osc = oscilloscope.Open("SDL Audio Test");
 
 	OpenAudio(FS, BUF, FIFO);
 	local ph = 0;
@@ -29,7 +28,7 @@ export function main<args>
 			  case KEYUP
 				if ev.sym == KESCAPE
 					break mainloop;
-			  case QUIT
+			  case MOUSEBUTTONUP, QUIT
 				break mainloop;
 		}
 		while AudioSpace()
@@ -37,6 +36,7 @@ export function main<args>
 			local s = sin(ph);
 			ph += dph;
 			PlayAudio(s, s);
+			osc:Feed(s);
 		}
 		Delay(10);
 	}

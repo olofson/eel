@@ -1,7 +1,7 @@
-//////////////////////////////////////////
+////////////////////////////////////////////
 // fftsynth.eel - Simple FFT Synth
-// Copyright 2006, 2014 David Olofson
-//////////////////////////////////////////
+// Copyright 2006, 2014, 2017 David Olofson
+////////////////////////////////////////////
 
 eelversion 0.3.7;
 
@@ -440,50 +440,51 @@ function HiHat
  // Waveform and spectrum plotter
 //////////////////////////////////////////
 
-procedure plot(surface, tdata, fdata, adata)
+procedure plot(renderer, tdata, fdata, adata)
 {
-	SDL.FillRect(surface, nil, SDL.MapColor(surface, 0, 0, 0));
-	local r = SDL.Rect[0, 0, 1, surface.h];
+	SDL.SetRenderDrawColor(renderer, 0, 0, 0);
+	SDL.RenderClear(renderer);
+	local r = SDL.Rect[0, 0, 1, renderer.h];
 
 	// Plot windowed IFFT output
-	local c = SDL.MapColor(surface, 0, 0, 255);
-	for local x = 0, surface.w - 1
+	SDL.SetRenderDrawColor(renderer, 0, 0, 255);
+	for local x = 0, renderer.w - 1
 	{
-		local m = .5 - (tdata[FFT * x / surface.w] * .5);
-		local y1, local y2 = m * surface.h, surface.h * .5;
+		local m = .5 - (tdata[FFT * x / renderer.w] * .5);
+		local y1, local y2 = m * renderer.h, renderer.h * .5;
 		local y = y1 |< y2;
 		r.(x, y, h) = x, y, (y1 >| y2) - y;
-		SDL.FillRect(surface, r, c);
+		SDL.RenderFillRect(renderer, r);
 	}
 
 	// Plot FFT spectrum
-	c = SDL.MapColor(surface, 0, 255, 0);
-	try for local x = 0, surface.w - 1, 2
+	SDL.SetRenderDrawColor(renderer, 0, 255, 0);
+	try for local x = 0, renderer.w - 1, 2
 	{
-		local m = (integer)(2 ** (FFTOCT * x / surface.w));
+		local m = (integer)(2 ** (FFTOCT * x / renderer.w));
 		m = .5 - (fdata[m * 2] * .5);
-		local y1, local y2 = m * surface.h, surface.h * .5;
+		local y1, local y2 = m * renderer.h, renderer.h * .5;
 		local y = y1 |< y2;
 		r.(x, y, h) = x, y, (y1 >| y2) - y;
-		SDL.FillRect(surface, r, c);
+		SDL.RenderFillRect(renderer, r);
 	}
-	c = SDL.MapColor(surface, 255, 0, 0);
-	try for local x = 1, surface.w - 1, 2
+	SDL.SetRenderDrawColor(renderer, 255, 0, 0);
+	try for local x = 1, renderer.w - 1, 2
 	{
-		local m = (integer)(2 ** (FFTOCT * x / surface.w));
+		local m = (integer)(2 ** (FFTOCT * x / renderer.w));
 		m = .5 - (fdata[m * 2 + 1] * .5);
-		local y1, local y2 = m * surface.h, surface.h * .5;
+		local y1, local y2 = m * renderer.h, renderer.h * .5;
 		local y = y1 |< y2;
 		r.(x, y, h) = x, y, (y1 >| y2) - y;
-		SDL.FillRect(surface, r, c);
+		SDL.RenderFillRect(renderer, r);
 	}
 
 	// Plot audio data
-	c = SDL.MapColor(surface, 255, 0, 255);
-	try for local x = 0, surface.w - 1
+	SDL.SetRenderDrawColor(renderer, 255, 0, 255);
+	try for local x = 0, renderer.w - 1
 	{
-		local m = .5 - (adata[sizeof adata * x / surface.w] * .5);
-		SDL.Plot(surface, c, x, m * surface.h);
+		local m = .5 - (adata[sizeof adata * x / renderer.w] * .5);
+		SDL.RenderDrawPoint(renderer, x, m * renderer.h);
 	}
 }
 
@@ -491,15 +492,16 @@ procedure plot(surface, tdata, fdata, adata)
  // CPU load plotter
 //////////////////////////////////////////
 
-procedure plot_load(surface, times, colors)
+procedure plot_load(renderer, times, colors)
 {
-	local scale = surface.w / (dsp.sum(times) >| 1);
+	local scale = renderer.w / (dsp.sum(times) >| 1);
 	local x = 0;
 	for local i = 0, sizeof times - 2
 	{
 		local x2 = times[i] * scale + x;
 		local r = SDL.Rect[floor(x), 0, ceil(x2 - x), 5];
-		SDL.FillRect(surface, r, colors[i]);
+		SDL.SetRenderDrawColor(renderer, colors[i]);
+		SDL.RenderFillRect(renderer, r);
 		x = x2;
 	}
 }
@@ -510,8 +512,10 @@ procedure plot_load(surface, times, colors)
 
 export function main<args>
 {
-	local screen = SDL.SetVideoMode(800, 400, 0, SDL.SWSURFACE);
-	SDL.SetCaption("FFTSynth", args[0]);
+	local window = SDL.Window ["FFTSynth",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			800, 400];
+	local renderer = SDL.Renderer [window];
 
 	SDL.OpenAudio(FS, BUF, FIFO);
 
@@ -559,10 +563,7 @@ export function main<args>
 	local lt = getus();
 	local loadp = vector[0, 0, 0, 0, 1];
 	local loadpa = clone loadp;
-	local loadc = [SDL.MapColor(screen, 255, 0, 0),
-			SDL.MapColor(screen, 0, 128, 255),
-			SDL.MapColor(screen, 255, 128, 0),
-			SDL.MapColor(screen, 0, 128, 0)];
+	local loadc = vector_u32 [0xff0000, 0x0080ff, 0xff8000, 0x008000];
 	function dt
 	{
 		local nt = getus();
@@ -646,8 +647,8 @@ export function main<args>
 					instrument:Switch(false);
 			  case SDL.MOUSEMOTION
 			  {
-				fx = ev.x / screen.w;
-				fy = 1 - (ev.y / screen.h);
+				fx = ev.x / renderer.w;
+				fy = 1 - (ev.y / renderer.h);
 				instrument:Frequency(2 ** (FFTOCT * fx));
 				instrument:Control(fy);
 			  }
@@ -686,7 +687,7 @@ export function main<args>
 		// Plotting
 		if SDL.GetTicks() >= nextrefresh
 		{
-			plot(screen, td, fd, out);
+			plot(renderer, td, fd, out);
 			if SDL.GetTicks() >= nextloadrefresh
 			{
 				loadp = clone loadpa;
@@ -694,8 +695,8 @@ export function main<args>
 				nextloadrefresh = SDL.GetTicks() +
 						MSPERLOADFRAME;
 			}
-			plot_load(screen, loadp, loadc);
-			SDL.Flip();
+			plot_load(renderer, loadp, loadc);
+			SDL.RenderPresent(renderer);
 			nextrefresh = SDL.GetTicks() + MSPERFRAME;
 		}
 		loadpa[3] += dt();	// Rendering (green)

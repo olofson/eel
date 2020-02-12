@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////
 // gltest.eel - OpenGL Test
-// Copyright 2010, 2014 David Olofson
+// Copyright 2010, 2014, 2017 David Olofson
 //
 // Based on NeHe tutorial code by Jeff Molofee
 ///////////////////////////////////////////////
@@ -119,13 +119,17 @@ procedure draw
 
 export function main<args>
 {
-	local bpp = 0;
-	local flags = SDL.OPENGL | SDL.RESIZABLE;
+	local flags = SDL.WINDOW_OPENGL | SDL.WINDOW_RESIZABLE;
 	Load();
-	SetAttribute(DOUBLEBUFFER, true);
-	SetAttribute(SWAP_CONTROL, false);
-	local screen = SDL.SetVideoMode(640, 480, bpp, flags);
-	SDL.SetCaption("OpenGL Test", args[0]);
+	local window = SDL.Window ["OpenGL Test",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480,
+			flags];
+
+	local glcontext = SDL.GLContext [window];
+
+	SDL.GL_SetAttribute(DOUBLEBUFFER, true);
+	SDL.GL_SetSwapInterval(1);
 
 	ShadeModel(SMOOTH);
 	ClearColor(0, 0, 0, 0);
@@ -134,7 +138,7 @@ export function main<args>
 	DepthFunc(LEQUAL);
 	Hint(PERSPECTIVE_CORRECTION_HINT, NICEST);
 
-	resize(screen.(w, h));
+	resize(window.(w, h));
 
 	local lt, local t0 = SDL.GetTicks();
 	local frames = 0;
@@ -153,18 +157,18 @@ export function main<args>
 					break mainloop;
 			  case SDL.MOUSEBUTTONUP, SDL.QUIT
 				break mainloop;
-			  case SDL.VIDEORESIZE
+			  case SDL.WINDOWEVENT
 			  {
-				screen = SDL.SetVideoMode(ev.w, ev.h, bpp,
-						flags);
-				resize(screen.(w, h));
+				switch ev.event
+				  case SDL.WINDOWEVENT_RESIZED
+					resize(window.(w, h));
 			  }
 		}
 
 		draw();
 
 		// Make changes visible
-		SwapBuffers();
+		SDL.GL_SwapWindow(window);
 
 		// Frame rate calculation
 		frames += 1;

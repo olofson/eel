@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 // bars.eel - SDL "Copper Bars"
-// Copyright 2005, 2007, 2010, 2014 David Olofson
-//////////////////////////////////////////////////
+// Copyright 2005, 2007, 2010, 2014, 2017 David Olofson
+////////////////////////////////////////////////////////
 // This example also demonstrates how to put
 // an imported module (SDL, in this case) in
 // it's own namespace. This can be handy if
@@ -11,22 +11,21 @@
 //    Note that the import namespace applies
 // to *everything* imported from the module;
 // not just functions.
-//////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 
 import SDL as SDL, math;
 
 function new_gradient(height)
 {
 	local gr = [];
-	for local y = 0, height - 1
-		gr[y] = SDL.MapColor(nil, 0, 0, 0);
+	gr[height - 1] = 0;
 	return gr;
 }
 
 procedure clear(gr)
 {
 	for local y = 0, sizeof gr - 1
-		gr[y] = SDL.MapColor(nil, 0, 0, 0);
+		gr[y] = 0x000000;
 }
 
 function bar(r, g, b, h)
@@ -35,7 +34,9 @@ function bar(r, g, b, h)
 	for local y = 0, h - 1
 	{
 		local s = sin(sin(PI * y / h)) * 200 + 55;
-		gr[y] = SDL.MapColor(nil, r * s, g * s, b * s);
+		gr[y] = ((integer)(r * s) << 16) |
+				((integer)(g * s) << 8) |
+				(integer)(b * s);
 	}
 	return gr;
 }
@@ -46,23 +47,26 @@ procedure draw(src, dst, y)
 		dst[yy + y] = src[yy];
 }
 
-procedure render(screen, gr)
+procedure render(renderer, gr)
 {
-	local r = SDL.Rect[0, 0, screen.w, 1];
+	local r = SDL.Rect[0, 0, renderer.w, 1];
 	for local y = 0, sizeof gr - 1
 	{
 		r.y = y;
-		SDL.FillRect(screen, r, gr[y]);
+		SDL.SetRenderDrawColor(renderer, gr[y]);
+		SDL.RenderFillRect(renderer, r);
 	}
 }
 
 export function main<args>
 {
-	local screen = SDL.SetVideoMode(320, 240, 0, 0);
-	SDL.SetCaption("SDL Copper Bars", args[0]);
+	local window = SDL.Window ["SDL Copper Bars",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			320, 240];
+	local renderer = SDL.Renderer [window];
 	SDL.ShowCursor(0);
 
-	local buffer = new_gradient(screen.h);
+	local buffer = new_gradient(window.h);
 
 	local barh = 32;
 	local bars = [];
@@ -70,8 +74,8 @@ export function main<args>
 		bars[i] = bar((i % 8) / 7,
 				((i * 2) % 9) / 8,
 				((i * 3) % 10) / 9, barh);
-	local a = (screen.h - barh) / 2;
-	local sky = bar(0, .2, .5, screen.h);
+	local a = (window.h - barh) / 2;
+	local sky = bar(0, .2, .5, window.h);
 
 	local start = SDL.GetTicks();
 	while true
@@ -94,8 +98,8 @@ export function main<args>
 		for local i = 0, sizeof bars - 1
 			draw(bars[i], buffer,
 					sin(t / 500 + (i / 10)) * a + a);
-		render(screen, buffer);
-		SDL.Flip();
+		render(renderer, buffer);
+		SDL.RenderPresent(renderer);
 		SDL.Delay(0);	// In case we don't have retrace sync...
 	}
 	return 0;

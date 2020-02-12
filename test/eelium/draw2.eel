@@ -1,24 +1,28 @@
 /////////////////////////////////////////////
-// draw.eel - Eelium Drawing Toy 1
+// draw2.eel - Eelium Drawing Toy 2
 // Copyright 2005, 2011, 2017 David Olofson
 /////////////////////////////////////////////
 //
-// Trivial version with no offscreen buffer.
+// Using a texture as an offscreen buffer.
+//
+// Note that this requires a renderer with
+// render target support to work!
 //
 /////////////////////////////////////////////
 
-import SDL as SDL;
+import SDL as SDL, math;
 
 constant FILTERCOEFF = .1;
 
-function Pen(renderer, color)
+function Pen(renderer, canvas, color)
 {
-	return {
+	local o = {
 		// Private stuff
 		.lastx		0,
 		.lasty		0,
 		.drawing	false,
 		.renderer	renderer,
+		.canvas		canvas,
 
 		// Interface
 		.color		color,		// Pen color
@@ -32,14 +36,25 @@ function Pen(renderer, color)
 		// Move or draw
 		procedure To(self, x, y)
 		{
-			if not self.drawing
+			local r = self.renderer;
+			if self.drawing
 			{
-				self.(lastx, lasty) = x, y;
-				return;
+				// Draw some on the texture
+				SDL.SetRenderTarget(r, self.canvas);
+				SDL.SetRenderDrawColor(r, self.color);
+				SDL.RenderDrawLine(r,
+						self.(lastx, lasty), x, y);
+				SDL.RenderPresent(r);
+				SDL.SetRenderTarget(r);
+
+				// Copy modified area to window
+				local dirty = SDL.Rect [
+					(x, y) |< self.(lastx, lasty),
+					(abs(x - self.lastx),
+					abs(y - self.lasty)) + 1
+				];
+				SDL.RenderCopy(r, self.canvas, dirty, dirty);
 			}
-			SDL.SetRenderDrawColor(self.(renderer, color));
-			SDL.RenderDrawLine(self.(renderer, lastx, lasty),
-					x, y);
 			self.(lastx, lasty) = x, y;
 		}
 
@@ -49,16 +64,26 @@ function Pen(renderer, color)
 			self.drawing = false;
 		}
 	};
+	return o;
 }
 
 export function main<args>
 {
-	local window = SDL.Window ["Eelium Drawing Toy 1",
+	local window = SDL.Window ["Eelium Drawing Toy 2",
 			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
 			640, 480];
 	local renderer = SDL.Renderer [window];
+	local canvas = SDL.Texture [renderer, SDL.PIXELFORMAT_RGB888,
+			SDL.TEXTUREACCESS_TARGET, renderer.(w, h)];
 
-	local pen = Pen(renderer, 0xffff00);
+	local pen = Pen(renderer, canvas, 0xffff00);
+
+	// Clear the canvas texture
+	SDL.SetRenderTarget(renderer, canvas);
+	SDL.SetRenderDrawColor(renderer, 0x000000);
+	SDL.RenderClear(renderer);
+	SDL.RenderPresent(renderer);
+	SDL.SetRenderTarget(renderer);
 
 	local fx, local fy = nil;
 	while true
@@ -76,6 +101,12 @@ export function main<args>
 				break mainloop;
 		  case SDL.QUIT
 			break mainloop;
+		  case SDL.WINDOWEVENT
+		  {
+			switch ev.event
+			  case SDL.WINDOWEVENT_EXPOSED
+				SDL.RenderCopy(renderer, canvas);
+		  }
 		  case SDL.MOUSEBUTTONDOWN
 		  {
 			fx, fy = ev.(x, y);

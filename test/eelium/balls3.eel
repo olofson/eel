@@ -1,30 +1,30 @@
 //////////////////////////////////////////////////
-// balls.eel - SDL 2D Balls
-// Copyright 2005, 2010, 2014, 2017 David Olofson
+// balls3.eel - Zooming, rotating SDL 2D Balls
+// Copyright 2017 David Olofson
 //////////////////////////////////////////////////
+
+eelversion 0.3.7;
 
 import SDL, math, "ball" as ball;
 
+constant BALLSIZE = 40;
 constant NBALLS = 200;
 
 export function main<args>
 {
-	local window = Window ["Balls",
+	local window = Window ["Balls III",
 			WINDOWPOS_CENTERED, WINDOWPOS_CENTERED,
 			640, 480, WINDOW_RESIZABLE];
 	local renderer = Renderer [window];
 	ShowCursor(0);
 
 	// Generate sprite graphics
-	local sprites = [];
-	for local z = 0, 32, 2
-		sprites.+ Texture [renderer, ball.render(8 + z)];
+	local sprite = Texture [renderer, ball.render(BALLSIZE)];
 
 	// Main loop
 	local start = GetTicks();
-	local maxsize = sprites[sizeof sprites - 1].w;
 	local xc, local yc = window.(w, h) / 2;
-	local xa, local ya = (xc, yc) - (maxsize / 2);
+	local xa, local ya = (xc, yc) - (BALLSIZE / 2);
 	local dr = Rect[];
 	while true
 	mainloop:
@@ -49,7 +49,7 @@ export function main<args>
 				  case WINDOWEVENT_RESIZED
 				  {
 					xc, yc = window.(w, h) / 2;
-					xa, ya = (xc, yc) - (maxsize / 2);
+					xa, ya = (xc, yc) - (BALLSIZE / 2);
 				  }
 			  }
 		}
@@ -59,16 +59,15 @@ export function main<args>
 		RenderClear(renderer);
 
 		// Render sprites
-		local stx, local sty, local stz = t / (1000, 1400, 400);
-		local za = sizeof sprites / 2;
+		local stx, local sty, local stz, local str =
+				t / (1000, 1400, 400, 10);
 		for local i = 0, NBALLS - 1
 		{
 			stx, sty, stz += .07, .09, .15;
-			local s = sprites[sin(stz) * za + za];
-			dr.x = cos(stx) * xa + xc - (s.w / 2);
-			dr.y = sin(sty) * ya + yc - (s.h / 2);
-			dr.(w, h) = s.(w, h);
-			RenderCopy(renderer, s, nil, dr);
+			dr.x = cos(stx) * xa + xc - (BALLSIZE / 2);
+			dr.y = sin(sty) * ya + yc - (BALLSIZE / 2);
+			dr.(w, h) = .4 * sin(stz) + .6 * BALLSIZE;
+			RenderCopy(renderer, sprite, nil, dr, str);
 		}
 
 		// Make changes visible

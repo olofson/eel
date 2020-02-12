@@ -1,12 +1,12 @@
-//////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 // pigs3.eel - Bouncing Pigs 3
 //
 // Optimizations:
 //	* Local cache variable for pigs[i]
 //	* Using vectors instead of a tables
 //
-// Copyright 2005, 2010, 2014, 2016 David Olofson
-//////////////////////////////////////////////////
+// Copyright 2005, 2010, 2014, 2016, 2017 David Olofson
+////////////////////////////////////////////////////////
 
 import math;
 import SDL;
@@ -45,24 +45,23 @@ export function main<args>
 	else
 		npigs = 10;
 	
-	local screen = SetVideoMode(640, 480, 0, HWSURFACE | DOUBLEBUF);
-	SetCaption("Bouncing Pigs 3", args[0]);
-	ShowCursor(0);
+	local window = Window ["Bouncing Pigs",
+			WINDOWPOS_CENTERED, WINDOWPOS_CENTERED,
+			640, 480];
+	local renderer = Renderer [window];
+	ShowCursor(false);
 
 	// Load font
-	local font = text.Open();
+	local font = text.Open(renderer);
 
 	// Load pig sprite image
 	local pigframes = IMG.Load("pigframes2.png");
-	SetAlpha(pigframes, 0);
 	local pig = [];
 	for local i = 0, 12 - 1
 	{
-		pig[i] = Surface[0, 64, 48, 32];
-		local sr = Rect[(i % 3) * 64, (integer)(i / 3) * 48, 64, 48];
-		BlitSurface(pigframes, sr, pig[i], nil);
-		SetAlpha(pig[i], SRCALPHA | RLEACCEL);
-		pig[i] = DisplayFormatAlpha(pig[i]);
+		local sr = Rect [(i % 3) * 64, (integer)(i / 3) * 48, 64, 48];
+		pig[i] = Texture [renderer, pigframes, sr];
+		pig[i].blendmode = BLENDMODE_BLEND;
 	}
 	pigframes = nil;
 
@@ -79,7 +78,6 @@ export function main<args>
 		p[DFRAME] = rnd(100) - 50;
 	}
 
-	local dr = Rect[];
 	local lt, local fps_start, local fps_total_start = GetTicks();
 	local fps_count, local fps_total_count = 0;
 	local fps = 0;
@@ -91,16 +89,17 @@ export function main<args>
 		local dt = (nt - lt) * .001;
 		lt = nt;
 
-		// Clear screen
-		FillRect(nil, nil, MapColor(screen, 40, 60, 100));
+		// Clear window
+		SetRenderDrawColor(renderer, 40, 60, 100);
+		RenderClear(renderer);
 
 		for local i = 0, npigs - 1
 		{
 			local p = pigs[i];
+
 			// Draw pig
-			dr.x = p[X];
-			dr.y = p[Y];
-			BlitSurface(pig[(integer)p[FRAME]], nil, nil, dr);
+			RenderCopy(renderer, pig[(integer)p[FRAME]],
+					nil, p[X, Y]);
 
 			// Move pig
 			p[DY] += 300 * dt;
@@ -145,7 +144,7 @@ export function main<args>
 		fps_count, fps_total_count += 1;
 
 		// Make the update visible
-		Flip();
+		RenderPresent(renderer);
 		Delay(0);
 
 		// Check for exit request

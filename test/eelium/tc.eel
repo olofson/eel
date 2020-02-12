@@ -12,7 +12,7 @@ export function main<args>
 
 	// Here we attempt to create a new socket, connected to
 	// port 6666 on the local machine, where we expect to find
-	// or server. If this fails, an exception is thrown. In
+	// our server. If this fails, an exception is thrown. In
 	// this case, we don't catch it, so the program will exit
 	// if connection fails.
 	local s = Socket ["localhost", 6666];

@@ -1,9 +1,11 @@
-/////////////////////////////////////////////
+////////////////////////////////////////////////////////
 // addsynth.eel
-// Copyright 2005, 2010, 2014 David Olofson
-/////////////////////////////////////////////
+// Copyright 2005, 2010, 2014, 2017, 2019 David Olofson
+////////////////////////////////////////////////////////
 
-import SDL, math;
+eelversion 0.3.7;
+
+import SDL, math, oscilloscope as oscilloscope;
 
 constant FS = 44100;
 constant BUF = 2048;
@@ -11,8 +13,7 @@ constant FIFO = 8192;
 
 export function main<args>
 {
-	local screen = SetVideoMode(640, 480, 0, SWSURFACE);
-	SetCaption("AddSynth", args[0]);
+	local osc = oscilloscope.Open("AddSynth");
 
 	OpenAudio(FS, BUF, FIFO);
 
@@ -32,7 +33,7 @@ export function main<args>
 			  case KEYUP
 				if ev.sym == KESCAPE
 					break mainloop;
-			  case QUIT
+			  case MOUSEBUTTONUP, QUIT
 				break mainloop;
 		}
 		while AudioSpace()
@@ -48,6 +49,7 @@ export function main<args>
 			s += sin(ph * i) / i * ((1. - i + spread) % 1.);
 			s *= .5;
 			PlayAudio(s, s);
+			osc:Feed(s);
 			ph += dph;
 		}
 		Delay(10);

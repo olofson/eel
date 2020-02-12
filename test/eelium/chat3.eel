@@ -1,9 +1,124 @@
-/////////////////////////////////////////////////////
-// chat3.eel - Graphical Chat Toy, version 3
-// Copyright 2005, 2009, 2014 David Olofson
-/////////////////////////////////////////////////////
+///////////////////////////////////////////////
+// chat3.eel - Graphical Chat Toy, Version 3
+// Copyright 2005, 2009, 2017 David Olofson
+///////////////////////////////////////////////
+//
+// Portable version with a software rendered
+// offscreen canvas buffer, and cursors. As a
+// bonus of using a surface for the canvas,
+// this version also supports exporting the
+// canvas as a PNG image.
+//
+// TODO:
+//	* Replace the temporary canvas upload
+//	  texture with a resident one, with
+//	  partial updates from pen:To().
+//
+//	* Arbitrary numbers of clients/peers!
+//
+///////////////////////////////////////////////
 
-import SDL, NET2, "pen" as pen, io;
+eelversion 0.3.7;
+
+import SDL as SDL;
+import SDL_image as IMG;
+import NET2 as NET2;
+import io, math;
+
+
+function CanvasPen(canvas, color)
+{
+	local o = {
+		// Private stuff
+		.x		0,
+		.y		0,
+		.drawing	false,
+		.color		color,
+
+		// Pen down
+		procedure Down(self)
+		{
+			self.drawing = true;
+		}
+
+		// Move or draw
+		procedure To(self, x, y)
+		{
+			if self.drawing
+			{
+				local r = self.canvas.surface_renderer;
+				SDL.SetRenderDrawColor(r, self.color);
+				SDL.RenderDrawLine(r, self.(x, y), x, y);
+			}
+			self.(x, y) = x, y;
+		}
+
+		// Pen up
+		procedure Up(self)
+		{
+			self.drawing = false;
+		}
+
+		procedure Cursor(self)
+		{
+			local r = self.canvas.renderer;
+			local x, local y = self.(x, y);
+			SDL.SetRenderDrawColor(r, 0xffffff);
+			SDL.RenderDrawPoint(r,
+					(x - 2, y), (x - 1, y),
+					(x, y - 2), (x, y - 1),
+					(x + 1, y), (x + 2, y),
+					(x, y + 1), (x, y + 2));
+			SDL.SetRenderDrawColor(r, self.color);
+			SDL.RenderFillRect(r, Rect [(x, y) + 2, 4, 4]);
+		}
+	};
+	o.canvas (=) canvas;
+	canvas.pens.+ o;
+	return o;
+}
+
+
+function Canvas(window)
+{
+	local o = {
+		.window		window,
+		.renderer	SDL.Renderer [window],
+		.pens		[],
+
+		.Pen		CanvasPen,
+		procedure Present(self)
+		{
+			SDL.RenderPresent(self.surface_renderer);
+			local tx = SDL.Texture [self.renderer, self.surface];
+			tx.blendmode = SDL.BLENDMODE_NONE;
+			SDL.RenderCopy(self.renderer, tx);
+			for local i = 0, sizeof self.pens - 1
+				self.pens[i]:Cursor();
+			SDL.RenderPresent(self.renderer);
+		}
+		procedure Clear(self, color)
+		{
+			SDL.SetRenderDrawColor(self.surface_renderer, color);
+			SDL.RenderClear(self.surface_renderer);
+			SDL.RenderPresent(self.surface_renderer);
+		}
+		procedure Screenshot(self, filename)
+		{
+			// Remove (unused) alpha channel and save as PNG
+			local s = self.surface;
+			local cnv = SDL.Surface [0, s.(w, h), 24];
+			cnv.blendmode = SDL.BLENDMODE_NONE;
+			SDL.BlitSurface(s, nil, cnv);
+			IMG.SavePNG(filename, cnv, IMG.COMPRESS_MAX);
+		}
+	};
+	o.surface = SDL.Surface [0, o.renderer.(w, h), 32];
+	o.surface.blendmode = SDL.BLENDMODE_NONE;
+	o.surface_renderer = SDL.Renderer [o.surface];
+	return o;
+}
+
 
 export function main<args>
 {
@@ -22,21 +137,20 @@ export function main<args>
 	// disconnects.
 	local peer, local server = nil;
 	try
-		peer = Socket [host, port];
+		peer = NET2.Socket [host, port];
 	try
-		server = TCPAcceptOn(port);
+		server = NET2.TCPAcceptOn(port);
 
-	local screen = SetVideoMode(640, 480);
-	SetCaption("Graphical Chat", args[0]);
-	ShowCursor(false);
+	local window = SDL.Window ["Graphical Chat 3",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480];
+	SDL.ShowCursor(false);
 
-	local canvas = Surface [0, screen.w, screen.h];
+	local canvas = Canvas(window);
+	canvas:Clear(0x000000);
 
-	local localpen = pen.create(screen, canvas);
-	localpen.color = MapColor(canvas, 255, 255, 0);
-
-	local remotepen = pen.create(screen, canvas);
-	remotepen.color = MapColor(canvas, 0, 255, 255);
+	local localpen = canvas:Pen(0xffff00);
+	local remotepen = canvas:Pen(0x00ffff);
 
 	local buf = memfile [];
 
@@ -74,68 +188,74 @@ export function main<args>
 	while true
 	mainloop:
 	{
-		local ev = WaitEvent();
+		local ev = SDL.PollEvent();
+		if not ev
+		{
+			canvas:Present();
+			ev = SDL.WaitEvent();
+		}
 		switch ev.type
-		  case MOUSEBUTTONDOWN
+		  case SDL.MOUSEBUTTONDOWN
 		  {
 			localpen:Down();
 			if peer
-				TCPSend(peer, "D");
+				NET2.TCPSend(peer, "D");
 		  }
-		  case MOUSEMOTION
+		  case SDL.MOUSEMOTION
 		  {
 			localpen:To(ev.(x, y));
 			if peer
 			{
 				local bb = memfile [];
 				write(bb, "T", (integer)ev.x, (integer)ev.y);
-				TCPSend(peer, bb.buffer);
+				NET2.TCPSend(peer, bb.buffer);
 			}
 		  }
-		  case MOUSEBUTTONUP
+		  case SDL.MOUSEBUTTONUP
 		  {
 			localpen:Up();
 			if peer
-				TCPSend(peer, "U");
+				NET2.TCPSend(peer, "U");
 		  }
-		  case TCPACCEPTEVENT
+		  case NET2.TCPACCEPTEVENT
 		  {
 			// We only want one client!
 			if peer
-				TCPClose(ev.socket);
+				NET2.TCPClose(ev.socket);
 			else
 				peer = ev.socket;
 		  }
-		  case TCPRECEIVEEVENT
+		  case NET2.TCPRECEIVEEVENT
 		  {
 			while true
 			{
-				local d = TCPRead(ev.socket);
+				local d = NET2.TCPRead(ev.socket);
 				if d == nil
 					break;
 				handle(d);
 			}
 		  }
-		  case TCPCLOSEEVENT
+		  case NET2.TCPCLOSEEVENT
 		  {
 			if ev.socket == peer
 				peer = nil;
-			TCPClose(ev.socket);
+			NET2.TCPClose(ev.socket);
 			// In case we were talking to a local server,
 			// try to become a server when we're left alone.
 			if not server
 				try
-					server = TCPAcceptOn(port);
+					server = NET2.TCPAcceptOn(port);
 		  }
-		  case ERROREVENT
+		  case NET2.ERROREVENT
 			print("NET2 error: ", ev.error, "\n");
-		  case KEYUP
-			if ev.sym == KESCAPE
+		  case SDL.KEYDOWN
+			if ev.sym == SDL.Ks
+				canvas:Screenshot("chat3-out.png");
+		  case SDL.KEYUP
+			if ev.sym == SDL.KESCAPE
 				break mainloop;
-		  case QUIT
+		  case SDL.QUIT
 			break mainloop;
-		  case VIDEOEXPOSE
-			BlitSurface(canvas, nil, screen);
 	}
 	return 0;
 }

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////
 // zsgl2.eel - Combining ZeeSpace and OpenGL, take 2
-// Copyright 2010, 2014, 2020 David Olofson
+// Copyright 2010, 2014, 2017, 2020 David Olofson
 /////////////////////////////////////////////////////
 
 /*
@@ -8,11 +8,11 @@
 Another example of "live" rendering with ZeeSpace.
 
 This builds on zsgl.eel, but uses a large, pre-rendered world map instead of
-live rendering live.
+live rendering.
 
 There is still a LAM and live uploading of textures like in zsgl.eel, but there
-is no actual rendering done when refreshing tiles; only retrieving data from the
-pre-rendered world map.
+is no actual rendering done when refreshing tiles; only retrieving data from
+the pre-rendered world map.
 
 	Pros of this method:
 
@@ -40,6 +40,9 @@ import SDL as SDL;
 import ZeeSpace as zs;
 import OpenGL as gl;
 
+// World map size in screen height (800) units
+constant WORLDW = 7;
+constant WORLDH = 7;
 
 // Create a tiled layer manager
 function TiledLayer(tw, th, tb, tbpp, world)
@@ -278,9 +281,9 @@ function TiledLayer(tw, th, tb, tbpp, world)
 }
 
 
-procedure resize(screen, w, h)
+procedure resize(w, h)
 {
-	gl.Viewport(0, 0, screen.w, screen.h);
+	gl.Viewport(0, 0, w, h);
 
 	gl.MatrixMode(gl.PROJECTION);
 	gl.LoadIdentity();
@@ -351,24 +354,28 @@ function render_world(w, h, scale)
 	zs.PerlinTerrainZ(world, 128,
 			0, 0,
 			1 / scale, 0,
-			[200, 100, 50, 10, 5],
-			zs.BICUBIC | zs.T_PCUBIC);
+			[150, 70, 40, 15, 7],
+			zs.BICUBIC | zs.DIV3| zs.T_PCUBIC);
 	print("    OK!\n");
 
 	print("  Generating terrain, detail layer...\n");
-	zs.PerlinTerrainZ(world, 256,
+	zs.PerlinTerrainZ(world, 0,
 			0, 0,
 			1 / scale * 32, 0,
-			[20],
-			zs.BICUBIC | zs.DIV2 | zs.O_MUL);
+			[3],
+			zs.BICUBIC | zs.DIV2 | zs.O_ADD);
 	print("    OK!\n");
 
-//	print("  Shadowcasting...\n");
-//	zs.ShadowCast(world, 25, .2, ss);
-//	print("    OK!\n");
+	print("  Shadowcasting...\n");
+	zs.SimpleShadow(world, 30, ss, .9, .1);
+	print("    OK!\n");
 
 	print("  Bumpmapping...\n");
-	zs.BumpMap(world, 25, .2, ss);
+	zs.BumpMap(world, 30, ss, 1);
+	print("    OK!\n");
+
+	print("  Applying lighting...\n");
+	zs.ApplyIntensity(world);
 	print("    OK!\n");
 
 	print("  Rendering to SDL surface...\n");
@@ -381,40 +388,40 @@ function render_world(w, h, scale)
 	return surface;
 }
 
-
 export function main<args>
 {
 	local tilesize = 60;	// Visible size of a tile (pixels)
 	local tileborder = 2;	// Width of tile border (pixels)
 	local showborder = false;
 	local showstats = 0;
-	local x = 0;
-	local y = 0;
 	local width = 1280;
 	local height = 800;
-	local bpp = 0;
-	local flags = SDL.OPENGL | SDL.RESIZABLE;
+	local flags = SDL.WINDOW_OPENGL | SDL.WINDOW_RESIZABLE;
 	local scrollspeed = height / 2 / tilesize;	// Scroll speed (tiles/second)
 	gl.Load();
 	gl.Exceptions(true);
-	gl.SetAttribute(gl.DOUBLEBUFFER, true);
-	gl.SetAttribute(gl.SWAP_CONTROL, false);
-	local screen = SDL.SetVideoMode(width, height, bpp, flags);
-	SDL.SetCaption("EEL + ZeeSpace + OpenGL", args[0]);
+	SDL.GL_SetAttribute(gl.DOUBLEBUFFER, true);
+	SDL.GL_SetSwapInterval(0);
+	local window = SDL.Window ["EEL + ZeeSpace + OpenGL 2",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			width, height,
+			flags];
+	local glcontext = SDL.GLContext [window];
 
 	gl.ShadeModel(gl.SMOOTH);
 	gl.ClearColor(0, 0, 0, 0);
 	gl.Disable(gl.DEPTH_TEST);
 	gl.Disable(gl.CULL_FACE);
 
-	resize(screen, width, height);
+	resize(window.(w, h));
 
 	// Render a world of 5x5 times the screen height
-	local world = render_world(5, 5, height);
+	local world = render_world(WORLDW, WORLDH, height);
 
 	local bg = TiledLayer(tilesize, tilesize, tileborder, 24, world);
 	bg:View(width / tilesize, height / tilesize,
 			width / tilesize + 4, height / tilesize + 4);
+	local x, local y = (WORLDW, WORLDH) * height / 2 / tilesize;
 	bg:Move(x, y);
 
 	local up = 0;
@@ -474,11 +481,17 @@ export function main<args>
 			  }
 			  case SDL.MOUSEBUTTONUP, SDL.QUIT
 				break mainloop;
-			  case SDL.VIDEORESIZE
+			  case SDL.WINDOWEVENT
 			  {
-				screen = SDL.SetVideoMode(10 >| ev.w,
-						10 >| ev.h, bpp, flags);
-				resize(screen, width, height);
+				switch ev.event
+				  case SDL.WINDOWEVENT_RESIZED
+				  {
+					width, height = window.(w, h);
+					resize(width, height);
+					bg:View((width, height) / tilesize,
+							(width, height) /
+							tilesize + 4);
+				  }
 			  }
 		}
 
@@ -552,7 +565,7 @@ export function main<args>
 
 		gl.PopMatrix();
 
-		gl.SwapBuffers();
+		SDL.GL_SwapWindow(window);
 
 		// Calculate how many tiles we need to refresh each frame to
 		// keep up.
