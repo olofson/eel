@@ -7,27 +7,26 @@ Installing
 ----------
 
 * Install the dependencies. Most of these should actually be optional (build scripts need some work), but you'll want most of them for a fully functional Eelium executive anyway.
-  * SDL 1.2
+  * SDL 2.0
     * http://libsdl.org
-  * SDL_net 1.2
-    * http://www.libsdl.org/projects/SDL_net/release-1.2.html
-  * SDL_image 1.2
-    * https://www.libsdl.org/projects/SDL_image/release-1.2.html
+  * SDL_net 2.0
+    * https://www.libsdl.org/projects/SDL_net/
+  * SDL_image 2.0
+    * https://www.libsdl.org/projects/SDL_image/
   * libpng (needed for PNG support in SDL_image as well!)
     * http://www.libpng.org/pub/png/libpng.html
   * Audiality 2 1.9.2 or later
     * https://github.com/olofson/audiality2
-    * NOTE: 1.9.4 supports only SDL 2, which can cause conflicts!
   * MXE (optional, for cross-compiling Windows binaries)
-    * http://mxe.cc/
+    * https://mxe.cc/
 
 * Download the source code.
-  * Archive
-    * http://eelang.org/
   * GitHub/SSH
     * git clone git@github.com:olofson/eel.git
   * *Alternatively:* GitHub/HTTPS
     * git clone https://github.com/olofson/eel.git
+  * Archive
+    * http://eelang.org/
 
 * Configure the source tree.
   * Option 1 (Un*x with bash or similar shell)
