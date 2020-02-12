@@ -2,7 +2,7 @@
 -----------------------------------------------------------------
 	zstest.eel - ZeeSpace test
 -----------------------------------------------------------------
- * David Olofson, 2005, 2006, 2010-2012, 2014
+ * David Olofson, 2005, 2006, 2010-2012, 2014, 2020
  *
  * This code is in the Public Domain. No warranty!
  */
@@ -87,7 +87,7 @@ procedure draw_terrain(m, base, height, scale, p0, p1, p2, u, v, r)
 
 procedure draw_stuff(p, m, objects)
 {
-	local px = ZS_Pixel [0, 0, 0, 255, 0, 0];
+	local px = zs.ZS_Pixel [0, 0, 0, 255, 0, 0];
 	objects /= 5;
 	for local i = 0, objects - 1
 	{
@@ -152,7 +152,7 @@ procedure draw_stuff(p, m, objects)
 
 procedure draw_water(m, sealevel)
 {
-	local px = ZS_Pixel [];
+	local px = zs.ZS_Pixel [];
 	px.z = sealevel;
 	zs.WaterZ(m, nil, px, 96);
 }
@@ -161,7 +161,7 @@ procedure draw_water(m, sealevel)
 procedure draw_water2(m, altitude, sealevel)
 {
 	local afx = sin(altitude * 2 * PI / 360);
-	local px = ZS_Pixel [80, 112, 160, 80,
+	local px = zs.ZS_Pixel [80, 112, 160, 80,
 			(afx * afx * afx + afx) / 2, sealevel];
 	zs.Fog(m, nil, px, 48 - (24 * afx));
 }
@@ -170,7 +170,7 @@ procedure draw_water2(m, altitude, sealevel)
 procedure draw_fog(m, altitude, density)
 {
 	local afx = sin(altitude * 2 * PI / 360);
-	local px = ZS_Pixel [255, 192, 255, 0, afx / 2, 150];
+	local px = zs.ZS_Pixel [255, 192, 255, 0, afx / 2, 150];
 	density = 256 - density;
 	zs.Fog(m, nil, px, density * density / 128 + 100 - (90 * afx));
 }
@@ -216,8 +216,8 @@ procedure open_screen
 	screen = SDL.SetVideoMode(screenw, screenh, 24, flags);
 
 	// Create map (landscape + objects) and work (lighting) surfaces
-	map = ZS_Surface [screenw + 1, screenh + 1];
-	work = ZS_Surface [screenw + 1, screenh + 1];
+	map = zs.ZS_Surface [screenw + 1, screenh + 1];
+	work = zs.ZS_Surface [screenw + 1, screenh + 1];
 	rebuild, relight = true;
 }
 
@@ -576,7 +576,7 @@ export function main<args>
 	font = text.Open();
 
 	// Set up
-	drawpipe = ZS_Pipe [];
+	drawpipe = zs.ZS_Pipe [];
 	zs.PipeZ(drawpipe, zs.Z_NORMAL | zs.ZB_ABOVE);
 	zs.PipeColor(drawpipe, zs.C_NORMAL);
 	zs.PipeAlpha(drawpipe, zs.A_FIXED, 1.);
@@ -611,7 +611,7 @@ export function main<args>
 			t_y -= td * cos(t_r);
 
 			// Scroll!
-			local r = ZS_Rect [0, 0, map.w, 1];
+			local r = zs.ZS_Rect [0, 0, map.w, 1];
 			for local y = map.h - dy - 1, 0, -1
 			{
 				r.y = y;
@@ -621,7 +621,7 @@ export function main<args>
 			// Update!
 			r.(x, y, w, h) = 0, 0, map.w, dy;
 			local new = zs.View(map, r);
-			zs.RawFill(zs.ALL, new, nil, ZS_Pixel
+			zs.RawFill(zs.ALL, new, nil, zs.ZS_Pixel
 					[160, 128, 96, 255, 1, 0]);
 			zs.RndReset(sin(mt) * .5 + .5);
 			draw_terrain(new, t_base, t_height, t_scale,
@@ -639,7 +639,7 @@ export function main<args>
 				local ws = work;
 			else
 				ws = map;
-			zs.RawFill(zs.ALL, ws, nil, ZS_Pixel
+			zs.RawFill(zs.ALL, ws, nil, zs.ZS_Pixel
 					[160, 128, 96, 255, 1, 0]);
 			zs.RndReset(sin(mt) * .5 + .5);
 			draw_terrain(ws, t_base, t_height, t_scale,
@@ -655,7 +655,7 @@ export function main<args>
 		if relight
 		{
 			if morph
-				zs.RawFill(zs.I, work, nil, ZS_Pixel [
+				zs.RawFill(zs.I, work, nil, zs.ZS_Pixel [
 						0, 0, 0, 0, 1, 0]);
 			else
 				zs.RawCopy(zs.ALL, map, nil, work, 0, 0);

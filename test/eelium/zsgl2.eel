@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////
 // zsgl2.eel - Combining ZeeSpace and OpenGL, take 2
-// Copyright 2010, 2014 David Olofson
+// Copyright 2010, 2014, 2020 David Olofson
 /////////////////////////////////////////////////////
 
 /*
@@ -335,7 +335,7 @@ function render_world(w, h, scale)
 //		  probably make a table of relevant objects for each tile.
 //
 	print("  Allocating ZeeSpace surface...\n");
-	local world = ZS_Surface[w, h];
+	local world = zs.ZS_Surface[w, h];
 	print("    OK!\n");
 
 	print("  Allocating SDL surface...\n");
@@ -344,7 +344,7 @@ function render_world(w, h, scale)
 
 	print("  Clearing...\n");
 	local ss = 256 / scale;	// Size of one period of octave 0.
-	zs.RawFill(zs.ALL, world, nil, ZS_Pixel [160, 128, 96, 255, 1, 0]);
+	zs.RawFill(zs.ALL, world, nil, zs.ZS_Pixel [160, 128, 96, 255, 1, 0]);
 	print("    OK!\n");
 
 	print("  Generating terrain, coarse layer...\n");

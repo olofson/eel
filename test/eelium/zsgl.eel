@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////
 // zsgl.eel - Combining EEL, ZeeSpace and OpenGL
-// Copyright 2010, 2014 David Olofson
+// Copyright 2010, 2014, 2020 David Olofson
 /////////////////////////////////////////////////
 
 /*
@@ -60,7 +60,7 @@ function TiledLayer(tw, th, tb, tbpp)
 						tb * 2 + th, tbpp],
 
 		// ZeeSpace scratch surface
-		.zscratch	ZS_Surface [tb * 2 + tw + 1,
+		.zscratch	zs.ZS_Surface [tb * 2 + tw + 1,
 						tb * 2 + th + 1],
 
 		// View size
@@ -194,7 +194,7 @@ function TiledLayer(tw, th, tb, tbpp)
 			local scale = self.h * self.th;
 			// Reference size of octave 0.
 			local ss = 256 / scale;
-			zs.RawFill(zs.ALL, zss, nil, ZS_Pixel
+			zs.RawFill(zs.ALL, zss, nil, zs.ZS_Pixel
 					[160, 128, 96, 255, 1, 0]);
 			zs.PerlinTerrainZ(zss, 128,
 					(x, -y) / scale * self.(tw, th),

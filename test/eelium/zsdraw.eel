@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////
 // zsdraw.eel - ZeeSpace authoring tool
-// Copyright 2011, 2014 David Olofson
+// Copyright 2011, 2014, 2020 David Olofson
 ////////////////////////////////////////////////////
 
 import math;
@@ -503,7 +503,7 @@ function Background(canvas)
 		local e = canvas.background;
 	else
 		canvas.background, e = Entity(canvas, "Background");
-	e.pixel = ZS_Pixel [128, 128, 128, 255, 1, 0];
+	e.pixel = zs.ZS_Pixel [128, 128, 128, 255, 1, 0];
 	e.Render = procedure(self, surface)
 	{
 		zs.RawFill(zs.ALL, surface, nil, self.pixel);
@@ -677,7 +677,7 @@ function Dome(canvas)[x, y, r, h, px]
 {
 	local e = Entity(canvas, "Dome");
 	e.(x, y, r, h) = 100;
-	e.pixel = ZS_Pixel [128, 128, 128, 255, 1, 0];
+	e.pixel = zs.ZS_Pixel [128, 128, 128, 255, 1, 0];
 	e.Render = procedure(self, surface)
 	{
 		local p = self.canvas.pipe;
@@ -757,24 +757,24 @@ print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
 		.background	nil,	// Special handling for this...
 		.entities	[],
 		.needs_rebuild	true,
-		.pipe		ZS_Pipe [],
+		.pipe		zs.ZS_Pipe [],
 		.Background	Background,
 		.Pipe		Pipe,
 		.Dome		Dome,
 		procedure Render(self)
 		{
 			local s = self.work;
-			zs.RawFill(zs.ALL, s, nil, ZS_Pixel []);
+			zs.RawFill(zs.ALL, s, nil, zs.ZS_Pixel []);
 			local e = self.entities;
 			for local i = 0, sizeof e - 1
 				e[i]:Render(s);
 ///////////////////////
 /*
-local p = ZS_Pipe [];
+local p = zs.ZS_Pipe [];
 zs.PipeZ(p, zs.Z_NORMAL | zs.ZB_ALL);
 for local i = 0, 1000, 10
 {
-	zs.Blit(p, s, ZS_Rect [0, 0, 200, 200], s,
+	zs.Blit(p, s, zs.ZS_Rect [0, 0, 200, 200], s,
 			zs.RndGet(1000) - 500,
 			zs.RndGet(1000) - 500);
 }
@@ -814,8 +814,8 @@ for local i = 0, 1000, 10
 		procedure Resize(self, w, h)
 		{
 			self.(w, h) = w, h;
-			self.work = ZS_Surface [w, h];
-			self.light = ZS_Surface [w, h];
+			self.work = zs.ZS_Surface [w, h];
+			self.light = zs.ZS_Surface [w, h];
 			self:Invalidate();
 		}
 		procedure AddEntity(self, entity)
@@ -1060,7 +1060,7 @@ export function main<args>
 	local canvas = workspace.canvas;
 	canvas:Background();
 	local e = canvas:Pipe();
-	local px = ZS_Pixel [128, 128, 128, 255, 1, 0];
+	local px = zs.ZS_Pixel [128, 128, 128, 255, 1, 0];
 	for local i = 0, 7
 	{
 		px.r = 64 * ((integer)i & 1) + 64;
@@ -1075,7 +1075,7 @@ export function main<args>
 	canvas:Dome(525, 125, 100, 100, px);
 
 /*
-	local r = ZS_Region [];
+	local r = zs.ZS_Region [];
 	for local y = -150, 150, 99.8
 		for local x = -150, 150, 99.8
 			zs.RegionRect(r, 225 + x - 25,
