@@ -17,6 +17,7 @@ Installing
     * http://www.libpng.org/pub/png/libpng.html
   * Audiality 2 1.9.2 or later
     * https://github.com/olofson/audiality2
+    * NOTE: 1.9.4 supports only SDL 2, which can cause conflicts!
   * MXE (optional, for cross-compiling Windows binaries)
     * http://mxe.cc/
 
