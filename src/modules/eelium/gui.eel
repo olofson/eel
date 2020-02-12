@@ -1,20 +1,31 @@
-////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
 // gui.eel - The Eelium SDL 2D GUI Toolkit
-// Copyright 2005-2006, 2009-2011, 2014, 2016 David Olofson
-////////////////////////////////////////////////////////////
+// Copyright 2005-2006, 2009-2011, 2014, 2016, 2019 David Olofson
+//////////////////////////////////////////////////////////////////
 
 module eelium.gui;
 
 import math;
 import SDL as SDL;
 import eelium.recttools as RT;
-import eelium.line as line;
 export import eelium.guidefs;
 import eelium.text as text;
 import system as sys;
 
 
-static system_unicode = SDL.EnableUNICODE(true);
+// Target window (SDL.Window)
+//
+// NOTE:
+//	This is a temporary hack to get input grabbing to "work." Some
+//	refactoring and additions to the SDL wrapper will be necessary
+//	for proper multi-window support, and smooth integration with other
+//	code using the SDL API in the same process.
+//
+static window = nil;
+
+// Rendering target (SDL.Renderer)
+static target = nil;
+
 
 function round(v)
 {
@@ -26,11 +37,7 @@ function round2(v, m)
 	return floor(v / m + (m / 2)) * m;
 }
 
-
 export procedure Invalidate[rect, zlevel, refroot];
-
-// Rendering target (SDL.Surface)
-static target = nil;
 
 export function GetTarget
 {
@@ -43,6 +50,12 @@ export procedure SetTarget(tg)
 		return;
 	target = tg;
 	Invalidate();
+}
+
+// Convert RGB to integer, compatible with SDL.SetRenderDrawColor() etc
+export function RGB2Int(r, g, b)
+{
+	return (integer)(0 >| r |< 255) | (integer)(0 >| g |< 255) | (integer)(0 >| b |< 255);
 }
 
 
@@ -64,8 +77,8 @@ static dirtywidgets = {};
 export function LoadFont(name)
 {
 	try
-		return text.Open(sys.MODPATH + "/eelium/fonts/" + name);
-	return text.Open(name);
+		return text.Open(target, sys.MODPATH + "/eelium/fonts/" + name);
+	return text.Open(target, name);
 }
 
 
@@ -189,19 +202,19 @@ export procedure SetModal(widget)
 
 
 static grabs = 0;
+static appshowcursor;
 
+// TODO: Use GetWindowGrab() to restore non-GUI and non-EEL window grabs.
 procedure grab_input(onoff, hide)
 {
-	static appgrabinput;	// Application state of GrabInput
-	static appshowcursor;	// ...and ShowCursor
 	if onoff
 		grabs += 1;
 	else
 		grabs -= 1;
 	if grabs == 1
 	{
-		appgrabinput = SDL.GrabInput(SDL.QUERY);
-		SDL.GrabInput(SDL.ENABLE);
+//		appgrabinput = SDL.GrabInput(SDL.QUERY);
+		SDL.SetWindowGrab(window, true);
 		if hide
 		{
 			appshowcursor = SDL.ShowCursor(SDL.QUERY);
@@ -212,7 +225,7 @@ procedure grab_input(onoff, hide)
 	}
 	else if grabs == 0
 	{
-		SDL.GrabInput(appgrabinput);
+		SDL.SetWindowGrab(window, false);
 		if appshowcursor != nil
 			SDL.ShowCursor(appshowcursor);
 	}
@@ -385,11 +398,11 @@ function handle_pos_event(cb, ev)
 // Dispatch an SDL event to Eelium GUI, and return the widget that received
 // the event, if any.
 //	Note that Elium GUI assumes that event coordinates (such as absolute
-//	mouse coordinates) match the coordinate system of the target
-//	surface(s). Thus, if Eelium GUI is rendering into off-screen surfaces
-//	that are scaled and/or offset before they end up on the screen,
-//	event coordinates will have to be adjusted accordingly before
-//	passed to this call.
+//	mouse coordinates) match the coordinate system of the target renderer.
+//	Thus, if Eelium GUI is rendering into off-screen surfaces that are
+//	scaled and/or offset before they end up on the screen, event
+//	coordinates will have to be transformed accordingly before passed to
+//	this call.
 export function Dispatch(ev)
 {
 	// Determine what general kind of event we're dealing
@@ -403,8 +416,16 @@ export function Dispatch(ev)
 		return handle_pos_event("OnDown", ev);
 	  case SDL.MOUSEBUTTONUP
 		return handle_pos_event("OnUp", ev);
+	  case SDL.MOUSEWHEEL
+		return handle_pos_event("OnWheel", ev);
 	  case SDL.MOUSEMOTION
 		return handle_pos_event("OnMove", ev);
+	  case SDL.WINDOWEVENT
+	  {
+		switch ev.event
+		  case SDL.WINDOWEVENT_RESIZED, SDL.WINDOWEVENT_EXPOSED
+		  	Invalidate();
+	  }
 	return nil;
 }
 
@@ -450,7 +471,7 @@ procedure recursive_redraw(w, undirty)[cr]
 		local rclip = RT.Intersect(rr[j], clip);
 		if rclip
 		{
-			SDL.SetClipRect(target, rclip);
+			SDL.RenderSetClipRect(target, rclip);
 			w:Redraw();
 		}
 	}
@@ -1361,6 +1382,7 @@ export function Widget(parent)[rect]
 
 		procedure OnDown(self, ev)	{}
 		procedure OnUp(self, ev)	{}
+		procedure OnWheel(self, ev)	{}
 		procedure OnMove(self, ev)	{}
 		function OnKeyDown(self, ev)	{ return false; }
 		function OnKeyUp(self, ev)	{ return false; }
@@ -1565,26 +1587,26 @@ export procedure Close
 	while sizeof roots
 		roots[0]:Delete();
 	dirtywidgets = {};
+	window = nil;
 	target = nil;
 //	default_theme_cons = nil;
 	user_theme = nil;
-	SDL.EnableUNICODE(system_unicode);
 }
 
 
-// Open Eelium GUI for rendering onto target surface 'tg'. If 'theme' (a theme
-// constructor function) is specified, it will be used as the default
+// Open Eelium GUI for '_window', rendering via '_renderer'. If 'theme' (a
+// theme constructor function) is specified, it will be used as the default
 // theme constructor for new widgets.
-export procedure Open(tg)[theme]
+export procedure Open(_window, _renderer)[theme]
 {
 	if target
 		Close;
-	target = tg;
+	window = _window;
+	target = _renderer;
 	if specified theme
 		user_theme = theme;
 	else
 		user_theme = DefaultTheme();
-	SDL.EnableUNICODE(true);
 }
 
 
@@ -1755,18 +1777,18 @@ procedure graph_render_lines(self, graph)
 {
 	if sizeof self.x < 2
 		return;
-	local color = self.linecolor;
 	local xs, local ys, local xo, local yo =
 			graph_calc_scale(self, graph)[0, 1, 2, 3];
 	local last_xx, local last_yy = self.(x, y)[0];
 	last_xx, last_yy *= xs, ys;
 	last_xx, last_yy += xo, yo;
+	SDL.SetRenderDrawColor(target, self.linecolor);
 	for local i = 1, sizeof self.x - 1
 	{
 		local xx, local yy = self.(x, y)[i];
 		xx, yy *= xs, ys;
 		xx, yy += xo, yo;
-		line.line(target, color, last_xx, last_yy, xx, yy);
+		SDL.RenderDrawLine(target, last_xx, last_yy, xx, yy);
 		last_xx, last_yy = xx, yy;
 	}
 }
@@ -1775,15 +1797,15 @@ procedure graph_render_dot(self, graph)
 {
 	if not sizeof self.x
 		return;
-	local color = self.color;
 	local xs, local ys, local xo, local yo =
 			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	SDL.SetRenderDrawColor(target, self.color);
 	for local i = 0, sizeof self.x - 1
 	{
 		local xx, local yy = self.(x, y)[i];
 		xx, yy *= xs, ys;
 		xx, yy += xo, yo;
-		SDL.Plot(target, color, xx, yy);
+		SDL.RenderDrawPoint(target, xx, yy);
 	}
 }
 
@@ -1791,10 +1813,10 @@ procedure graph_render_square(self, graph)
 {
 	if not sizeof self.x
 		return;
-	local color = self.color;
 	local xs, local ys, local xo, local yo =
 			graph_calc_scale(self, graph)[0, 1, 2, 3];
 	xo, yo -= 2, 2;
+	SDL.SetRenderDrawColor(target, self.color);
 	local r = SDL.Rect [0, 0, 5, 5];
 	for local i = 0, sizeof self.x - 1
 	{
@@ -1803,7 +1825,7 @@ procedure graph_render_square(self, graph)
 		xx, yy += xo, yo;
 		r.(x, y) = -30000 >| (xx, yy) |< 30000;
 		r.(w, h) = 5, 5;
-		SDL.FillRect(target, clone r, color);
+		SDL.RenderFillRect(target, r);
 	}
 }
 
@@ -1811,15 +1833,15 @@ procedure graph_render_box(self, graph)
 {
 	if not sizeof self.x
 		return;
-	local color = self.color;
 	local xs, local ys, local xo, local yo =
 			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	SDL.SetRenderDrawColor(target, self.color);
 	for local i = 0, sizeof self.x - 1
 	{
 		local xx, local yy = self.(x, y)[i];
 		xx, yy *= xs, ys;
 		xx, yy += xo, yo;
-		SDL.Plot(target, color,
+		SDL.RenderDrawPoint(target,
 				xx - 2, yy - 2,
 				xx - 1, yy - 2,
 				xx, yy - 2,
@@ -1846,15 +1868,15 @@ procedure graph_render_ring(self, graph)
 {
 	if not sizeof self.x
 		return;
-	local color = self.color;
 	local xs, local ys, local xo, local yo =
 			graph_calc_scale(self, graph)[0, 1, 2, 3];
+	SDL.SetRenderDrawColor(target, self.color);
 	for local i = 0, sizeof self.x - 1
 	{
 		local xx, local yy = self.(x, y)[i];
 		xx, yy *= xs, ys;
 		xx, yy += xo, yo;
-		SDL.Plot(target, color,
+		SDL.RenderDrawPoint(target,
 				xx - 1, yy - 2,
 				xx, yy - 2,
 				xx + 1, yy - 2,
@@ -1895,11 +1917,11 @@ function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 {
 	local nc = {
 		.name		name,
-		.color		SDL.MapColor(target, r, g, b),
-		.linecolor	SDL.MapColor(target,
-				r * .3 + (graph.paper_r * .7),
-				g * .3 + (graph.paper_g * .7),
-				b * .3 + (graph.paper_b * .7)),
+		.color		RGB2Int(r, g, b),
+		.linecolor	RGB2Int(
+				r * .3 + (graph.paper.r * .7),
+				g * .3 + (graph.paper.g * .7),
+				b * .3 + (graph.paper.b * .7)),
 		.lines		true,
 		.glyphs		true,
 		.glyph		glyph,
@@ -1969,15 +1991,17 @@ function graph_new_curve(graph, name, glyph, r, g, b)[lines]
 export function Graph(parent)
 {
 	local w = Widget(parent);
-	w.paper_r = 32;
-	w.paper_g = 48;
-	w.paper_b = 64;
-	w.paper = SDL.MapColor(target, w.paper_r, w.paper_g, w.paper_b);
+	w.paper = {
+		.r	32,
+		.g	48,
+		.b	64
+	};
 	w.curves = {};
 	w.Curve = graph_new_curve;
 	w.RenderBackground = procedure(self)
 	{
-		SDL.FillRect(target, clone self.rect, self.paper);
+		SDL.SetRenderDrawColor(target, self.paper.(r, g, b));
+		SDL.RenderFillRect(target, clone self.rect);
 	};
 	w.Redraw = procedure(self)
 	{
@@ -2059,7 +2083,8 @@ function new_scale(parent, onchange, horiz, color)
 			th:PassiveDepression3D_OL(r);
 		r.(x, y) += 1;
 		r.(w, h) -= 2;
-		SDL.FillRect(target, clone r, self.color);
+		SDL.SetRenderDrawColor(target, self.color);
+		SDL.RenderFillRect(target, clone r);
 		if not self.scale
 			return;
 		if self.horizontal
@@ -2087,7 +2112,7 @@ function new_scale(parent, onchange, horiz, color)
 			maxx = ceil(maxx / step) * step;
 			local xs = self.scale * self.rect.w;
 			local xo = self.offset * self.rect.w + self.rect.x;
-			local c = self.theme.colors[CPSHL];
+			SDL.SetRenderDrawColor(target, self.theme.colors[CPSHL]);
 			for local x = minx, maxx, step
 			{
 				r = clone self.rect;
@@ -2095,7 +2120,7 @@ function new_scale(parent, onchange, horiz, color)
 				r.x, local tx = x * xs + xo;
 				self.ticks.+ tx;
 				r.w = 1;
-				SDL.FillRect(target, r, c);
+				SDL.RenderFillRect(target, r);
 				local tt = (string)(floor(x / step + .5) * step);
 				ty += (self.rect.h - self.font.height) / 2;
 				tx -= self.font:Width(tt) / 2 - .5;
@@ -2376,9 +2401,10 @@ procedure Button_Redraw(self)
 		r.(x, y) += 1;
 		r.(w, h) -= 2;
 		if self.state
-			SDL.FillRect(target, r, th.colors[CMK]);
+			SDL.SetRenderDrawColor(target, th.colors[CMK]);
 		else
-			SDL.FillRect(target, r, th.colors[CPSH]);
+			SDL.SetRenderDrawColor(target, th.colors[CPSH]);
+		SDL.RenderFillRect(target, r);
 	}
 
 	// Caption
@@ -2540,9 +2566,10 @@ export function LED(parent)
 		r.(x, y) += 1;
 		r.(w, h) -= 2;
 		if self.state
-			SDL.FillRect(target, r, th.colors[CMK]);
+			SDL.SetRenderDrawColor(target, th.colors[CMK]);
 		else
-			SDL.FillRect(target, r, th.colors[CPSH]);
+			SDL.SetRenderDrawColor(target, th.colors[CPSH]);
+		SDL.RenderFillRect(target, r);
 	};
 	return w;
 }
@@ -2576,12 +2603,14 @@ export function ProgressBar(parent)
 		local w1 = round(r.w * self.value);
 		local w2 = r.w - w1;
 		r.w = w1;
-		if self.enabled
-			SDL.FillRect(target, clone r, th.colors[CMK]);
+		if self.state
+			SDL.SetRenderDrawColor(target, th.colors[CMK]);
 		else
-			SDL.FillRect(target, clone r, th.colors[CPSHL]);
+			SDL.SetRenderDrawColor(target, th.colors[CPSHL]);
+		SDL.RenderFillRect(target, clone r);
 		r.(x, w) = r.x + w1, w2;
-		SDL.FillRect(target, r, th.colors[CPSH]);
+		SDL.SetRenderDrawColor(target, th.colors[CPSH]);
+		SDL.RenderFillRect(target, r);
 		r = RT.Shrink(self.rect, 5);
 		local tx, local ty = r.(x, y);
 		local txt = (string)(integer)round(self.value * 100.) + "%";
@@ -2670,14 +2699,10 @@ export function ListBox(parent)[itemheight]
 	{
 		self:GoToLine(sizeof self.widgets);
 	};
-	w.OnDown = procedure(self, ev)
+	w.OnWheel = procedure(self, ev)
 	{
 		SetFocus(self);
-		switch ev.button
-		  case SDL.BUTTON_WHEELUP
-			self:GoToLine(self.vscroll - 3);
-		  case SDL.BUTTON_WHEELDOWN
-			self:GoToLine(self.vscroll + 3);
+		self:GoToLine(self.vscroll + (3 * ev.y));
 	};
 	w.OnKeyDown = function(self, ev)
 	{
@@ -2765,14 +2790,10 @@ export function TextBox(parent)[txt]
 			y += f.height;
 		}
 	};
-	w.OnDown = procedure(self, ev)
+	w.OnWheel = procedure(self, ev)
 	{
 		SetFocus(self);
-		switch ev.button
-		  case SDL.BUTTON_WHEELUP
-			self:GoToLine(self.vscroll - 3);
-		  case SDL.BUTTON_WHEELDOWN
-			self:GoToLine(self.vscroll + 3);
+		self:GoToLine(self.vscroll + (3 * ev.y));
 	};
 	w.OnKeyDown = function(self, ev)
 	{
@@ -3037,6 +3058,16 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 		return self;
 	};
 
+	w.OnWheel = procedure(self, ev)
+	{
+		local shx, local shw = self.(hx, hw);
+		local knob = self.knob;
+		local pos = self:Value2Pos(self.value);
+		pos += ev.y * self.wheelstep;
+		SetFocus(knob);
+		self:MovePos(pos);
+	};
+
 	w.OnDown = procedure(self, ev)
 	{
 		local shx, local shw = self.(hx, hw);
@@ -3048,10 +3079,6 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 			step = self.coarsestep;
 		  case SDL.BUTTON_RIGHT
 			step = self.finestep;
-		  case SDL.BUTTON_WHEELUP
-			pos += self.wheelstep;
-		  case SDL.BUTTON_WHEELDOWN
-			pos -= self.wheelstep;
 		  default
 			return;
 		if not self.horizontal
@@ -3108,17 +3135,15 @@ function _slider(parent, hx, hy, hw, hh)[p2v, v2p]
 			return false;
 		return true;
 	};
+	k.OnWheel = procedure(self, ev)
+	{
+	  	self.slider:OnWheel(ev);
+	};
 	k.OnDown = procedure(self, ev)
 	{
 		if(captured == self)
 			return;
 		local shx = self.slider.hx;
-		switch ev.button
-		  case SDL.BUTTON_WHEELUP, SDL.BUTTON_WHEELDOWN
-		  {
-		  	self.slider:OnDown(ev);
-			return;
-		  }
 		self.graboffs = ev[shx] - self.rect[shx];
 		self.state = true;
 		SetCapture(self);
@@ -3268,7 +3293,7 @@ export function VSlider(parent)[onchange, p2v, v2p]
 export function Plotter(parent, min, max)[caption]
 {
 	local w = Widget(parent);
-	w.paper = SDL.MapColor(target, 48, 48, 48);
+	w.paper = RGB2Int(48, 48, 48);
 	w.data = vector [];
 	w.min = min;
 	w.max = max;
@@ -3283,6 +3308,7 @@ export function Plotter(parent, min, max)[caption]
 	};
 	w.Redraw = procedure(self)
 	{
+		local th = self.theme;
 		local tg = target;
 		local r = clone self.rect;
 		self.theme:PassiveBox(r);
@@ -3291,7 +3317,8 @@ export function Plotter(parent, min, max)[caption]
 		self.theme:PassiveDepression3D_OL(r);
 		r.(x, y) += 1;
 		r.(w, h) -= 2;
-		SDL.FillRect(tg, clone r, self.paper);
+		SDL.SetRenderDrawColor(tg, self.paper);
+		SDL.RenderFillRect(tg, clone r);
 
 		local minx = r.x;
 		local miny = r.y;
@@ -3309,6 +3336,7 @@ export function Plotter(parent, min, max)[caption]
 			if sizeof self.data < rh
 				r.y += rh - sizeof self.data;
 			r.h = 1;
+			SDL.SetRenderDrawColor(target, th.colors[CMK]);
 			for local i = 0, sizeof self.data - 1
 			{
 				local x1 = (self.data[i] - self.min) /
@@ -3318,7 +3346,7 @@ export function Plotter(parent, min, max)[caption]
 					r.(x, w) = x0, x1 - x0;
 				else
 					r.(x, w) = x1, x0 - x1;
-				SDL.FillRect(tg, clone r, self.theme.colors[CMK]);
+				SDL.RenderFillRect(tg, clone r);
 				r.y += 1;
 			}
 		}
@@ -3330,7 +3358,8 @@ export function Plotter(parent, min, max)[caption]
 			r.y = miny;
 			r.w = 1;
 			r.h = rh;
-			SDL.FillRect(tg, r, self.theme.colors[CAHL]);
+			SDL.SetRenderDrawColor(target, th.colors[CAHL]);
+			SDL.RenderFillRect(tg, r);
 		}
 
 		// Caption and values
@@ -3352,7 +3381,7 @@ export function Plotter(parent, min, max)[caption]
 export function Lissajous(parent, history)
 {
 	local w = Widget(parent);
-	w.paper = SDL.MapColor(target, 48, 48, 48);
+	w.paper = RGB2Int(48, 48, 48);
 	w.xdata = vector [];
 	w.ydata = vector [];
 	w.xscale = 1;
@@ -3366,6 +3395,7 @@ export function Lissajous(parent, history)
 	};
 	w.Redraw = procedure(self)
 	{
+		local th = self.theme;
 		local tg = target;
 		local r = clone self.rect;
 		self.theme:PassiveBox(r);
@@ -3374,7 +3404,8 @@ export function Lissajous(parent, history)
 		self.theme:PassiveDepression3D_OL(r);
 		r.(x, y) += 1;
 		r.(w, h) -= 2;
-		SDL.FillRect(tg, clone r, self.paper);
+		SDL.SetRenderDrawColor(tg, self.paper);
+		SDL.RenderFillRect(tg, clone r);
 		if sizeof self.xdata
 		{
 			local xd, local yd = self.(xdata, ydata);
@@ -3403,13 +3434,12 @@ export function Lissajous(parent, history)
 			if self.yscale
 				ys = self.yscale * r.h / 2;
 			local xc, local yc = r.(w, h) / 2 + r.(x, y);
-			local lock = SDL.LockSurface(target);
-			local c = self.theme.colors[CMK];
+			SDL.SetRenderDrawColor(target, th.colors[CMK]);
 			for local i = 0, sizeof xd - 1
 			{
 				local x = xd[i] * xs + xc;
 				local y = yd[i] * ys + yc;
-				SDL.Plot(lock, c, x, y);
+				SDL.RenderDrawPoint(target, x, y);
 			}
 		}
 	};

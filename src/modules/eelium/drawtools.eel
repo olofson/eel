@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////
 // drawtools.eel - SDL draw tools for the EElium GUI and themes
-// Copyright 2005, 2010-2011, 2014 David Olofson
+// Copyright 2005, 2010-2011, 2014, 2019 David Olofson
 ////////////////////////////////////////////////////////////////
 
 module eelium.drawtools;
@@ -11,17 +11,19 @@ import SDL as SDL;
 export procedure box(target, rect, color)
 {
 	local r = clone rect;
+	SDL.SetRenderDrawColor(target, color);
+
 	// Top and bottom
 	r.h = 1;
-	SDL.FillRect(target, clone r, color);
+	SDL.RenderFillRect(target, clone r);
 	r.y += rect.h - 1;
-	SDL.FillRect(target, clone r, color);
+	SDL.RenderFillRect(target, clone r);
 
 	// Left and right
 	r.(y, w, h) = rect.y + 1, 1, rect.h - 2;
-	SDL.FillRect(target, clone r, color);
+	SDL.RenderFillRect(target, clone r);
 	r.x += rect.w - 1;
-	SDL.FillRect(target, r, color);
+	SDL.RenderFillRect(target, r);
 }
 
 
@@ -31,24 +33,29 @@ export procedure box3d(target, rect, tlc, cc, brc)
 	// Top and bottom
 	r.h = 1;
 	r.w -= 1;
-	SDL.FillRect(target, clone r, tlc);
+	SDL.SetRenderDrawColor(target, tlc);
+	SDL.RenderFillRect(target, clone r);
 	r.x += 1;
 	r.y += rect.h - 1;
-	SDL.FillRect(target, clone r, brc);
+	SDL.SetRenderDrawColor(target, brc);
+	SDL.RenderFillRect(target, clone r);
 
 	// Left and right
 	r.(x, y, w, h) = rect.(x, y), 1, rect.h - 1;
-	SDL.FillRect(target, clone r, tlc);
+	SDL.SetRenderDrawColor(target, tlc);
+	SDL.RenderFillRect(target, clone r);
 	r.x += rect.w - 1;
 	r.y += 1;
-	SDL.FillRect(target, clone r, brc);
+	SDL.SetRenderDrawColor(target, brc);
+	SDL.RenderFillRect(target, clone r);
 
 	// Highlight/shadow crossover corners
+	SDL.SetRenderDrawColor(target, cc);
 	r.(x, y) = rect.x + rect.w - 1, rect.y;
 	r.(w, h) = 1;
-	SDL.FillRect(target, clone r, cc);
+	SDL.RenderFillRect(target, clone r);
 	r.(x, y) = rect.x, rect.y + rect.h - 1;
-	SDL.FillRect(target, r, cc);
+	SDL.RenderFillRect(target, r);
 }
 
 
@@ -58,30 +65,37 @@ export procedure rbox3d(target, rect, tlc, cc, brc, hlc, shc)
 	// Top and bottom
 	r.h = 1;
 	r.w -= 1;
-	SDL.FillRect(target, clone r, tlc);
+	SDL.SetRenderDrawColor(target, tlc);
+	SDL.RenderFillRect(target, clone r);
 	r.x += 1;
 	r.y += rect.h - 1;
-	SDL.FillRect(target, clone r, brc);
+	SDL.SetRenderDrawColor(target, brc);
+	SDL.RenderFillRect(target, clone r);
 
 	// Left and right
 	r.(x, y, w, h) = rect.(x, y), 1, rect.h - 1;
-	SDL.FillRect(target, clone r, tlc);
+	SDL.SetRenderDrawColor(target, tlc);
+	SDL.RenderFillRect(target, clone r);
 	r.x += rect.w - 1;
 	r.y += 1;
-	SDL.FillRect(target, clone r, brc);
+	SDL.SetRenderDrawColor(target, brc);
+	SDL.RenderFillRect(target, clone r);
 
 	// Highlight/shadow crossover corners
+	SDL.SetRenderDrawColor(target, cc);
 	r.(x, y) = rect.x + rect.w - 1, rect.y;
 	r.(w, h) = 1;
-	SDL.FillRect(target, clone r, cc);
+	SDL.RenderFillRect(target, clone r);
 	r.(x, y) = rect.x, rect.y + rect.h - 1;
-	SDL.FillRect(target, clone r, cc);
+	SDL.RenderFillRect(target, clone r);
 
 	// Highlight corner
 	r.(x, y) = rect.x, rect.y;
-	SDL.FillRect(target, clone r, hlc);
+	SDL.SetRenderDrawColor(target, hlc);
+	SDL.RenderFillRect(target, clone r);
 
 	// Shadow corner
 	r.(x, y) = rect.x + rect.w - 1, rect.y + rect.h - 1;
-	SDL.FillRect(target, r, shc);
+	SDL.SetRenderDrawColor(target, shc);
+	SDL.RenderFillRect(target, r);
 }

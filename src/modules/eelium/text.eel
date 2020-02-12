@@ -1,16 +1,17 @@
-/////////////////////////////////////////////
-// text.eel - SDL "SFont" implementation
-// Copyright 2005, 2009, 2014 David Olofson
-/////////////////////////////////////////////
+//////////////////////////////////////////////////
+// text.eel - SDL2 "SFont" implementation
+// Copyright 2005, 2009, 2014, 2017 David Olofson
+//////////////////////////////////////////////////
 
 module eelium.text;
 
 import SDL, SDL_image, math, system as sys;
 
-export function Open[filename]
+export function Open(renderer)[filename]
 {
 	// Create object
 	local no = {
+		.renderer	renderer,
 		.glyphs		[],
 		.spacing	vector [],
 		.xoffs		0,
@@ -29,11 +30,16 @@ export function Open[filename]
 			else
 				mx = 9999999;
 			local startx = x;
-			local r = Rect [x, y, 0, 0];
+			local gs, local ss = self.(glyphs, spacing);
+			local lastg = sizeof gs + 33;
+			local uch = self.unknownchar;
+			local rn = self.renderer;
+			local r = Rect [];
 			for local c = 0, sizeof s - 1
 			{
 				local ch = s[c];
-				local gs, local ss = self.(glyphs, spacing);
+				if ch >= lastg
+					ch = uch;
 				switch ch
 				  case '\n'
 				  {
@@ -50,15 +56,11 @@ export function Open[filename]
 					x += startx;
 				  }
 				  default
-					try
-					{
-						ch -= 33;
-						local g = gs[ch];
-						r.x = x;
-						r.y = y;
-						BlitSurface(g, nil, d, r);
-						x += self.spacing[ch];
-					}
+				  {
+					ch -= 33;
+					RenderCopy(rn, gs[ch], nil, x, y);
+					x += self.spacing[ch];
+				  }
 				if x > mx
 					break;
 			}
@@ -72,10 +74,14 @@ export function Open[filename]
 				nc = sizeof s;
 			if not nc
 				return 0;
+			local ss = self.spacing;
+			local lastg = sizeof ss + 33;
+			local uch = self.unknownchar;
 			for local c = 0, nc - 1
 			{
 				local ch = s[c];
-				local ss = self.spacing;
+				if ch >= lastg
+					ch = uch;
 				switch ch
 				  case '\n'
 				  {
@@ -88,11 +94,10 @@ export function Open[filename]
 					w = floor((w + self.tabw) /
 							self.tabw) * self.tabw;
 				  default
-					try
-					{
-						ch -= 33;
-						w += self.spacing[ch];
-					}
+				  {
+					ch -= 33;
+					w += ss[ch];
+				  }
 			}
 			mw >|= w;
 			return mw;
@@ -108,7 +113,6 @@ export function Open[filename]
 		local sfont = Load(filename);
 	else
 		sfont = Load(sys.MODPATH + "/eelium/fonts/microfont_sh.png");
-	SetAlpha(sfont, 0);
 	local x = 0;
 	local last_cut = 0;
 	local last_mend = 0;
@@ -127,11 +131,9 @@ export function Open[filename]
 			{
 				local r = Rect [last_cut, 1, cut - last_cut,
 						no.height];
-				local s = Surface [0, r.w, r.h, 32];
-				SetAlpha(s, 0);
-				BlitSurface(sfont, r, s);
-				SetAlpha(s, SRCALPHA | RLEACCEL);
-				no.glyphs.+ DisplayFormatAlpha(s);
+				local tx = Texture [renderer, sfont, r];
+				tx.blendmode = BLENDMODE_BLEND;
+				no.glyphs.+ tx;
 				no.spacing.+ mstart - last_mend + 1;
 			}
 			last_cut = cut;
@@ -150,6 +152,12 @@ export function Open[filename]
 		no.spacew = no.glyphs['.' - 33].w * 1.5;
 	if not no.spacew
 		no.spacew = no.glyphs['!' - 33].w * 1.5;
+
+	// Determine substitute for "unknown character"
+	if sizeof no.glyphs > ('?' - 33)
+		no.unknownchar = '?';
+	else
+		no.unknownchar = ' ';
 
 	// Since we're dealing mostly with proportional
 	// fonts, there's no obvious way to figure out

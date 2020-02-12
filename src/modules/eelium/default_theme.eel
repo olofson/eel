@@ -1,9 +1,11 @@
 ////////////////////////////////////////////////////////////////
 // default_theme.eel - Default theme for the Eelium GUI Toolkit
-// Copyright 2005, 2010-2011, 2014 David Olofson
+// Copyright 2005, 2010-2011, 2014, 2019 David Olofson
 ////////////////////////////////////////////////////////////////
 
 module eelium.default_theme;
+
+eelversion 0.3.7;
 
 import SDL as SDL;
 import math;
@@ -30,30 +32,30 @@ export function Create
 		// Color management
 		procedure SetForegroundColor(self, r, g, b)
 		{
-			self.colors[CFG] = SDL.MapColor(self.target, r, g, b);
+			self.colors[CFG] = (r << 16) | (g << 8) | b;
 		}
 		procedure SetMarkColor(self, r, g, b)
 		{
-			self.colors[CMK] = SDL.MapColor(self.target, r, g, b);
+			self.colors[CMK] = (r << 16) | (g << 8) | b;
 		}
 		procedure SetPassiveColors(self, r, g, b, contrast)
 		{
 			local t, local c = self.(target, colors);
-			c[CPHL] = SDL.MapColor(t, (r, g, b) * (contrast + 1));
-			c[CPSHL] = SDL.MapColor(t, (r, g, b) * (contrast * .35 + 1));
-			c[CPBG] = SDL.MapColor(t, r, g, b);
-			c[CPSSH] = SDL.MapColor(t, (r, g, b) / (contrast * .35 + 1));
-			c[CPSH] = SDL.MapColor(t, (r, g, b) / (contrast + 1));
+			c[CPHL] = RGB2Int((r, g, b) * (contrast + 1));
+			c[CPSHL] = RGB2Int((r, g, b) * (contrast * .35 + 1));
+			c[CPBG] = RGB2Int(r, g, b);
+			c[CPSSH] = RGB2Int((r, g, b) / (contrast * .35 + 1));
+			c[CPSH] = RGB2Int((r, g, b) / (contrast + 1));
 		}
 		procedure SetActiveColors(self, r, g, b, contrast)
 		{
 			self.(ar, ag, ab) = r, g, b;
 			local t, local c = self.(target, colors);
-			c[CAHL] = SDL.MapColor(t, (r, g, b) * (contrast + 1));
-			c[CASHL] = SDL.MapColor(t, (r, g, b) * (contrast * .35 + 1));
-			c[CABG] = SDL.MapColor(t, r, g, b);
-			c[CASSH] = SDL.MapColor(t, (r, g, b) / (contrast * .35 + 1));
-			c[CASH] = SDL.MapColor(t, (r, g, b) / (contrast + 1));
+			c[CAHL] = RGB2Int((r, g, b) * (contrast + 1));
+			c[CASHL] = RGB2Int((r, g, b) * (contrast * .35 + 1));
+			c[CABG] = RGB2Int(r, g, b);
+			c[CASSH] = RGB2Int((r, g, b) / (contrast * .35 + 1));
+			c[CASH] = RGB2Int((r, g, b) / (contrast + 1));
 		}
 
 		// Rendering tools
@@ -63,7 +65,8 @@ export function Create
 		}
 		procedure Bar(self, rect, color)
 		{
-			SDL.FillRect(self.target, clone rect, self.colors[color]);
+			SDL.SetRenderDrawColor(self.target, self.colors[color]);
+			SDL.RenderFillRect(self.target, clone rect);
 		}
 		procedure FocusBox(self, rect)
 		{
@@ -71,7 +74,8 @@ export function Create
 		}
 		procedure FocusBar(self, rect)
 		{
-			SDL.FillRect(self.target, clone rect, self.colors[CMK]);
+			SDL.SetRenderDrawColor(self.target, self.colors[CMK]);
+			SDL.RenderFillRect(self.target, clone rect);
 		}
 		procedure PassiveBox(self, rect)
 		{
@@ -79,7 +83,8 @@ export function Create
 		}
 		procedure PassiveBar(self, rect)
 		{
-			SDL.FillRect(self.target, clone rect, self.colors[CPBG]);
+			SDL.SetRenderDrawColor(self.target, self.colors[CPBG]);
+			SDL.RenderFillRect(self.target, clone rect);
 		}
 		procedure ActiveBox(self, rect)
 		{
@@ -87,7 +92,8 @@ export function Create
 		}
 		procedure ActiveBar(self, rect)
 		{
-			SDL.FillRect(self.target, clone rect, self.colors[CABG]);
+			SDL.SetRenderDrawColor(self.target, self.colors[CABG]);
+			SDL.RenderFillRect(self.target, clone rect);
 		}
 
 		procedure PassiveBlock3D_OL(self, rect)
@@ -99,7 +105,8 @@ export function Create
 		{
 			local t, local c = self.(target, colors);
 			rbox3d(t, rect, c[CPHL, CPBG, CPSH, CPSHL, CPSSH]);
-			SDL.FillRect(t, RT.Shrink(rect, 1), c[CPBG]);
+			SDL.SetRenderDrawColor(self.target, c[CPBG]);
+			SDL.RenderFillRect(t, RT.Shrink(rect, 1));
 		}
 		procedure PassiveDepression3D_OL(self, rect)
 		{
@@ -110,7 +117,8 @@ export function Create
 		{
 			local t, local c = self.(target, colors);
 			rbox3d(t, rect, c[CPSH, CPBG, CPHL, CPSSH, CPSHL]);
-			SDL.FillRect(t, RT.Shrink(rect, 1), c[CPBG]);
+			SDL.SetRenderDrawColor(self.target, c[CPBG]);
+			SDL.RenderFillRect(t, RT.Shrink(rect, 1));
 		}
 		procedure PassiveDent3D_OL(self, rect)
 		{
@@ -121,7 +129,8 @@ export function Create
 		{
 			local t, local c = self.(target, colors);
 			rbox3d(t, rect, c[CPSSH, CPBG, CPSHL, CPBG, CPBG]);
-			SDL.FillRect(t, RT.Shrink(rect, 1), c[CPBG]);
+			SDL.SetRenderDrawColor(self.target, c[CPBG]);
+			SDL.RenderFillRect(t, RT.Shrink(rect, 1));
 		}
 		procedure PassiveFatBlock3D_OL(self, rect)
 		{
@@ -138,7 +147,8 @@ export function Create
 			rbox3d(t, r, c[CPSHL, CPBG, CPSSH, CPSHL, CPSH]);
 			r.(x, y) += 1;
 			r.(w, h) -= 2;
-			SDL.FillRect(t, r, c[CPBG]);
+			SDL.SetRenderDrawColor(self.target, c[CPBG]);
+			SDL.RenderFillRect(t, r);
 		}
 
 		procedure ActiveBlock3D_OL(self, rect)
@@ -150,7 +160,8 @@ export function Create
 		{
 			local t, local c = self.(target, colors);
 			rbox3d(t, rect, c[CAHL, CABG, CASH, CASHL, CASSH]);
-			SDL.FillRect(t, RT.Shrink(rect, 1), c[CABG]);
+			SDL.SetRenderDrawColor(self.target, c[CABG]);
+			SDL.RenderFillRect(t, RT.Shrink(rect, 1));
 		}
 		procedure ActiveFatBlock3D_OL(self, rect)
 		{
@@ -176,11 +187,11 @@ export function Create
 				return;
 			for local y = 0, h - 1
 			{
-				local cc = SDL.MapColor(t, self.(ar, ag, ab) *
-						(sin(w1 * y / h + w0) * .3 + 1));
 				r.y = y + y0;
 				r.h = 1;
-				SDL.FillRect(t, clone r, cc);
+				SDL.SetRenderDrawColor(t, self.(ar, ag, ab) *
+						(sin(w1 * y / h + w0) * .3 + 1));
+				SDL.RenderFillRect(t, clone r);
 			}
 		}
 		procedure a_fxbar_h(self, _r)[_w0, _w1]
@@ -200,11 +211,11 @@ export function Create
 				return;
 			for local x = 0, w - 1
 			{
-				local cc = SDL.MapColor(t, self.(ar, ag, ab) *
-						(sin(w1 * x / w + w0) * .3 + 1));
 				r.x = x + x0;
 				r.w = 1;
-				SDL.FillRect(t, clone r, cc);
+				SDL.SetRenderDrawColor(t, self.(ar, ag, ab) *
+						(sin(w1 * x / w + w0) * .3 + 1));
+				SDL.RenderFillRect(t, clone r);
 			}
 		}
 		procedure ActiveFatBlock3D(self, rect)
@@ -228,7 +239,8 @@ export function Create
 		{
 			local t, local c = self.(target, colors);
 			rbox3d(t, rect, c[CASH, CABG, CAHL, CASSH, CASHL]);
-			SDL.FillRect(t, RT.Shrink(rect, 1), c[CABG]);
+			SDL.SetRenderDrawColor(t, c[CABG]);
+			SDL.RenderFillRect(t, RT.Shrink(rect, 1));
 		}
 		procedure ActiveDent3D_OL(self, rect)
 		{
@@ -239,7 +251,8 @@ export function Create
 		{
 			local t, local c = self.(target, colors);
 			rbox3d(t, rect, c[CASSH, CABG, CASHL, CABG, CABG]);
-			SDL.FillRect(t, RT.Shrink(rect, 1), c[CABG]);
+			SDL.SetRenderDrawColor(t, c[CABG]);
+			SDL.RenderFillRect(t, RT.Shrink(rect, 1));
 		}
 
 		procedure PassiveHRidge(self, rect)
