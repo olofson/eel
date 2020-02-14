@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	'eel' command line executive
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2012, 2014, 2019 David Olofson
+ * Copyright 2005-2007, 2009-2012, 2014, 2019-2020 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -88,7 +88,7 @@ static void usage(const char *exename)
 #ifdef EEL_HAVE_EELIUM
 	fprintf(stderr, "| With Eelium (SDL 2, OpenGL, Audiality 2)\n");
 #endif
-	fprintf(stderr, "| Copyright 2005-2019 David Olofson\n");
+	fprintf(stderr, "| Copyright 2005-2020 David Olofson\n");
 	fprintf(stderr,	"|------------------------------------------------\n");
 	fprintf(stderr, "| Usage: %s [switches] <file> [arguments]\n", 
 			exename);
