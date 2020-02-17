@@ -45,6 +45,7 @@ export function main<args>
 	run("pigs.eel");
 	run("pigs2.eel");
 	run("pigs3.eel");
+	run("keyboard.eel");
 	run("texttest.eel");
 	run("guitest.eel");
 	run("beep.eel");

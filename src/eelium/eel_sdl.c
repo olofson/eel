@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_sdl.c - EEL SDL Binding
 ---------------------------------------------------------------------------
- * Copyright 2005-2007, 2009-2011, 2013-2014, 2016-2017, 2019 David Olofson
+ * Copyright 2005-2020 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -2426,6 +2426,16 @@ static EEL_xno esdl_decode_event(EEL_vm *vm, SDL_Event *ev)
 		esdl_seti(t, "sym", ev->key.keysym.sym);
 		esdl_seti(t, "mod", ev->key.keysym.mod);
 		break;
+	  case SDL_TEXTEDITING:
+		esdl_seti(t, "windowID", ev->edit.windowID);
+		eel_table_setss(t, "text", ev->edit.text);
+		esdl_seti(t, "start", ev->edit.start);
+		esdl_seti(t, "length", ev->edit.length);
+		break;
+	  case SDL_TEXTINPUT:
+		esdl_seti(t, "windowID", ev->edit.windowID);
+		eel_table_setss(t, "text", ev->edit.text);
+		break;
 	  case SDL_MOUSEMOTION:
 		esdl_seti(t, "windowID", ev->key.windowID);
 		esdl_seti(t, "which", ev->motion.which);
@@ -2542,6 +2552,10 @@ static EEL_xno esdl_EventState(EEL_vm *vm)
 }
 
 
+/*----------------------------------------------------------
+	Keyboard input
+----------------------------------------------------------*/
+
 static EEL_xno esdl_StartTextInput(EEL_vm *vm)
 {
 	SDL_StartTextInput();
@@ -2552,6 +2566,44 @@ static EEL_xno esdl_StartTextInput(EEL_vm *vm)
 static EEL_xno esdl_StopTextInput(EEL_vm *vm)
 {
 	SDL_StopTextInput();
+	return 0;
+}
+
+
+static EEL_xno esdl_SetTextInputRect(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	SDL_Rect *r = NULL;
+	if((vm->argc >= 1) && (EEL_CLASS(args) != EEL_CNIL))
+	{
+		if(EEL_CLASS(args) != esdl_md.rect_cid)
+			return EEL_XWRONGTYPE;
+		r = o2SDL_Rect(args[0].objref.v);
+	}
+	SDL_SetTextInputRect(r);
+	return 0;
+}
+
+
+static EEL_xno esdl_IsTextInputActive(EEL_vm *vm)
+{
+	eel_b2v(vm->heap + vm->resv, SDL_IsTextInputActive());
+	return 0;
+}
+
+
+static EEL_xno esdl_GetScancodeName(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	eel_s2v(vm, vm->heap + vm->resv, SDL_GetScancodeName(eel_v2l(args)));
+	return 0;
+}
+
+
+static EEL_xno esdl_GetKeyName(EEL_vm *vm)
+{
+	EEL_value *args = vm->heap + vm->argv;
+	eel_s2v(vm, vm->heap + vm->resv, SDL_GetKeyName(eel_v2l(args)));
 	return 0;
 }
 
@@ -2848,6 +2900,8 @@ static const EEL_lconstexp esdl_constants[] =
 	{"WINDOWEVENT",		SDL_WINDOWEVENT},
 	{"KEYDOWN",		SDL_KEYDOWN},
 	{"KEYUP",		SDL_KEYUP},
+	{"TEXTEDITING",		SDL_TEXTEDITING},
+	{"TEXTINPUT",		SDL_TEXTINPUT},
 	{"MOUSEMOTION",		SDL_MOUSEMOTION},
 	{"MOUSEWHEEL",		SDL_MOUSEWHEEL},
 	{"MOUSEBUTTONDOWN",	SDL_MOUSEBUTTONDOWN},
@@ -3318,10 +3372,20 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	eel_export_cfunction(m, 1, "PollEvent", 0, 0, 0, esdl_PollEvent);
 	eel_export_cfunction(m, 1, "WaitEvent", 0, 0, 0, esdl_WaitEvent);
 	eel_export_cfunction(m, 1, "EventState", 1, 1, 0, esdl_EventState);
+
+	/* Keyboard input */
 	eel_export_cfunction(m, 0, "StartTextInput", 0, 0, 0,
 			esdl_StartTextInput);
 	eel_export_cfunction(m, 0, "StopTextInput", 0, 0, 0,
 			esdl_StopTextInput);
+	eel_export_cfunction(m, 0, "SetTextInputRect", 0, 1, 0,
+			esdl_SetTextInputRect);
+	eel_export_cfunction(m, 1, "IsTextInputActive", 0, 0, 0,
+			esdl_IsTextInputActive);
+	eel_export_cfunction(m, 1, "GetScancodeName", 1, 0, 0,
+			esdl_GetScancodeName);
+	eel_export_cfunction(m, 1, "GetKeyName", 1, 0, 0,
+			esdl_GetKeyName);
 
 	/* Simple audio interface */
 	eel_export_cfunction(m, 0, "OpenAudio", 3, 0, 0, esdl_OpenAudio);

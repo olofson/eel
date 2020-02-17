@@ -1,7 +1,7 @@
-//////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 // gui.eel - The Eelium SDL 2D GUI Toolkit
-// Copyright 2005-2006, 2009-2011, 2014, 2016, 2019 David Olofson
-//////////////////////////////////////////////////////////////////
+// Copyright 2005-2006, 2009-2011, 2014, 2016, 2019-2020 David Olofson
+///////////////////////////////////////////////////////////////////////
 
 module eelium.gui;
 
@@ -412,6 +412,8 @@ export function Dispatch(ev)
 		return handle_event("OnKeyDown", ev);
 	  case SDL.KEYUP
 		return handle_event("OnKeyUp", ev);
+	  case SDL.TEXTINPUT
+		return handle_event("OnTextInput", ev);
 	  case SDL.MOUSEBUTTONDOWN
 		return handle_pos_event("OnDown", ev);
 	  case SDL.MOUSEBUTTONUP
@@ -1386,6 +1388,7 @@ export function Widget(parent)[rect]
 		procedure OnMove(self, ev)	{}
 		function OnKeyDown(self, ev)	{ return false; }
 		function OnKeyUp(self, ev)	{ return false; }
+		function OnTextInput(self, ev)	{ return false; }
 		procedure OnFocus(self, state)	{}
 
 		function GetClientRect(self)
@@ -2834,6 +2837,7 @@ export function LineEditor(parent)[txt, onchange]
 	w.position = 0;
 	w.BeginEditing = procedure(self)
 	{
+		SDL.StartTextInput();
 		self.editing = true;
 		self.text_save = clone self.text;
 		self.position |<= sizeof self.text;
@@ -2841,6 +2845,7 @@ export function LineEditor(parent)[txt, onchange]
 	};
 	w.EndEditing = procedure(self, apply)
 	{
+		SDL.StopTextInput();
 		self.editing = false;
 		if not apply
 			self.text = self.text_save;
@@ -2919,14 +2924,6 @@ export function LineEditor(parent)[txt, onchange]
 					self:Invalidate();
 				}
 			  default
-				if (ev.unicode < 127) and (ev.unicode > 31)
-				{
-					insert(self.text, self.position,
-							ev.unicode);
-					self.position += 1;
-					self:Invalidate();
-				}
-				else
 					return false;
 		}
 		else
@@ -2935,6 +2932,15 @@ export function LineEditor(parent)[txt, onchange]
 				self:BeginEditing();
 			  default
 				return false;
+		return true;
+	};
+	w.OnTextInput = function(self, ev)
+	{
+		if not self.editing
+			return false;
+		insert(self.text, self.position, ev.text);
+		self.position += 1;
+		self:Invalidate();
 		return true;
 	};
 	w.Redraw = procedure(self)

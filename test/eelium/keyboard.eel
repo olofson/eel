@@ -1,0 +1,97 @@
+//////////////////////////////////////////////////
+// keyboard.eel - SDL keyboard input test
+// Copyright 2020 David Olofson
+//////////////////////////////////////////////////
+
+import SDL;
+
+procedure print_key(ev)
+{
+	if ev.state
+		print("DOWN ");
+	else
+		print("UP ");
+	print("scancode: ", ev.scancode, "(", GetScancodeName(ev.scancode),
+			"), sym: ", ev.sym, "(", GetKeyName(ev.sym), ")");
+	if ev.mod
+	{
+		print(", mod:");
+		if ev.mod & KMOD_LSHIFT
+			print(" LSHIFT");
+		if ev.mod & KMOD_RSHIFT
+			print(" RSHIFT");
+		if ev.mod & KMOD_LCTRL
+			print(" LCTRL");
+		if ev.mod & KMOD_RCTRL
+			print(" RCTRL");
+		if ev.mod & KMOD_LALT
+			print(" LALT");
+		if ev.mod & KMOD_RALT
+			print(" RALT");
+		if ev.mod & KMOD_LGUI
+			print(" LGUI");
+		if ev.mod & KMOD_RGUI
+			print(" RGUI");
+		if ev.mod & KMOD_NUM
+			print(" NUM");
+		if ev.mod & KMOD_CAPS
+			print(" CAPS");
+		if ev.mod & KMOD_MODE
+			print(" MODE");
+	}
+	print("\n");
+}
+
+export function main<args>
+{
+	local window = Window ["Keyboard",
+			WINDOWPOS_CENTERED, WINDOWPOS_CENTERED,
+			640, 480];
+
+	// Main loop
+	while true
+	mainloop:
+	{
+		// Handle events
+		while true
+		{
+			local ev = PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case KEYDOWN
+				print_key(ev);
+			  case KEYUP
+			  {
+				print_key(ev);
+				if ev.sym == KESCAPE
+					break mainloop;
+			  }
+			  case TEXTEDITING
+				print("EDIT ", ev.text, "\n");
+			  case TEXTINPUT
+				print("INPUT ", ev.text, "\n");
+			  case MOUSEBUTTONDOWN
+				if ev.button == BUTTON_RIGHT
+				{
+					if IsTextInputActive()
+					{
+						print("TEXT STOP\n");
+						StopTextInput();
+					}
+					else
+					{
+						print("TEXT START\n");
+						StartTextInput();
+					}
+				}
+			  case MOUSEBUTTONUP
+				if ev.button == BUTTON_LEFT
+					break mainloop;
+			  case QUIT
+				break mainloop;
+		}
+		Delay(10);
+	}
+	return 0;
+}
