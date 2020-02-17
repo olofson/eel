@@ -33,6 +33,7 @@ procedure run(filename)
 
 export function main<args>
 {
+	run("version.eel");
 	run("sdltest.eel");
 	run("draw.eel");
 	run("draw2.eel");

@@ -31,6 +31,7 @@
 #include "fastevents.h"
 #include "net2.h"
 #include "eel_opengl.h"
+#include "SDL_revision.h"
 
 /*
  * Since SDL is not fully thread safe, only one instance of
@@ -42,6 +43,73 @@
 static int loaded = 0;
 
 ESDL_moduledata esdl_md;
+
+
+/*----------------------------------------------------------
+	Versioning
+----------------------------------------------------------*/
+
+static EEL_xno esdl_HeaderVersion(EEL_vm *vm)
+{
+	EEL_object *a, *s;
+	EEL_value v;
+	SDL_version version;
+	EEL_xno x = eel_o_construct(vm, EEL_CARRAY, NULL, 0, &v);
+	if(x)
+		return x;
+	a = v.objref.v;
+
+	SDL_VERSION(&version);
+	eel_l2v(&v, version.major);
+	eel_setlindex(a, 0, &v);
+	eel_l2v(&v, version.minor);
+	eel_setlindex(a, 1, &v);
+	eel_l2v(&v, version.patch);
+	eel_setlindex(a, 2, &v);
+
+	if((s = eel_ps_new(vm, SDL_REVISION)))
+		eel_o2v(&v, s);
+	else
+		eel_nil2v(&v);
+	eel_setlindex(a, 3, &v);
+	eel_disown(s);
+
+	eel_o2v(vm->heap + vm->resv, a);
+	return 0;
+}
+
+
+static EEL_xno esdl_LinkedVersion(EEL_vm *vm)
+{
+	EEL_object *a, *s;
+	EEL_value v;
+	SDL_version version;
+	EEL_xno x = eel_o_construct(vm, EEL_CARRAY, NULL, 0, &v);
+	if(x)
+		return x;
+	a = v.objref.v;
+
+	SDL_GetVersion(&version);
+	eel_l2v(&v, version.major);
+	eel_setlindex(a, 0, &v);
+	eel_l2v(&v, version.minor);
+	eel_setlindex(a, 1, &v);
+	eel_l2v(&v, version.patch);
+	eel_setlindex(a, 2, &v);
+
+	if((s = eel_ps_new(vm, SDL_GetRevision())))
+		eel_o2v(&v, s);
+	else
+		eel_nil2v(&v);
+	eel_setlindex(a, 3, &v);
+	eel_disown(s);
+
+	eel_l2v(&v, SDL_GetRevisionNumber());
+	eel_setlindex(a, 4, &v);
+
+	eel_o2v(vm->heap + vm->resv, a);
+	return 0;
+}
 
 
 /*----------------------------------------------------------
@@ -3159,6 +3227,12 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 			j_construct, j_destruct, NULL);
 	eel_set_metamethod(c, EEL_MM_GETINDEX, j_getindex);
 	esdl_md.joystick_cid = eel_class_cid(c);
+
+	/* Versioning */
+	eel_export_cfunction(m, 1, "HeaderVersion", 0, 0, 0,
+			esdl_HeaderVersion);
+	eel_export_cfunction(m, 1, "LinkedVersion", 0, 0, 0,
+			esdl_LinkedVersion);
 
 	/* Windows */
 	eel_export_cfunction(m, 0, "SetWindowTitle", 2, 0, 0,

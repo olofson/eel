@@ -1,0 +1,26 @@
+/////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2020 David Olofson
+/////////////////////////////////////////////
+
+import SDL as SDL;
+
+procedure print_version(v)
+{
+	for local i = 0, sizeof v - 2
+		print(v[i], ".");
+	print(v[sizeof v - 1]);
+}
+
+export function main<args>
+{
+	print("SDL headers version ");
+	print_version(SDL.HeaderVersion());
+	print("\n");
+
+	print("SDL linked version ");
+	print_version(SDL.LinkedVersion());
+	print("\n");
+
+	return 0;
+}
