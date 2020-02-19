@@ -55,7 +55,9 @@ export procedure SetTarget(tg)
 // Convert RGB to integer, compatible with SDL.SetRenderDrawColor() etc
 export function RGB2Int(r, g, b)
 {
-	return (integer)(0 >| r |< 255) | (integer)(0 >| g |< 255) | (integer)(0 >| b |< 255);
+	return (integer)(0 >| r |< 255) << 16 |
+			((integer)(0 >| g |< 255) << 8) |
+			(integer)(0 >| b |< 255);
 }
 
 
