@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	ec_optimizer.c - EEL Bytecode Optimizer
 ---------------------------------------------------------------------------
- * Copyright 2005-2014 David Olofson
+ * Copyright 2005-2014, 2020 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -329,8 +329,6 @@ static inline int eel_single_subst(EEL_coder *cdr, int pc, unsigned flags)
 	return 1;
 }
 
-#endif /* EEL_PEEPHOLE_OPTIMIZER */
-
 
 void eel_optimize(EEL_coder *cdr, unsigned flags)
 {
@@ -421,3 +419,11 @@ void eel_optimize(EEL_coder *cdr, unsigned flags)
 	cdr->fragstart = f->e.codesize;
 	cdr->fragline = f->e.nlines;
 }
+
+#else /* EEL_PEEPHOLE_OPTIMIZER */
+
+void eel_optimize(EEL_coder *cdr, unsigned flags)
+{
+}
+
+#endif /* EEL_PEEPHOLE_OPTIMIZER */
