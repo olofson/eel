@@ -5,6 +5,8 @@
 
 module eelium.gui;
 
+eelversion 0.3.7;
+
 import math;
 import SDL as SDL;
 import eelium.recttools as RT;
@@ -1594,7 +1596,6 @@ export procedure Close
 	dirtywidgets = {};
 	window = nil;
 	target = nil;
-//	default_theme_cons = nil;
 	user_theme = nil;
 }
 
