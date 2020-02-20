@@ -1,0 +1,54 @@
+//////////////////////////////////////////////////////////////
+// guiminimal.eel - Minimal test of eelium.gui
+// Copyright 2020 David Olofson
+//////////////////////////////////////////////////////////////
+
+import math, SDL as SDL, eelium.gui as gui;
+
+static do_exit = false;
+
+export function main<args>
+{
+	local window = SDL.Window ["Eelium GUI Test",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			320, 240];
+	local renderer = SDL.Renderer [window];
+
+	gui.Open(window, renderer);
+
+	local g = gui.Root();
+	local sb = gui.Panel(g);
+	sb.border = 100;
+	gui.Button(sb, "EXIT", procedure(self) { do_exit = true; });
+	while not do_exit
+	{
+		while true
+		{
+			local ev = SDL.PollEvent();
+			if not ev
+				break;
+			switch ev.type
+			  case SDL.KEYUP
+			  {
+				switch ev.sym
+				  case SDL.KESCAPE
+					do_exit = true;
+				  default
+					gui.Dispatch(ev);
+			  }
+			  case SDL.QUIT
+				do_exit = true;
+			  default
+				gui.Dispatch(ev);
+		}
+
+		local dr = [];
+		gui.Refresh(dr);
+		SDL.RenderPresent(renderer);
+		SDL.Delay(10);
+	}
+
+	gui.Close();
+
+	return 0;
+}

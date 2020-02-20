@@ -47,6 +47,7 @@ export function main<args>
 	run("pigs3.eel");
 	run("keyboard.eel");
 	run("texttest.eel");
+	run("guiminimal.eel");
 	run("guitest.eel");
 	run("beep.eel");
 	run("fmsynth.eel");
