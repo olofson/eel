@@ -1,0 +1,103 @@
+/////////////////////////////////////////////////
+// Temporary EEL Test Suite
+// Copyright 2020 David Olofson
+/////////////////////////////////////////////////
+//
+// Table manipulation using explist assignments.
+//
+// This test was added part due to a compiler
+// bug where explist assignments using string
+// keys would cause some of the keys to gain
+// extra refcounts, causing EEL memory leaks.
+// (GitHub issue #129.)
+//
+/////////////////////////////////////////////////
+
+eelversion 0.3.7;
+
+procedure check_table(tab, ref)
+{
+	if sizeof tab != sizeof ref
+		throw "Incorrect table size! (" + sizeof tab +
+				" - should be " + sizeof ref + ")";
+	for local i = 0, sizeof tab - 1
+	{
+		if not key(tab, i) in ref
+			throw "Table should not have a key \"" +
+					key(tab, i) + "\"!";
+		if ref[key(tab, i)] != index(tab, i)
+			throw "Incorrect value \"" + index(tab, i) +
+					"\" for key \"" + key(tab, i) + "\"!";
+	}
+}
+
+procedure dump_table(lab, tab)
+{
+	print(lab);
+	for local i = 0, sizeof tab - 1
+		print(" ", key(tab, i), ":", index(tab, i));
+	print("\n");
+}
+
+procedure check_array(arr, ref)
+{
+	if sizeof arr != sizeof ref
+		throw "Incorrect array size! (" + sizeof arr +
+				" - should be " + sizeof ref + ")";
+	for local i = 0, sizeof arr - 1
+		if ref[i] != arr[i]
+			throw "Incorrect value \"" + arr[i] +
+					"\" at index " + (string)i + "!";
+}
+
+procedure dump_array(lab, arr)
+{
+	print(lab);
+	for local i = 0, sizeof arr - 1
+		print(" ", arr[i]);
+	print("\n");
+}
+
+export function main<args>
+{
+	print("Table explist tests:\n");
+
+	local t = {
+		.a	"A",
+		.b	"B",
+		.c	"C",
+		.d	"D"
+	};
+
+	// NOTE: This is the case that used to trigger the memory leak
+	print(" Inplace shuffle:\n");
+	dump_table("  In: ", t);
+	t.(a, b, c, d) = t.(d, c, b, a);
+	dump_table("  Out:", t);
+	check_table(t, {
+			.a	"D",
+			.b	"C",
+			.c	"B",
+			.d	"A"
+		});
+
+	print(" Reassignment:\n");
+	dump_table("  In: ", t);
+	t.(a, b, c, d) = "A", "B", "C", "D";
+	dump_table("  Out:", t);
+	check_table(t, {
+			.a	"A",
+			.b	"B",
+			.c	"C",
+			.d	"D"
+		});
+
+	print(" Extraction:\n");
+	dump_table("  In: ", t);
+	local a = [t.(a, b, c, d)];
+	dump_array("  Out:", a);
+	check_array(a, ["A", "B", "C", "D"]);
+
+	print("Table explist tests done.\n");
+	return 0;
+}
