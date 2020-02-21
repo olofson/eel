@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////
 // gfxutils.eel - Graphics Utilities
-// Copyright 2016 David Olofson
+// Copyright 2016, 2020 David Olofson
 ////////////////////////////////////////////////////////////////
 
 module eelium.gfxutils;
@@ -20,19 +20,41 @@ import math;
 // Fill 'dst' with a checkerboard patters
 export procedure Checkerboard(dst, w, h, c1, c2)
 {
-	for local y = 0, dst.h - 1, h
+	if typeof dst == Renderer
 	{
-		local dr = Rect [0, y, w, h];
-		for local x = 0, dst.w - 1, w * 2
+		for local y = 0, dst.h - 1, h
 		{
-			dr.x = x;
-			FillRect(dst, dr, c1);
-			dr.x += w;
-			FillRect(dst, dr, c2);
+			local dr = Rect [0, y, w, h];
+			for local x = 0, dst.w - 1, w * 2
+			{
+				dr.x = x;
+				SetRenderDrawColor(dst, c1);
+				RenderFillRect(dst, dr);
+				dr.x += w;
+				SetRenderDrawColor(dst, c2);
+				RenderFillRect(dst, dr);
+			}
+			local tmp = c1;
+			c1 = c2;
+			c2 = tmp;
 		}
-		local tmp = c1;
-		c1 = c2;
-		c2 = tmp;
+	}
+	else
+	{
+		for local y = 0, dst.h - 1, h
+		{
+			local dr = Rect [0, y, w, h];
+			for local x = 0, dst.w - 1, w * 2
+			{
+				dr.x = x;
+				FillRect(dst, dr, c1);
+				dr.x += w;
+				FillRect(dst, dr, c2);
+			}
+			local tmp = c1;
+			c1 = c2;
+			c2 = tmp;
+		}
 	}
 }
 
@@ -93,57 +115,45 @@ export function CircularFilterCore(radius, cmag, emag)
 // Sprite bank
 ////////////////////////////////////////////////////////////////
 
-export function SpriteBank
+export function SpriteBank(renderer)
 {
 	return {
+		.renderer	renderer,
 		.sprites	[],
 
 		function GrabFrame(self, source, rect)
 		{
-			local s_f = source.flags;
-			local s_a = source.alpha;
-			SetAlpha(source, 0);
-			local s = Surface[0, rect.(w, h), 32];
-			BlitSurface(source, rect, s, nil);
-			SetAlpha(source, s_f & (SRCALPHA | RLEACCEL), s_a);
-			return s;
+			return Texture [self.renderer, source, rect];
 		}
 
 		function Load(self, source, tw, th)
 		{
 			local sprites = [];
+			// If not a Surface, we assume it's a file name
 			if typeof(source) != Surface
 				source = IMG.Load(source);
 			local sr = Rect [0, 0, tw, th];
-			local s_f = source.flags;
-			local s_a = source.alpha;
-			SetAlpha(source, 0);
-			while sr.y < source.h
+			while sr.y + sr.h <= source.h
 			{
-				local s = Surface[0, tw, th, 32];
-				BlitSurface(source, sr, s, nil);
+				local s = Texture [self.renderer, source, sr];
+				s.blendmode = BLENDMODE_BLEND;
 				sprites.+ s;
 				sr.x += tw;
-				if sr.x >= source.w
+				if sr.x + sr.w >= source.w
 				{
 					sr.x = 0;
 					sr.y += th;
 					sr.w = tw;
 				}
 			}
-			SetAlpha(source, s_f & (SRCALPHA | RLEACCEL), s_a);
 			self.sprites = sprites;
 			return sprites;
 		}
 
-		procedure Render(self, frame, x, y)[target]
+		procedure Render(self, frame, x, y)
 		{
-			if specified target
-				local dst = target;
-			else
-				dst = nil;
-			BlitSurface(self.sprites[frame], nil,
-					dst, Rect[x, y, 0, 0]);
+			RenderCopy(self.renderer, self.sprites[frame], nil,
+					x, y);
 		}
 	};
 }
