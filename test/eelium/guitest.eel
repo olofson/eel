@@ -237,6 +237,13 @@ export function main<args>
 				  default
 					gui.Dispatch(ev);
 			  }
+			  case SDL.WINDOWEVENT
+			  {
+				switch ev.event
+				  case SDL.WINDOWEVENT_RESIZED
+					g:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
+				gui.Dispatch(ev);
+			  }
 			  case SDL.QUIT
 				ask_exit();
 			  default
@@ -261,8 +268,6 @@ export function main<args>
 
 		local dr = [];
 		gui.Refresh(dr);
-//		if sizeof dr
-//			SDL.Update(dr);
 		SDL.RenderPresent(renderer);
 		SDL.Delay(10);
 	}
