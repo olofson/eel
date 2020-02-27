@@ -44,7 +44,8 @@ export function main<args>
 
 		local dr = [];
 		gui.Refresh(dr);
-		SDL.RenderPresent(renderer);
+		if sizeof dr
+			SDL.RenderPresent(renderer);
 		SDL.Delay(10);
 	}
 
