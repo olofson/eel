@@ -1,9 +1,11 @@
 /////////////////////////////////////////////////////
 // deltawidgets.eel - Some GUI widgets for Delta
-// Copyright 2005, 2006, 2014 David Olofson
+// Copyright 2005, 2006, 2014, 2020 David Olofson
 /////////////////////////////////////////////////////
 
 module deltawidgets;
+
+eelversion 0.3.7;
 
 import math;
 import eelium.text as text;
@@ -297,6 +299,5 @@ export function Root()
 	g.theme:SetPassiveColors(64, 64, 64, 1);
 	g.theme:SetActiveColors(128, 32, 32, 1.2);
 	g.theme:SetMarkColor(200, 200, 0);
-	SDL.EnableKeyRepeat(250, 30);
 	return g;
 }

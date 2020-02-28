@@ -2146,7 +2146,7 @@ function new_scale(parent, onchange, horiz, color)
 			maxy = ceil(maxy / step) * step;
 			local ys = -self.scale * self.rect.h;
 			local yo = self.offset * self.rect.h + self.rect.y;
-			local c = self.theme.colors[CPSHL];
+			SDL.SetRenderDrawColor(target, self.theme.colors[CPSHL]);
 			for local y = miny, maxy, step
 			{
 				r = clone self.rect;
@@ -2154,7 +2154,7 @@ function new_scale(parent, onchange, horiz, color)
 				r.y, local ty = y * ys + yo;
 				self.ticks.+ ty;
 				r.h = 1;
-				SDL.FillRect(target, r, c);
+				SDL.RenderFillRect(target, r);
 				local tt = (string)(floor(y / step + .5) * step);
 				tx += (self.rect.w - self.font:Width(tt)) / 2;
 				ty -= self.font.height / 2 - .5;

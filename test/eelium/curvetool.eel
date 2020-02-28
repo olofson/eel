@@ -1,19 +1,18 @@
 /////////////////////////////////////////////////////////
 // curvetool.eel - Simple graphing calculator
-// Copyright 2006, 2014, 2016 David Olofson
+// Copyright 2006, 2014, 2016, 2020 David Olofson
 /////////////////////////////////////////////////////////
 
 module curvetool;
+
 eelversion 0.3.7;
+
 import math;
 import io as io;
 import SDL as SDL;
 import eelium.gui as gui;
 import deltawidgets as dw;
 
-static bpp;
-static flags;
-static screen;
 static running = true;
 static unsaved = false;
 static guiroot;
@@ -77,20 +76,23 @@ function SelectButton(parent, onchange)
 	local b = gui.Button(parent, "", procedure(self)
 			{
 				switch self.button
-				  case SDL.BUTTON_LEFT, SDL.BUTTON_WHEELUP
-					self.selected += 1;
-				  case SDL.BUTTON_RIGHT, SDL.BUTTON_WHEELDOWN
-					self.selected -= 1;
-				if self.selected < 0
-					self.selected = sizeof curves - 1;
-				else if self.selected > (sizeof curves - 1)
-					self.selected = 0;
-				self:Select(self.selected);
+				  case SDL.BUTTON_LEFT
+					self:Select(self.selected + 1);
+				  case SDL.BUTTON_RIGHT
+					self:Select(self.selected - 1);
 			});
+	b.OnWheel = procedure(self, ev)
+	{
+		self:Select(self.selected + ev.y);
+	};
 	b.OnChange = onchange;
 	b.selected = 0;
 	b.Select = procedure(self, crv)
 	{
+		if crv < 0
+			crv = sizeof curves - 1;
+		else if crv > (sizeof curves - 1)
+			crv = 0;
 		self.selected = crv;
 		self:OnChange();
 		local c = curves[self.selected];
@@ -106,20 +108,23 @@ function MultiSelectButton(parent, onchange)
 	local b = gui.Button(parent, "", procedure(self)
 			{
 				switch self.button
-				  case SDL.BUTTON_LEFT, SDL.BUTTON_WHEELUP
-					self.selected += 1;
-				  case SDL.BUTTON_RIGHT, SDL.BUTTON_WHEELDOWN
-					self.selected -= 1;
-				if self.selected < -1
-					self.selected = sizeof curves - 1;
-				else if self.selected > (sizeof curves - 1)
-					self.selected = -1;
-				self:Select(self.selected);
+				  case SDL.BUTTON_LEFT
+					self:Select(self.selected + 1);
+				  case SDL.BUTTON_RIGHT
+					self:Select(self.selected - 1);
 			});
+	b.OnWheel = procedure(self, ev)
+	{
+		self:Select(self.selected + ev.y);
+	};
 	b.OnChange = onchange;
 	b.selected = -1;
 	b.Select = procedure(self, crv)
 	{
+		if crv < 0
+			crv = sizeof curves - 1;
+		else if crv > (sizeof curves - 1)
+			crv = 0;
 		self.selected = crv;
 		self:OnChange();
 		if crv >= 0
@@ -263,16 +268,12 @@ procedure handle_event(ev)
 	switch ev.type
 	  case SDL.QUIT
 		ask_exit(guiroot);
-	  case SDL.VIDEOEXPOSE
+	  case SDL.WINDOWEVENT
 	  {
-		SDL.FillRect(screen, nil, 0);
-		guiroot.dirty = true;
-	  }
-	  case SDL.VIDEORESIZE
-	  {
-		screen = SDL.SetVideoMode(ev.w, ev.h, bpp, flags);
-		guiroot:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
-		gui.Invalidate();
+		switch ev.event
+		  case SDL.WINDOWEVENT_RESIZED
+			guiroot:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
+		gui.Dispatch(ev);
 	  }
 	  default
 		gui.Dispatch(ev);
@@ -281,11 +282,11 @@ procedure handle_event(ev)
 
 export function main<args>
 {
-	bpp = 0;
-	flags = SDL.HWSURFACE | SDL.RESIZABLE;
-	screen = SDL.SetVideoMode(1000, 740, bpp, flags);
-	SDL.SetCaption("Visual Curve Playground", "curvetool");
-	gui.Open(screen);
+	local window = SDL.Window ["Visual Curve Playground",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			1000, 740, SDL.WINDOW_RESIZABLE];
+	local renderer = SDL.Renderer [window];
+	gui.Open(window, renderer);
 
 	guiroot = dw.Root();
 	guiroot.colrowratio = 0;
@@ -595,7 +596,7 @@ export function main<args>
 	local expressions = [];
 	try
 	{
-		local f = file ["curvetool.cfg", "rb"];
+		local f = io.file ["curvetool.cfg", "rb"];
 		for local i = 0, 2
 		{
 			expressions[i] = (dstring)"";
@@ -653,10 +654,10 @@ export function main<args>
 		local dr = array [];
 		gui.Refresh(dr);
 		if sizeof dr
-			SDL.Update(dr);
+			SDL.RenderPresent(renderer);
 	}
 
-	local f = file ["curvetool.cfg", "wb"];
+	local f = io.file ["curvetool.cfg", "wb"];
 	for local i = 0, 2
 		io.write(f, expedit[i].text, "\n");
 
