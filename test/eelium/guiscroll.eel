@@ -1,7 +1,7 @@
-///////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
 // guiscroll.eel - Eelium GUI scroll test
-// Copyright 2006-2007, 2009, 2011, 2014 David Olofson
-///////////////////////////////////////////////////////
+// Copyright 2006-2007, 2009, 2011, 2014, 2020 David Olofson
+/////////////////////////////////////////////////////////////
 
 import SDL as SDL;
 import eelium.text as text;
@@ -12,13 +12,13 @@ import math;
 export function main<args>
 {
 	local do_exit = false;
-	local bpp = 0;
-	local flags = SDL.SWSURFACE | SDL.RESIZABLE;
-	local screen = SDL.SetVideoMode(640, 480, bpp, flags);
-	SDL.EnableKeyRepeat(250, 30);
-	SDL.SetCaption("Eelium GUI Scroll Test", args[0]);
 
-	gui.Open(screen);
+	local window = SDL.Window ["Eelium GUI Scroll Test",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			640, 480, SDL.WINDOW_RESIZABLE];
+	local renderer = SDL.Renderer [window];
+	gui.Open(window, renderer);
+
 	local g = gui.Root();
 	g:SetAlign("grid", 2, 2, [62, 2], [46, 2]);
 
@@ -56,7 +56,7 @@ export function main<args>
 			local dr = array [];
 			gui.Refresh(dr);
 			if sizeof dr
-				SDL.Update(dr);
+				SDL.RenderPresent(renderer);
 			ev = SDL.WaitEvent();
 		}
 		switch ev.type
@@ -68,13 +68,12 @@ export function main<args>
 			  default
 				gui.Dispatch(ev);
 		  }
-		  case SDL.VIDEOEXPOSE
-			gui.Invalidate();
-		  case SDL.VIDEORESIZE
+		  case SDL.WINDOWEVENT
 		  {
-			screen = SDL.SetVideoMode(ev.w, ev.h, bpp, flags);
-			g:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
-			gui.Invalidate();
+			switch ev.event
+			  case SDL.WINDOWEVENT_RESIZED
+				g:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
+			gui.Dispatch(ev);
 		  }
 		  case SDL.QUIT
 			do_exit = true;
