@@ -276,6 +276,7 @@ function EntityWidgetRect(parent, entity)
 	{
 		local t = gui.GetTarget();
 		local r = self.rect;
+		local lr = self.logicrect;
 //		local f = gui.GetFocus();
 //		if f == self or f == self.handles[0] or f == self.handles[1]
 		if self.entity.selected
@@ -283,7 +284,7 @@ function EntityWidgetRect(parent, entity)
 		else
 			dt.box(t, r, self.pen);
 		local tx, local ty = r.(x, y) + 2;
-		self.font:PutString((string)r.w + "x" + (string)r.h,
+		self.font:PutString((string)lr.w + "x" + (string)lr.h,
 				tx, ty, t, r.x + r.w);
 	};
 	wg.DragTopLeft = procedure(self, x, y)
@@ -331,11 +332,12 @@ function EntityWidgetRect(parent, entity)
 function EntityWidgetXYRH(parent, entity)
 {
 	local wg = EntityWidget(parent, entity);
-	wg.pen = SDL.MapColor(gui.GetTarget(), 0, 0, 0);
+	wg.pen = 0x000000;
 	wg.Redraw = procedure(self)
 	{
 		local t = gui.GetTarget();
 		local r = self.rect;
+		local lr = self.logicrect;
 //		local f = gui.GetFocus();
 //		if f == self or f == self.handles[0] or f == self.handles[1]
 		if self.entity.selected
@@ -344,8 +346,8 @@ function EntityWidgetXYRH(parent, entity)
 			dt.box(t, r, self.pen);
 		local tx, local ty = r.(x, y) + 2;
 		self.font:PutString(
-				"(" + (string)r.x + "," + (string)r.y + ") "
-					+ (string)r.w + "x" + (string)r.h,
+				"(" + (string)lr.x + "," + (string)lr.y + ") "
+					+ (string)lr.w + "x" + (string)lr.h,
 				tx, ty, t, r.x + r.w);
 	};
 	wg.RefitOutline = procedure(self)
@@ -734,9 +736,9 @@ function Workspace(parent)
 			local tg = gui.GetTarget();
 			local c = self.canvas;
 			local r = self.rect;
-print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
-			local dark = SDL.MapColor(tg, 32, 32, 32);
-			local bright = SDL.MapColor(tg, 64, 64, 64);
+//print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
+			local dark = 0x202020;
+			local bright = 0x404040;
 			local rect = SDL.Rect [];
 			for local y = 0, r.h, 32
 				for local x = 0, r.w, 32
@@ -744,9 +746,12 @@ print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
 					rect.(x, y, w, h) = x, y, 32, 32;
 					rect.(x, y) += r.(x, y);
 					if (integer)(x + y) & 32
-						SDL.FillRect(tg, rect, bright);
+						SDL.SetRenderDrawColor(tg,
+							bright);
 					else
-						SDL.FillRect(tg, rect, dark);
+						SDL.SetRenderDrawColor(tg,
+							dark);
+					SDL.RenderFillRect(tg, rect);
 				}
 			if (r.w != c.w) or (r.h != c.h)
 				c:Resize(self.rect.(w, h));
@@ -757,6 +762,7 @@ print("Workspace:Redraw(), ", r.x, ", ", r.y, " - ", r.w, "x", r.h, "\n");
 		.background	nil,	// Special handling for this...
 		.entities	[],
 		.needs_rebuild	true,
+		.buffer		nil,
 		.pipe		zs.ZS_Pipe [],
 		.Background	Background,
 		.Pipe		Pipe,
@@ -802,10 +808,16 @@ for local i = 0, 1000, 10
 		{
 			if self.needs_rebuild
 				self:Rebuild();
+			if not self.buffer
+				self.buffer = SDL.Surface [0, self.(w, h), 32];
 			if pitch == 90
-				zs.Blit2SDL(self.light, target, true);
+				zs.Blit2SDL(self.(light, buffer), true);
 			else
-				zs.Render3D2SDL(self.light, target, pitch);
+				zs.Render3D2SDL(self.(light, buffer), pitch);
+			// HAX! We need to add SDL Texture support to ZS...
+			local tg = gui.GetTarget();
+			local tex = SDL.Texture [tg, self.buffer];
+			SDL.RenderCopy(tg, tex, nil, self.widget.rect.(x, y));
 		}
 		procedure Invalidate(self)
 		{
@@ -816,6 +828,7 @@ for local i = 0, 1000, 10
 			self.(w, h) = w, h;
 			self.work = zs.ZS_Surface [w, h];
 			self.light = zs.ZS_Surface [w, h];
+			self.buffer = nil;
 			self:Invalidate();
 		}
 		procedure AddEntity(self, entity)
@@ -872,7 +885,7 @@ function ViewControl(root)
 				pitch = 90 - (v * 90);
 				workspace:Invalidate();
 			});
-//	win:AutoSize(100, 20);
+	win:AutoSize(100, 20);
 	return win;
 }
 
@@ -923,7 +936,7 @@ function LightingControl(root)
 				workspace.canvas:Light();
 				workspace:Invalidate();
 			}):Move(bumpdepth);
-//	win:AutoSize(100, 20);
+	win:AutoSize(100, 20);
 	return win;
 }
 
@@ -949,11 +962,13 @@ procedure ask_exit
 
 export function main<args>
 {
-	local bpp = 0;
-	local flags = SDL.SWSURFACE | SDL.RESIZABLE;
-	screen = SDL.SetVideoMode(800, 600, bpp, flags);
-	SDL.EnableKeyRepeat(250, 30);
-	SDL.SetCaption("ZSDraw - ZeeSpace Editor", args[0]);
+	local window = SDL.Window ["ZSDraw - ZeeSpace Editor",
+			SDL.WINDOWPOS_CENTERED, SDL.WINDOWPOS_CENTERED,
+			800, 600, SDL.WINDOW_RESIZABLE];
+	local renderer = SDL.Renderer [window];
+
+	// Initialize GUI
+	gui.Open(window, renderer);
 
 	// Set up GUI themes
 	local th, maintheme = gui.DefaultTheme();
@@ -966,11 +981,9 @@ export function main<args>
 	th:SetPassiveColors(80, 32, 32, 1.0);
 	th:SetMarkColor(255, 192, 0);
 
-	// Initialize GUI
-	gui.Open(screen, maintheme);
-
 	// Root
 	local r = gui.Root();
+	r:ApplyTheme(maintheme);
 	r.colrowration = 0;
 	r.rowratio = vector [-20, 1, -20];
 
@@ -1087,18 +1100,30 @@ export function main<args>
 */
 //==============================================================
 
+	local last_move = nil;
 	while not do_exit
 	{
 		local ev = SDL.PollEvent();
 		if not ev
 		{
+			if last_move
+			{
+				// Dirty hack, because the GUI toolkit isn't
+				// very smart about this...
+				gui.Dispatch(last_move);
+				last_move = nil;
+			}
 			local dr = array [];
 			gui.Refresh(dr);
 			if sizeof dr
-				SDL.Update(dr);
+			{
+				SDL.RenderPresent(renderer);
+			}
 			ev = SDL.WaitEvent();
 		}
 		switch ev.type
+		  case SDL.MOUSEMOTION
+			last_move = clone ev;
 		  case SDL.KEYDOWN
 		  {
 			switch ev.sym
@@ -1115,13 +1140,12 @@ export function main<args>
 			  default
 				gui.Dispatch(ev);
 		  }
-		  case SDL.VIDEOEXPOSE
-			gui.Invalidate();
-		  case SDL.VIDEORESIZE
+		  case SDL.WINDOWEVENT
 		  {
-			screen = SDL.SetVideoMode(ev.w, ev.h, bpp, flags);
-			r:SetSize(ev.(w, h));
-			gui.Invalidate();
+			switch ev.event
+			  case SDL.WINDOWEVENT_RESIZED
+				r:SetRect(SDL.Rect [0, 0, ev.(w, h)]);
+			gui.Dispatch(ev);
 		  }
 		  case SDL.QUIT
 			ask_exit();

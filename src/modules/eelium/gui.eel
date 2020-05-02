@@ -686,7 +686,7 @@ procedure align_none(self)
 procedure align_relative(self)
 {
 	local w = self.widgets;
-	local xo, local yo = self.(xscroll, yscroll)/* + self.rect.(x, y)*/;
+	local xo, local yo = self.(xscroll, yscroll) + self.rect.(x, y);
 	local xmin, local ymin = 1000000;
 	local xmax, local ymax = -1000000;
 	for local i = 0, sizeof self.widgets - 1
@@ -1671,7 +1671,6 @@ export function Popup(parent)[rect]
 	{
 		self.theme:Box(clone self.rect, CWOL);
 	};
-/*
 	w.AutoSize = procedure(self, iwidth, iheight)
 	{
 //FIXME: Temporary hack...
@@ -1680,7 +1679,6 @@ export function Popup(parent)[rect]
 			totalh += self.widgets[i].logicrect.h;
 		self:SetSize(iwidth, totalh * iheight);
 	};
-*/
 	w:SetAlign("ratio", 0, nil, nil, true);
 	return w;
 }
@@ -3709,7 +3707,8 @@ export function DragHandle(parent, x, y, size)[ondrag, onclick, style]
 			step = 10;
 		switch ev.sym
 		  case SDL.KRETURN, SDL.KKP_ENTER, SDL.KSPACE
-			self:OnClick();
+			if self.OnClick
+				self:OnClick();
 		  case SDL.KUP
 			self:MoveRel(0, -step, true);
 		  case SDL.KDOWN
@@ -3806,7 +3805,8 @@ export function DragBar(parent)[caption, ondrag, onclick, style]
 		switch ev.sym
 		  case SDL.KRETURN, SDL.KKP_ENTER, SDL.KSPACE
 		  {
-			self:OnClick();
+			if self.OnClick
+				self:OnClick();
 			return true;
 		  }
 		return false;
