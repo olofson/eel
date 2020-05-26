@@ -1279,12 +1279,37 @@ static EEL_xno esdl_WarpMouse(EEL_vm *vm)
 
 static EEL_xno esdl_SetWindowGrab(EEL_vm *vm)
 {
-	EEL_value *args = vm->heap + vm->argv;
-	ESDL_window *win;
-	if(EEL_CLASS(args) != esdl_md.window_cid)
-		return EEL_XWRONGTYPE;
-	win = o2ESDL_window(args[0].objref.v);
-	SDL_SetWindowGrab(win->window, eel_v2l(args + 1));
+	SDL_Window *win;
+	int grab;
+	ESDL_ARG_WINDOW(0, win)
+	ESDL_ARG_INTEGER(1, grab)
+	SDL_SetWindowGrab(win, grab);
+	return 0;
+}
+
+
+static EEL_xno esdl_GetWindowGrab(EEL_vm *vm)
+{
+	SDL_Window *win;
+	ESDL_ARG_WINDOW(0, win)
+	vm->heap[vm->resv].integer.v = SDL_GetWindowGrab(win);
+	vm->heap[vm->resv].classid = EEL_CBOOLEAN;
+	return 0;
+}
+
+
+static EEL_xno esdl_SetRelativeMouseMode(EEL_vm *vm)
+{
+	eel_l2v(vm->heap + vm->resv, SDL_SetRelativeMouseMode(
+			eel_v2l(vm->heap + vm->argv)));
+	return 0;
+}
+
+
+static EEL_xno esdl_GetRelativeMouseMode(EEL_vm *vm)
+{
+	vm->heap[vm->resv].integer.v = SDL_GetRelativeMouseMode();
+	vm->heap[vm->resv].classid = EEL_CBOOLEAN;
 	return 0;
 }
 
@@ -3309,10 +3334,8 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 			esdl_SetWindowTitle);
 	eel_export_cfunction(m, 0, "SetWindowGrab", 2, 0, 0,
 			esdl_SetWindowGrab);
-//TODO: Non-trivial, as we need to find the corresponding EEL Window object,
-//	which may not exist, if the window was not created via EEL.
-//	eel_export_cfunction(m, 1, "GetWindowGrab", 0, 0, 0,
-//			esdl_GetWindowGrab);
+	eel_export_cfunction(m, 1, "GetWindowGrab", 1, 0, 0,
+			esdl_GetWindowGrab);
 
 	/* Rendering */
 	eel_export_cfunction(m, 1, "RenderTargetSupported", 1, 0, 0,
@@ -3368,6 +3391,10 @@ EEL_xno eel_sdl_init(EEL_vm *vm)
 	/* Mouse control */
 	eel_export_cfunction(m, 1, "ShowCursor", 1, 0, 0, esdl_ShowCursor);
 	eel_export_cfunction(m, 0, "WarpMouse", 2, 1, 0, esdl_WarpMouse);
+	eel_export_cfunction(m, 1, "SetRelativeMouseMode", 1, 0, 0,
+			esdl_SetRelativeMouseMode);
+	eel_export_cfunction(m, 1, "GetRelativeMouseMode", 0, 0, 0,
+			esdl_GetRelativeMouseMode);
 
 	/* Joystick input */
 	eel_export_cfunction(m, 0, "DetectJoysticks", 0, 0, 0, esdl_DetectJoysticks);

@@ -205,46 +205,58 @@ export procedure SetModal(widget)
 }
 
 
-static grabs = 0;
+static appgrabinput;
 static appshowcursor;
 
-// TODO: Use GetWindowGrab() to restore non-GUI and non-EEL window grabs.
-procedure grab_input(onoff, hide)
-{
-	if onoff
-		grabs += 1;
-	else
-		grabs -= 1;
-	if grabs == 1
-	{
-//		appgrabinput = SDL.GrabInput(SDL.QUERY);
-		SDL.SetWindowGrab(window, true);
-		if hide
-		{
-			appshowcursor = SDL.ShowCursor(SDL.QUERY);
-			SDL.ShowCursor(SDL.DISABLE);
-		}
-		else
-			appshowcursor = nil;
-	}
-	else if grabs == 0
-	{
-		SDL.SetWindowGrab(window, false);
-		if appshowcursor != nil
-			SDL.ShowCursor(appshowcursor);
-	}
-}
+static relative_mode;
 
-
+// NOTE:
+//	If 'hide' is true, mouse also switches to relative mode, meaning only
+//	the xrel and yrel fields should be used! The x and y fields may not be
+//	functional in this mode.
+//
+// NOTE2:
+//	This function cannot be used for switching to hidden/relative mode when
+//	the mouse is already captured!
+//
 export procedure SetCapture(widget)[hide]
 {
 	local _hide = false;
 	if specified hide
 		_hide = hide;
 	if widget and not captured
-		grab_input(true, _hide);
+	{
+		appshowcursor = SDL.ShowCursor(SDL.QUERY);
+		appgrabinput = SDL.GetWindowGrab(window);
+		if _hide
+		{
+			relative_mode = SDL.SetRelativeMouseMode(true) == 0;
+			if not relative_mode
+			{
+				// Relative mode not supported! Hax it...
+				SDL.ShowCursor(SDL.DISABLE);
+				SDL.SetWindowGrab(window, true);
+			}
+		}
+		else
+		{
+			SDL.ShowCursor(SDL.ENABLE);
+			SDL.SetWindowGrab(window, true);
+		}
+	}
 	else if captured and not widget
-		grab_input(false, false);
+	{
+		if relative_mode
+		{
+			SDL.SetRelativeMouseMode(false);
+			relative_mode = false;
+		}
+		if appgrabinput != nil
+			SDL.SetWindowGrab(window, appgrabinput);
+		if appshowcursor != nil
+			SDL.ShowCursor(appshowcursor);
+		appgrabinput, appshowcursor = nil;
+	}
 	captured (=) widget;
 }
 
@@ -2234,7 +2246,6 @@ function new_scale(parent, onchange, horiz, color)
 		if(captured == self)
 			return;
 		self.(mx, my) = 0;
-		self.(grabx, graby) = ev.(x, y);
 		self.grab_offset = self.offset;
 		self.grab_scale = self.scale;
 		if not self.grab_scale
@@ -2248,7 +2259,6 @@ function new_scale(parent, onchange, horiz, color)
 	{
 		if(captured != self)
 			return;
-		SDL.WarpMouse(self.(grabx, graby), window);
 		SetCapture(nil);
 		self.mx = nil;
 	};
@@ -2257,7 +2267,7 @@ function new_scale(parent, onchange, horiz, color)
 		local cx, local cy = (integer)(target.(w, h) / 2);
 		if (self.mx == nil) or ((ev.x == cx) and (ev.y == cy))
 			return;
-		SDL.WarpMouse(cx, cy, window);
+print(ev.xrel, ", ", ev.yrel, "\n");
 		self.(mx, my) += ev.(xrel, yrel);
 		local r = RT.Shrink(self.rect, self.border);
 		local size = sqrt(r.w * r.w + (r.h * r.h));
