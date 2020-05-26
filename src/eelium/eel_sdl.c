@@ -1338,7 +1338,7 @@ static EEL_xno esdl_RenderTargetSupported(EEL_vm *vm)
 static EEL_xno esdl_SetRenderDrawColor(EEL_vm *vm)
 {
 	SDL_Renderer *rn;
-	Uint8 r, g, b, a;
+	int r, g, b, a;
 	ESDL_ARG_RENDERER(0, rn)
 	switch(vm->argc)
 	{
@@ -1358,6 +1358,25 @@ static EEL_xno esdl_SetRenderDrawColor(EEL_vm *vm)
 		ESDL_ARG_INTEGER(2, g)
 		ESDL_ARG_INTEGER(3, b)
 		ESDL_OPTARG_INTEGER(4, a, 255)
+		if(r < 0)
+			r = 0;
+		else if(r > 255)
+			r = 255;
+		if(g < 0)
+			g = 0;
+		else if(g > 255)
+			g = 255;
+		if(b < 0)
+			b = 0;
+		else if(b > 255)
+			b = 255;
+		if(vm->argc >= 5)
+		{
+			if(a < 0)
+				a = 0;
+			else if(a > 255)
+				a = 255;
+		}
 		break;
 	  default:
 		return EEL_XARGUMENTS;
