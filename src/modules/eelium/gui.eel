@@ -2248,7 +2248,7 @@ function new_scale(parent, onchange, horiz, color)
 	{
 		if(captured != self)
 			return;
-		SDL.WarpMouse(self.(grabx, graby));
+		SDL.WarpMouse(self.(grabx, graby), window);
 		SetCapture(nil);
 		self.mx = nil;
 	};
@@ -2257,7 +2257,7 @@ function new_scale(parent, onchange, horiz, color)
 		local cx, local cy = (integer)(target.(w, h) / 2);
 		if (self.mx == nil) or ((ev.x == cx) and (ev.y == cy))
 			return;
-		SDL.WarpMouse(cx, cy);
+		SDL.WarpMouse(cx, cy, window);
 		self.(mx, my) += ev.(xrel, yrel);
 		local r = RT.Shrink(self.rect, self.border);
 		local size = sqrt(r.w * r.w + (r.h * r.h));
