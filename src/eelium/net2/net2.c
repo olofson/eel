@@ -175,7 +175,7 @@ static __inline__ int sendError(const char *err, int socket)
   int val = -1;
 
   //printf("ERROR: %s\n", err); fflush(NULL);
-  val = sendEventP(NET2_ERROREVENT, socket, (void *)(long)err);
+  val = sendEventP(NET2_ERROREVENT, socket, (void *)(size_t)err);
 
   return val;
 }
@@ -200,7 +200,7 @@ static __inline__ int sendEventP(Uint8 code, int data1, void *data2)
 
   event.type = SDL_USEREVENT;
   event.user.code = code;
-  event.user.data1 = (void *)(long)data1;
+  event.user.data1 = (void *)(size_t)data1;
   event.user.data2 = data2;
 
   if (dataLocked)
@@ -220,7 +220,7 @@ static __inline__ int sendEventP(Uint8 code, int data1, void *data2)
 
 static __inline__ int sendEvent(Uint8 code, int data1, int data2)
 {
-  return sendEventP(code, data1, (void *)(long)data2);
+  return sendEventP(code, data1, (void *)(size_t)data2);
 }
 
 static __inline__ void signalRead(void)
@@ -529,7 +529,7 @@ int NET2_GetEventType(SDL_Event *e)
 
 int NET2_GetSocket(SDL_Event *e)
 {
-  return (int)(long)e->user.data1;
+  return (int)(size_t)e->user.data1;
 }
 
 //----------------------------------------
@@ -674,7 +674,7 @@ void NET2_UDPClose(int socket)
 
 int NET2_GetEventData(SDL_Event *e)
 {
-  return (int)(long)e->user.data2;
+  return (int)(size_t)e->user.data2;
 }
 
 //----------------------------------------

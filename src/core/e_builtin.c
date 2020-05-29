@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_builtin.c - EEL built-in functions
 ---------------------------------------------------------------------------
- * Copyright 2002-2014, 2019 David Olofson
+ * Copyright 2002-2014, 2019-2020 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -454,9 +454,9 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 	res = ShellExecute(NULL, op, file, params, dir, showcmd);
 	CoUninitialize();
-	if((int)res < 32)
+	if((SIZE_T)res < 32)
 	{
-		switch((int)res)
+		switch((SIZE_T)res)
 		{
 		  case 0:
 		  case SE_ERR_OOM:
@@ -478,7 +478,7 @@ static EEL_xno bi_ShellExecute(EEL_vm *vm)
 		}
 		return EEL_XDEVICEERROR;
 	}
-	eel_l2v(vm->heap + vm->resv, (int)res);
+	eel_l2v(vm->heap + vm->resv, (int)(SIZE_T)res);
 	return 0;
 #else
 	return EEL_XNOTIMPLEMENTED;
