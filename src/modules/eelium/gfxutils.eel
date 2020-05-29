@@ -112,7 +112,67 @@ export function CircularFilterCore(radius, cmag, emag)
 
 
 ////////////////////////////////////////////////////////////////
-// Sprite bank
+// Surface bank (for offscreen sprite/tile rendering)
+////////////////////////////////////////////////////////////////
+
+export function SurfaceBank
+{
+	return {
+		.tiles	[],
+
+		function GrabFrame(self, source, rect)
+		{
+			local s_f = source.flags;
+			local s_a = source.alpha;
+			source.blendmode = BLENDMODE_NONE;
+			local s = Surface[0, rect.(w, h), 32];
+			BlitSurface(source, rect, s, nil);
+//			SetAlpha(source, s_f & (SRCALPHA | RLEACCEL), s_a);
+			return s;
+		}
+
+		function Load(self, source, tw, th)
+		{
+			local tiles = [];
+			if typeof(source) != Surface
+				source = IMG.Load(source);
+			local sr = Rect [0, 0, tw, th];
+			local s_f = source.flags;
+			local s_a = source.alpha;
+			source.blendmode = BLENDMODE_NONE;
+			while sr.y < source.h
+			{
+				local s = Surface[0, tw, th, 32];
+				BlitSurface(source, sr, s, nil);
+				tiles.+ s;
+				sr.x += tw;
+				if sr.x >= source.w
+				{
+					sr.x = 0;
+					sr.y += th;
+					sr.w = tw;
+				}
+			}
+//			SetAlpha(source, s_f & (SRCALPHA | RLEACCEL), s_a);
+			self.tiles = tiles;
+			return tiles;
+		}
+
+		procedure Render(self, frame, x, y)[target]
+		{
+			if specified target
+				local dst = target;
+			else
+				dst = nil;
+			BlitSurface(self.tiles[frame], nil,
+					dst, Rect[x, y, 0, 0]);
+		}
+	};
+}
+
+
+////////////////////////////////////////////////////////////////
+// Sprite bank (for live rendering)
 ////////////////////////////////////////////////////////////////
 
 export function SpriteBank(renderer)

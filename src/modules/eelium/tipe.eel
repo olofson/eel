@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////
 // tipe.eel - Tiny Image Processing Engine
-// Copyright 2016 David Olofson
+// Copyright 2016, 2020 David Olofson
 ////////////////////////////////////////////////////////////////
 //
 // NOTE:
@@ -569,7 +569,7 @@ procedure Load(self)
 	{
 		local s = p.sources[i];
 		local img = s.source;
-		local b = gfx.SpriteBank();
+		local b = gfx.SurfaceBank();
 		self:Log("Source image ", i, ": ");
 		switch typeof(img)
 		  case Surface
@@ -880,7 +880,7 @@ procedure Convert(self)
 	SetColors(tmp, pal.colors);
 	for local i = sizeof pal.colors, 255
 		SetColors(tmp, pal.colors[0], i);
-	SetColorKey(tmp, SRCCOLORKEY, ck);
+	SetColorKey(tmp, true, ck);
 	local thr = p.alpha_threshold;
 	local cw = p.contrast_weight;
 	local bgb = p.background_blend;
