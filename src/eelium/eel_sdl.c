@@ -587,10 +587,7 @@ static EEL_xno s_construct(EEL_vm *vm, EEL_classes cid,
 		switch(bpp)
 		{
 		  case 8:
-			rmask = 0xe0;
-			gmask = 0x1c;
-			bmask = 0x03;
-			amask = 0;
+			rmask = gmask = bmask = amask = 0;
 			break;
 		  case 15:
 			rmask = 0x7c00;
