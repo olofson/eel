@@ -31,6 +31,10 @@
 # include "eelium.h"
 #endif
 
+#ifdef WIN32
+#include "windows.h"
+#endif
+
 #define	READ_CHUNK_SIZE	256
 
 
@@ -160,6 +164,15 @@ int main(int argc, const char *argv[])
 #endif
 	int eelargc;
 	const char **eelargv;
+
+#ifdef WIN32
+	if(AttachConsole(ATTACH_PARENT_PROCESS))
+	{
+		freopen("CONIN$", "r", stdin);
+		freopen("CONOUT$", "w", stderr);
+		freopen("CONOUT$", "w", stdout);
+	}
+#endif
 
 	fprintf(stderr,
 		"\n"
