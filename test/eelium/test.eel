@@ -49,6 +49,7 @@ export function main<args>
 	run("texttest.eel");
 	run("guiminimal.eel");
 	run("guitest.eel");
+	run("curvetool.eel");
 	run("beep.eel");
 	run("fmsynth.eel");
 	run("addsynth.eel");
@@ -58,6 +59,7 @@ export function main<args>
 	run("zstest.eel");
 	run("zsgl.eel");
 	run("zsgl2.eel");
+	run("zsdraw.eel");
 	run("audiality/audiality.eel");
 	run("audiality/minimal.eel");
 
