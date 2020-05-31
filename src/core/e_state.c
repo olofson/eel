@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	e_state.c - EEL State (Compiler, VM, symbols etc)
 ---------------------------------------------------------------------------
- * Copyright 2004-2006, 2009-2012, 2014, 2019 David Olofson
+ * Copyright 2004-2006, 2009-2012, 2014, 2019-2020 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -47,27 +47,9 @@
 
 static void es_close(EEL_state *es);
 
-#define XCHECK(xx)	x = (xx);		\
-			if(x)			\
-				return x;
-
-static EEL_xno array_sadd(EEL_object *a, const char *s)
-{
-	EEL_xno x;
-	EEL_value v;
-	eel_s2v(a->vm, &v, s);
-	if(v.classid == EEL_CNIL)
-		return EEL_XMEMORY;
-	x = eel_setlindex(a, eel_length(a), &v);
-	if(x)
-		return x;
-	eel_v_disown(&v);
-	return 0;
-}
-
 static EEL_xno init_env_table(EEL_state *es)
 {
-	EEL_value a, v;
+	EEL_value v;
 	EEL_xno x = eel_o_construct(es->vm, EEL_CTABLE, NULL, 0, &v);
 	if(x)
 	{
@@ -77,15 +59,6 @@ static EEL_xno init_env_table(EEL_state *es)
 	}
 	es->environment = v.objref.v;
 	SETNAME(es->environment, "'environment' Table");
-
-	/* Module paths */
-	XCHECK(eel_o_construct(es->vm, EEL_CARRAY, NULL, 0, &a));
-	XCHECK(array_sadd(a.objref.v, "."));
-	XCHECK(array_sadd(a.objref.v, "./modules"));
-	XCHECK(array_sadd(a.objref.v, EEL_MODULE_DIR));
-	XCHECK(array_sadd(a.objref.v, ""));
-	XCHECK(eel_setsindex(es->environment, "path_modules", &a));
-	eel_disown(a.objref.v);
 	return 0;
 }
 

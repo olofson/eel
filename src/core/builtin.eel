@@ -193,15 +193,17 @@ export function __load_via_path_modules(modname, flags)
 		modname = (string)r;
 	}
 
-	try
-	{
-		// Try the directory of the currently compiling module, or the
-		// "root" module. (See compile() for details.)
-		local m = try_load($.current_module_path + DIRSEP + modname,
-				flags);
-		if m
-			return m;
-	}
+	if $.current_module_path != nil
+		try
+		{
+			// Try the directory of the currently compiling
+			// module, or the "root" module. (See compile() for
+			// details.)
+			local m = try_load($.current_module_path + DIRSEP +
+					modname, flags);
+			if m
+				return m;
+		}
 
 	// Try each path in $.path_modules
 	local modpaths = $.path_modules;
@@ -230,6 +232,14 @@ $.module_loaders = [
 	__get_loaded_module,	// Try to grab a loaded shared module
 	__load_injected_module,	// See if it's an injected module
 	__load_via_path_modules	// Try to load from file system
+];
+
+// Default module paths
+$.path_modules = [
+	".",			// Current directory
+	"./modules",		// 'modules' folder in current directory
+	MODPATH,		// System/install module path
+	""			// Absolute path
 ];
 
 

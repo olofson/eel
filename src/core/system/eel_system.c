@@ -2,7 +2,7 @@
 ---------------------------------------------------------------------------
 	eel_system.c - EEL system/platform information module
 ---------------------------------------------------------------------------
- * Copyright 2007, 2009, 2014, 2019 David Olofson
+ * Copyright 2007, 2009, 2014, 2019-2020 David Olofson
  *
  * This software is provided 'as-is', without any express or implied warranty.
  * In no event will the authors be held liable for any damages arising from the
@@ -44,6 +44,7 @@ TODO:
 #include "e_config.h"
 #include "EEL_register.h"
 #ifdef _WIN32
+#include <stdio.h>
 #include <windows.h>
 #endif
 
@@ -153,16 +154,20 @@ EEL_xno eel_system_init(EEL_vm *vm, int argc, const char *argv[])
 	const char dirsep[] = { EEL_DIRSEP, 0 };
 	char *exepath = NULL;
 	char *exename = NULL;
-/* TODO:
+	char *buf;
 #ifdef WIN32
-	... = GetModuleFileName();
-...
+	DWORD res;
+	buf = malloc(MAX_PATH);
+	res = GetModuleFileName(NULL, buf, MAX_PATH);
+	if(res && (res < MAX_PATH))
+	{
+		char *s;
 #else
-*/
 	if(argc)
 	{
 		char *s;
-		char *buf = strdup(argv[0]);
+		buf = strdup(argv[0]);
+#endif
 		s = strrchr(buf, EEL_DIRSEP);
 		if(s)
 		{
@@ -208,7 +213,14 @@ EEL_xno eel_system_init(EEL_vm *vm, int argc, const char *argv[])
 	eel_export_sconstant(m, "CFGPATH", "~");
 	eel_export_sconstant(m, "HOMEPATH", "~");
 #endif
+#ifdef WIN32
+	buf = malloc(MAX_PATH);
+	snprintf(buf, MAX_PATH, "%s\\modules", exepath);
+	eel_export_sconstant(m, "MODPATH", buf);
+	free(buf);
+#else
 	eel_export_sconstant(m, "MODPATH", EEL_MODULE_DIR);
+#endif
 	free(exepath);
 	free(exename);
 
